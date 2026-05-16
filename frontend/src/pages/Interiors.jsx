@@ -150,7 +150,7 @@ export default function Interiors() {
           {content.how_it_works.map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
-              <div key={s.step} className="bg-white p-8">
+              <div key={`step-${s.step}`} className="bg-white p-8">
                 <div className="font-display text-5xl text-[#B68D40] mb-4">0{s.step}</div>
                 <Ic size={22} strokeWidth={1.5} className="text-[#06402B] mb-4" />
                 <div className="font-display text-2xl mb-2">{s.title}</div>
@@ -182,8 +182,8 @@ export default function Interiors() {
             {rooms.map((r) => (
               <TabsContent key={r} value={r}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {content.gallery.filter((g) => g.room === r).map((g, i) => (
-                    <div key={i} className="group relative aspect-[4/5] overflow-hidden">
+                  {content.gallery.filter((g) => g.room === r).map((g) => (
+                    <div key={`${g.room}-${g.title}-${g.url}`} className="group relative aspect-[4/5] overflow-hidden">
                       <img src={g.url} alt={g.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-90" />
                       <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -204,10 +204,10 @@ export default function Interiors() {
         <div className="label-eyebrow mb-3">Services</div>
         <h2 className="font-display text-5xl mb-12">Everything, end-to-end.</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {content.services.map((s, i) => {
+          {content.services.map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
-              <div key={i} className="bg-white border border-[#E8E4D9] p-8 group hover:bg-[#06402B] hover:text-white transition-colors">
+              <div key={s.title} className="bg-white border border-[#E8E4D9] p-8 group hover:bg-[#06402B] hover:text-white transition-colors">
                 <Ic size={26} strokeWidth={1.5} className="text-[#B68D40] mb-5" />
                 <div className="font-display text-2xl mb-2">{s.title}</div>
                 <p className="text-sm text-[#4A5D54] group-hover:text-white/70">{s.description}</p>
@@ -223,10 +223,10 @@ export default function Interiors() {
           <div className="label-eyebrow text-[#B68D40] mb-3">Why Homesqre</div>
           <h2 className="font-display text-5xl mb-12">Built to make life easier.</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-[#FAF9F6]/15">
-            {content.why_choose_us.map((s, i) => {
+            {content.why_choose_us.map((s) => {
               const Ic = ICONS[s.icon] || ShieldCheck;
               return (
-                <div key={i} className="bg-[#06402B] p-6 lg:p-8">
+                <div key={`${s.value}-${s.label}`} className="bg-[#06402B] p-6 lg:p-8">
                   <Ic size={22} strokeWidth={1.5} className="text-[#B68D40] mb-5" />
                   <div className="font-display text-3xl mb-1">{s.value}</div>
                   <div className="text-xs tracking-widest uppercase text-[#FAF9F6]/70">{s.label}</div>
@@ -306,11 +306,11 @@ export default function Interiors() {
           <div className="label-eyebrow mb-3">Testimonials</div>
           <h2 className="font-display text-5xl mb-12">Love letters from our clients.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {content.reviews.map((r, i) => (
-              <div key={i} className="bg-white p-8 border-l-2 border-[#B68D40]">
+            {content.reviews.map((r) => (
+              <div key={`${r.name}-${r.locality}`} className="bg-white p-8 border-l-2 border-[#B68D40]">
                 <div className="flex gap-0.5 mb-4">
                   {[...Array(r.rating || 5)].map((_, j) => (
-                    <Star key={j} size={14} className="text-[#B68D40] fill-[#B68D40]" />
+                    <Star key={`star-${r.name}-${j}`} size={14} className="text-[#B68D40] fill-[#B68D40]" />
                   ))}
                 </div>
                 <p className="text-[#1A2421] leading-relaxed mb-5">"{r.text}"</p>
@@ -329,8 +329,8 @@ export default function Interiors() {
         <div className="label-eyebrow mb-3 text-center">FAQ</div>
         <h2 className="font-display text-5xl text-center mb-12">Good questions, good answers.</h2>
         <Accordion type="single" collapsible className="border-t border-[#E8E4D9]">
-          {content.faq.map((f, i) => (
-            <AccordionItem key={i} value={`f${i}`} className="border-b border-[#E8E4D9]">
+          {content.faq.map((f) => (
+            <AccordionItem key={f.q} value={f.q} className="border-b border-[#E8E4D9]">
               <AccordionTrigger className="font-display text-xl text-left hover:no-underline">{f.q}</AccordionTrigger>
               <AccordionContent className="text-[#4A5D54] leading-relaxed">{f.a}</AccordionContent>
             </AccordionItem>

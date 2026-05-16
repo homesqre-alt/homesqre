@@ -76,6 +76,9 @@ class TestAuth:
         assert r.status_code == 200, r.text
         data = r.json()
         assert "dev_otp" in data and len(data["dev_otp"]) == 6
+        # OTP must be all-digit string, 6 chars (secrets.randbelow ensures 100000-999999)
+        assert data["dev_otp"].isdigit(), f"OTP not all-digit: {data['dev_otp']!r}"
+        assert 100000 <= int(data["dev_otp"]) <= 999999
         assert data["user"]["email"] == email.lower()
         assert data["user"]["is_verified"] is False
         assert "token" in data

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import api, { formatINR, formatApiError } from "@/lib/api";
@@ -43,9 +43,16 @@ function Projects() {
   const [settingsFor, setSettingsFor] = useState(null);
   const { user } = useAuth();
 
-  const reload = () =>
-    api.get("/projects", { params: { status: "", builder_id: user.user_id } }).then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []); // eslint-disable-line
+  const reload = useCallback(
+    () =>
+      api
+        .get("/projects", { params: { status: "", builder_id: user.user_id } })
+        .then(({ data }) => setItems(data || [])),
+    [user.user_id]
+  );
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const remove = async (id) => {
     if (!window.confirm("Delete this project?")) return;
@@ -262,8 +269,13 @@ function F({ label, full = false, children }) {
 function Inquiries() {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(null);
-  const reload = () => api.get("/inquiries").then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(
+    () => api.get("/inquiries").then(({ data }) => setItems(data || [])),
+    []
+  );
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const setStatus = async (id, status) => {
     try { await api.put(`/inquiries/${id}`, { status }); reload(); }

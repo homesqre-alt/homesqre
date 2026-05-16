@@ -52,11 +52,11 @@ export default function PropertyDetail() {
           {item.photos?.[active] && <img src={item.photos[active]} alt="" className="w-full h-full object-cover" />}
         </div>
         <div className="grid grid-cols-2 gap-2 max-h-[640px] overflow-auto no-scrollbar">
-          {item.photos?.map((p, i) => (
+          {item.photos?.map((p) => (
             <button
-              key={i}
-              onClick={() => setActive(i)}
-              className={`aspect-square overflow-hidden border ${active === i ? "border-[#06402B]" : "border-transparent"}`}
+              key={p}
+              onClick={() => setActive(item.photos.indexOf(p))}
+              className={`aspect-square overflow-hidden border ${item.photos[active] === p ? "border-[#06402B]" : "border-transparent"}`}
             >
               <img src={p} alt="" className="w-full h-full object-cover" />
             </button>
@@ -86,8 +86,8 @@ export default function PropertyDetail() {
               { icon: Bath, label: "Bathrooms", value: item.bathrooms || "—" },
               { icon: Maximize2, label: "Area", value: `${item.area_sqft} sqft` },
               { icon: Home, label: "Type", value: item.property_type || "—" },
-            ].map((s, i) => (
-              <div key={i} className="bg-white p-5">
+            ].map((s) => (
+              <div key={s.label} className="bg-white p-5">
                 <s.icon size={18} strokeWidth={1.5} className="text-[#B68D40] mb-3" />
                 <div className="label-eyebrow mb-1">{s.label}</div>
                 <div className="font-display text-xl">{s.value}</div>

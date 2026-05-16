@@ -19,7 +19,9 @@ export default function PropertyCard({ listing, onFav }) {
         setFavd(true);
       }
       onFav && onFav();
-    } catch {}
+    } catch (err) {
+      console.warn("Favourite toggle failed:", err?.message || err);
+    }
   };
 
   return (

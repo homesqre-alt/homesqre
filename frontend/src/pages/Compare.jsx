@@ -27,6 +27,7 @@ export default function Compare() {
     api.get("/listings", { params: { limit: 12 } }).then(({ data }) => setPool(data || []));
   }, []);
 
+  const idsKey = ids.join(",");
   useEffect(() => {
     if (!ids.length) {
       setItems([]);
@@ -34,7 +35,8 @@ export default function Compare() {
     }
     Promise.all(ids.map((id) => api.get(`/listings/${id}`).then((r) => r.data).catch(() => null)))
       .then((res) => setItems(res.filter(Boolean)));
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey]);
 
   const add = (id) => {
     if (ids.includes(id) || ids.length >= 4) return;

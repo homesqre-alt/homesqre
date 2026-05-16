@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 3 — regression after security/code-quality refactor pass. Backend: ALL 65/65 pytest tests pass (50 regression + 15 new-features), including OTP-format assertion strengthened to verify the new `secrets.randbelow`-generated OTP is a 6-character all-digit string in [100000,999999]. Auth: cookie-only /api/auth/me works (verified via UI: `localStorage.hs_token` is null, `document.cookie` shows no `access_token` because it is HttpOnly, fetch('/api/auth/me') returns 200 with admin user); Bearer-only /api/auth/me also still works (backend test_me_via_bearer passes); hard-refresh keeps session; logout → /me returns 401. Frontend Inquiry flow (agent kanban → InquiryDialog): dialog opens, note add succeeds end-to-end, status/followup/chat controls render — ZERO React key warnings observed. HOWEVER, TWO CRITICAL FRONTEND REGRESSIONS were found, both introduced by the InteriorsEditor refactor / public Interiors page:\n  1) PUBLIC /interiors PAGE CRASHES with `TypeError: Cannot read properties of undefined (reading 'backgrounds')` at Interiors.jsx:110 — backend GET /api/content/interiors returns a doc WITHOUT a `hero` key (only how_it_works/packages/cost_matrix/faqs), and the page reads `content.hero.backgrounds?.[0]` without guarding `content.hero?`.\n  2) ADMIN /dashboard/admin/cms/interiors EDITOR CRASHES with `TypeError: range is not iterable` in CostMatrixCell (InteriorsEditor.jsx:345) — backend cost_matrix tier values are SCALARS (e.g., `{'Essential': 350000}`), but the refactored CostMatrixCell does `const [lo, hi] = range`, which throws when `range` is a number. The `|| [0, 0]` fallback only kicks in for falsy values, not for non-zero numbers.\nThe admin Homepage CMS (/dashboard/admin/cms/homepage) loads but its save button wasn't detected — likely also crashed silently or is rendered conditionally. Property Detail page wasn't reachable via /listings (no listing anchors rendered on /listings page in this browser run; likely a separate routing issue, not in scope of this refactor).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/content/interiors", "issue": "Default/persisted doc does NOT contain `hero` key, yet the FE Interiors page assumes it exists. Either ship a `hero` default on server-side, or have FE guard `content.hero?`. Currently this contract mismatch crashes the public page."},
+      {"endpoint": "GET /api/content/interiors", "issue": "cost_matrix values are scalar numbers (`{'Essential': 350000}`) but the admin editor expects 2-element arrays `[lo, hi]`. Schema/shape contract is inconsistent — FE will overwrite scalars with arrays on first save and vice-versa."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "pages/Interiors.jsx", "issue": "TypeError: Cannot read properties of undefined (reading 'backgrounds') at line 110. Crashes the entire public /interiors page when backend interiors content has no `hero` key. Need to read `content.hero?.backgrounds?.[0]` and add safe fallbacks for headline/subheadline/cta/show_offer/offer everywhere in the hero block (and for how-it-works/why/services if those are also optional).", "selector": "/interiors", "priority": "CRITICAL"},
+      {"component": "components/admin/InteriorsEditor.jsx → CostMatrixCell", "issue": "TypeError: range is not iterable at line 345 `const [lo, hi] = range;`. Crashes the admin Interiors CMS page. Parent passes `range={tiersObj[tier] || [0, 0]}` but when `tiersObj[tier]` is a non-zero number (current saved shape), the `||` fallback doesn't fire and destructuring a number throws. Fix: coerce inside CostMatrixCell, e.g. `const arr = Array.isArray(range) ? range : (typeof range === 'number' ? [range, range] : [0, 0]); const [lo, hi] = arr;` AND either migrate stored cost_matrix to `[lo, hi]` shape or persist as a scalar consistently.", "selector": "/dashboard/admin/cms/interiors", "priority": "CRITICAL"},
+      {"component": "pages/dashboards/AdminDashboard CMS (homepage)", "issue": "Save button not detected on /dashboard/admin/cms/homepage in this run. Either renders only after a network call or also has a runtime error — please verify manually with devtools open. Was working in iteration_2.", "selector": "/dashboard/admin/cms/homepage", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_homesqre_backend.py",
+    "/app/backend/tests/test_homesqre_new_features.py",
+    "/app/test_reports/pytest/iter3_all.xml"
+  ],
+  "action_items": [
+    "FIX (critical): /app/frontend/src/pages/Interiors.jsx line 110 — guard `content.hero?.backgrounds?.[0]` and every `content.hero.X` access (headline, subheadline, cta, show_offer, offer). Add defensive defaults or skip the hero section if `content.hero` is missing. Currently crashes the public Interiors marketing page.",
+    "FIX (critical): /app/frontend/src/components/admin/InteriorsEditor.jsx CostMatrixCell at ~line 344-345 — coerce `range` into an iterable before destructuring (handle scalar number, undefined, and array shapes). Currently crashes /dashboard/admin/cms/interiors completely.",
+    "ALIGN cost_matrix shape between backend default seed and admin editor: pick ONE — either `{tier: number}` everywhere (simpler) or `{tier: [lo, hi]}` everywhere — then migrate any existing docs in `content` collection.",
+    "BACKEND: provide a default `hero` object in GET /api/content/interiors response when the persisted doc lacks one, so the FE never sees `content.hero === undefined`.",
+    "VERIFY /dashboard/admin/cms/homepage save button rendering — iteration_3 run didn't see it; may be a side-effect of the CMS layout change."
+  ],
+  "critical_code_review_comments": [
+    "Refactor of InteriorsEditor into sub-components introduced a shape regression in CostMatrixCell — sub-component destructures `range` array but parent passes a scalar from API. Refactors should ship with a quick smoke test on real /api/content/interiors data.",
+    "Public Interiors.jsx still assumes `content.hero` exists even though backend may return a partial doc — the iteration_2 PUT /api/content/interiors test wrote a partial body and that partial doc is now what GET returns, so the page crashes for ALL public visitors right now. This is a production-blocker.",
+    "Backend OTP generation correctly uses `secrets.randbelow(900000) + 100000` (verified in server.py:510 and via live test: 100000 ≤ otp ≤ 999999, all-digit, length 6).",
+    "Frontend api.js Bearer interceptor was removed and withCredentials remains true — verified by checking that fetch('/api/auth/me') without any Authorization header still returns 200 using only the HttpOnly cookie. localStorage no longer contains hs_token after login (only PostHog analytics keys present).",
+    "AuthContext logout flow correctly returns 401 on subsequent /api/auth/me — cookie is cleared by backend (Set-Cookie with Max-Age=0 or equivalent)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_homesqre_backend.py (strengthened test_register_and_dev_otp to assert OTP is all-digit and in 100000-999999 range)"
+  ],
+  "success_rate": {
+    "backend": "100% (65/65 pytest tests pass)",
+    "frontend": "Auth-cookie/logout/refresh: PASS. InquiryDialog (open/note/status/followup/chat controls render): PASS. React key warnings: 0 across all flows tested. Public /interiors: FAIL (runtime crash). Admin /cms/interiors: FAIL (runtime crash). Admin /cms/homepage: NEEDS VERIFICATION (save button not found)."
+  },
+  "test_credentials": "Used seeded creds from /app/memory/test_credentials.md (admin@homesqre.com, agent@homesqre.com).",
+  "seed_data_creation": "No persistent seed data added. One TEST iter3 note was appended to an existing inquiry via the agent UI for flow verification (harmless, leaves an audit trail under the inq's `notes` array).",
+  "retest_needed": true,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "After main agent fixes the two TypeErrors (Interiors.jsx hero guard + CostMatrixCell range coercion), retest: (a) GET https://india-homes-4.preview.emergentagent.com/interiors loads without runtime error overlay, hero/gallery/services/why/reviews/faq sections render, console has 0 React key warnings; (b) admin loads /dashboard/admin/cms/interiors and clicks Save; verify PUT /api/content/interiors returns 200 and persists. Also recheck /dashboard/admin/cms/homepage save button presence. Existing pytest suite is the authoritative regression — run `REACT_APP_BACKEND_URL=https://india-homes-4.preview.emergentagent.com python -m pytest backend/tests/ -v` (16s, 65 tests).",
+  "rca of the issue": "BUG #1 (public Interiors crash): The backend `GET /api/content/interiors` returns a partially-shaped doc (no `hero` key) — likely because iteration_2's PUT test wrote a partial body — and Interiors.jsx line 110 does `content.hero.backgrounds?.[0]` which throws when `content.hero` itself is undefined. Reproduction: `curl /api/content/interiors | jq 'has(\"hero\")'` → false; then load /interiors in the browser → red error overlay. Fix: change to `content.hero?.backgrounds?.[0]` and add `if (!content.hero) return null;` or default object at the top of the hero section. Long-term: backend should merge defaults on read so FE always sees a fully-shaped doc.\n\nBUG #2 (admin Interiors CMS crash): CostMatrixCell at InteriorsEditor.jsx:345 does `const [lo, hi] = range;`. The data shape from GET /api/content/interiors has `cost_matrix['1BHK']['Essential'] = 350000` (a number). Parent passes `range={tiersObj[tier] || [0, 0]}` — for non-zero numbers like 350000, `||` returns the number itself, not the fallback array, so destructuring `350000` throws `TypeError: range is not iterable`. Fix: inside CostMatrixCell add `const arr = Array.isArray(range) ? range : [Number(range)||0, Number(range)||0]; const [lo, hi] = arr;`. Also: align the data contract — pick scalar OR [lo,hi] and migrate."
+}

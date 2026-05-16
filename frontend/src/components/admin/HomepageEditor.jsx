@@ -6,8 +6,13 @@ export default function HomepageEditor() {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { load(); }, []);
-  const load = () => api.get("/content/homepage").then(({ data }) => setData(data));
+  const load = useCallback(
+    () => api.get("/content/homepage").then(({ data }) => setData(data)),
+    []
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const save = async () => {
     setBusy(true);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
@@ -90,8 +90,8 @@ function Overview() {
 
 function Users() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/admin/users").then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/admin/users").then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const updateRole = async (uid, role) => {
     try { await api.put(`/admin/users/${uid}`, { role }); reload(); toast.success("Role updated"); }
@@ -135,8 +135,8 @@ function Users() {
 
 function ListingsAdmin() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/listings", { params: { status: "" } }).then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/listings", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const setStatus = async (id, status, is_featured) => {
     try { await api.put(`/admin/listings/${id}/status`, { status, is_featured }); reload(); }
@@ -172,8 +172,8 @@ function ListingsAdmin() {
 
 function ProjectsAdmin() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/projects", { params: { status: "" } }).then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/projects", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const setStatus = async (id, status, is_featured) => {
     try { await api.put(`/admin/projects/${id}/status`, { status, is_featured }); reload(); }
@@ -230,8 +230,8 @@ function AllInquiries() {
 
 function InteriorLeads() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/interior-leads").then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/interior-leads").then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const setStatus = async (id, status) => {
     try { await api.put(`/interior-leads/${id}`, { status }); reload(); }
@@ -287,8 +287,8 @@ function LoanLeads() {
 
 function BanksMgmt() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/banks", { params: { active_only: false } }).then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/banks", { params: { active_only: false } }).then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const update = async (id, patch) => {
     try { await api.put(`/banks/${id}`, patch); reload(); }
@@ -322,8 +322,8 @@ function BanksMgmt() {
 
 function AmenitiesMgmt() {
   const [items, setItems] = useState([]);
-  const reload = () => api.get("/amenities", { params: { active_only: false } }).then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(() => api.get("/amenities", { params: { active_only: false } }).then(({ data }) => setItems(data || [])), []);
+  useEffect(() => { reload(); }, [reload]);
 
   const update = async (id, patch) => {
     try { await api.put(`/amenities/${id}`, patch); reload(); }

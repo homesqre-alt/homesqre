@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import api from "@/lib/api";
@@ -203,8 +203,13 @@ function Leads() {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(null);
 
-  const reload = () => api.get("/inquiries").then(({ data }) => setItems(data || []));
-  useEffect(() => { reload(); }, []);
+  const reload = useCallback(
+    () => api.get("/inquiries").then(({ data }) => setItems(data || [])),
+    []
+  );
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
   const setStatus = async (id, status) => {
     try {

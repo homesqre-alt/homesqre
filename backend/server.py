@@ -21,6 +21,7 @@ import uuid
 import logging
 import random
 import re
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -506,7 +507,7 @@ async def auth_register(body: RegisterRequest, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
     role = body.role if body.role in {"customer", "agent", "builder"} else "customer"
-    otp = f"{random.randint(100000, 999999)}"
+    otp = f"{secrets.randbelow(900000) + 100000}"
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     doc = {
         "user_id": user_id,

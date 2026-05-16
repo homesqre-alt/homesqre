@@ -23,7 +23,6 @@ export default function AuthCallback() {
     (async () => {
       try {
         const { data } = await api.post("/auth/google/session", { session_id: m[1] });
-        if (data.token) localStorage.setItem("hs_token", data.token);
         setUserData(data.user);
         // Clean URL hash
         window.history.replaceState({}, "", "/");

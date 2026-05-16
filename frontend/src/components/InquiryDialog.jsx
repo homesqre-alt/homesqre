@@ -29,7 +29,9 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
       const fresh = list.find((i) => i.inquiry_id === data.inquiry_id);
       if (fresh) setData(fresh);
       onChanged && onChanged();
-    } catch {}
+    } catch (err) {
+      console.warn("Inquiry refresh failed:", err?.message || err);
+    }
   };
 
   const sendMessage = async (e) => {
@@ -114,8 +116,8 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
 
             <div className="label-eyebrow mt-8 mb-2">Notes</div>
             <div className="space-y-2 mb-3 max-h-40 overflow-auto">
-              {(data.notes || []).map((n, i) => (
-                <div key={i} className="text-xs bg-white border border-[#E8E4D9] p-2">
+              {(data.notes || []).map((n) => (
+                <div key={n.at} className="text-xs bg-white border border-[#E8E4D9] p-2">
                   <div>{n.text}</div>
                   <div className="text-[#758A80] mt-1">{new Date(n.at).toLocaleString()}</div>
                 </div>
@@ -143,8 +145,8 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
               <span className="label-eyebrow">Conversation</span>
             </div>
             <div className="flex-1 overflow-auto p-6 space-y-3 bg-[#FAF9F6] min-h-[300px]">
-              {(data.messages || []).map((m, i) => (
-                <div key={i} className="bg-[#06402B] text-[#FAF9F6] p-3 max-w-[80%] ml-auto">
+              {(data.messages || []).map((m) => (
+                <div key={m.at} className="bg-[#06402B] text-[#FAF9F6] p-3 max-w-[80%] ml-auto">
                   <div className="text-sm">{m.text}</div>
                   <div className="text-[10px] text-[#FAF9F6]/60 mt-1 text-right">
                     {new Date(m.at).toLocaleString()}
