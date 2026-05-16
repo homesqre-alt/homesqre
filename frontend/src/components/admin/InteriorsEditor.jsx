@@ -342,26 +342,33 @@ function CostMatrixSection({ matrix, upd }) {
 }
 
 function CostMatrixCell({ range, onChange }) {
-  const [lo, hi] = range;
+  // Defensive: range may arrive as a scalar number, undefined, or [lo, hi] array
+  const arr = Array.isArray(range)
+    ? range
+    : typeof range === "number"
+    ? [range, range]
+    : [0, 0];
+  const lo = Number(arr[0]) || 0;
+  const hi = Number(arr[1]) || 0;
   return (
     <>
       <div className="flex gap-1 items-center">
         <input
           className="hs-input text-xs"
           type="number"
-          value={lo || 0}
-          onChange={(e) => onChange([Number(e.target.value), hi || 0])}
+          value={lo}
+          onChange={(e) => onChange([Number(e.target.value), hi])}
         />
         <span>—</span>
         <input
           className="hs-input text-xs"
           type="number"
-          value={hi || 0}
-          onChange={(e) => onChange([lo || 0, Number(e.target.value)])}
+          value={hi}
+          onChange={(e) => onChange([lo, Number(e.target.value)])}
         />
       </div>
       <div className="text-[10px] text-[#758A80] mt-1">
-        {formatINR(lo || 0)} – {formatINR(hi || 0)}
+        {formatINR(lo)} – {formatINR(hi)}
       </div>
     </>
   );

@@ -1257,16 +1257,30 @@ DEFAULT_INTERIORS_CONTENT = {
 }
 
 
+def deep_merge(default: Any, override: Any) -> Any:
+    """Merge `override` over `default`. Dicts are deep-merged, anything else is replaced."""
+    if not isinstance(override, dict):
+        return override if override is not None else default
+    if not isinstance(default, dict):
+        return override
+    result = dict(default)
+    for k, v in override.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
 @api.get("/content/{key}")
 async def get_content(key: str):
     doc = await db.content.find_one({"key": key}, {"_id": 0})
-    if doc:
-        return doc.get("value", {})
+    stored = doc.get("value", {}) if doc else {}
     if key == "homepage":
-        return DEFAULT_HOMEPAGE_CONTENT
+        return deep_merge(DEFAULT_HOMEPAGE_CONTENT, stored)
     if key == "interiors":
-        return DEFAULT_INTERIORS_CONTENT
-    return {}
+        return deep_merge(DEFAULT_INTERIORS_CONTENT, stored)
+    return stored
 
 
 @api.put("/content/{key}")

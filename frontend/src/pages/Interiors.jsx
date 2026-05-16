@@ -86,8 +86,13 @@ export default function Interiors() {
     );
   }
 
-  const rooms = [...new Set(content.gallery?.map((g) => g.room))];
-  const costRange = content.cost_matrix?.[bhk]?.[tier] || [0, 0];
+  const rooms = [...new Set((content.gallery || []).map((g) => g.room))];
+  const rawRange = content.cost_matrix?.[bhk]?.[tier];
+  const costRange = Array.isArray(rawRange)
+    ? rawRange
+    : typeof rawRange === "number"
+    ? [rawRange, rawRange]
+    : [0, 0];
 
   const submit = async (e) => {
     e.preventDefault();
@@ -107,23 +112,23 @@ export default function Interiors() {
       {/* Hero */}
       <section className="relative min-h-[88vh] grid grid-cols-1 lg:grid-cols-12 items-stretch">
         <div className="lg:col-span-8 relative min-h-[60vh] lg:min-h-[88vh]">
-          <img src={content.hero.backgrounds?.[0]} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={content.hero?.backgrounds?.[0]} alt="" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-tr from-black/55 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-end p-8 lg:p-20 text-white">
-            {content.hero.show_offer && content.hero.offer && (
+            {content.hero?.show_offer && content.hero?.offer && (
               <div className="inline-flex items-center gap-2 self-start bg-[#B68D40] text-white text-xs tracking-widest uppercase px-3 py-2 mb-6 font-semibold">
                 {content.hero.offer}
               </div>
             )}
             <div className="label-eyebrow text-[#B68D40] mb-5">Homesqre Interiors</div>
             <h1 className="font-display text-5xl sm:text-6xl lg:text-[88px] leading-[0.95] max-w-3xl" data-testid="interiors-headline">
-              {content.hero.headline.split(" ").slice(0, -1).join(" ")}{" "}
-              <span className="italic text-[#B68D40]">{content.hero.headline.split(" ").slice(-1)}</span>
+              {(content.hero?.headline || "Interiors that feel like home.").split(" ").slice(0, -1).join(" ")}{" "}
+              <span className="italic text-[#B68D40]">{(content.hero?.headline || "Interiors that feel like home.").split(" ").slice(-1)}</span>
             </h1>
-            <p className="text-white/85 mt-6 max-w-xl text-lg">{content.hero.subheadline}</p>
+            <p className="text-white/85 mt-6 max-w-xl text-lg">{content.hero?.subheadline || ""}</p>
             <div className="mt-8">
               <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="interior-hero-cta">
-                {content.hero.cta}
+                {content.hero?.cta || "Get a Free Design Consultation"}
               </button>
             </div>
           </div>
@@ -147,7 +152,7 @@ export default function Interiors() {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[#E8E4D9] border border-[#E8E4D9]">
-          {content.how_it_works.map((s) => {
+          {(content.how_it_works || []).map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
               <div key={`step-${s.step}`} className="bg-white p-8">
@@ -182,7 +187,7 @@ export default function Interiors() {
             {rooms.map((r) => (
               <TabsContent key={r} value={r}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {content.gallery.filter((g) => g.room === r).map((g) => (
+                  {(content.gallery || []).filter((g) => g.room === r).map((g) => (
                     <div key={`${g.room}-${g.title}-${g.url}`} className="group relative aspect-[4/5] overflow-hidden">
                       <img src={g.url} alt={g.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-90" />
@@ -204,7 +209,7 @@ export default function Interiors() {
         <div className="label-eyebrow mb-3">Services</div>
         <h2 className="font-display text-5xl mb-12">Everything, end-to-end.</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {content.services.map((s) => {
+          {(content.services || []).map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
               <div key={s.title} className="bg-white border border-[#E8E4D9] p-8 group hover:bg-[#06402B] hover:text-white transition-colors">
@@ -223,7 +228,7 @@ export default function Interiors() {
           <div className="label-eyebrow text-[#B68D40] mb-3">Why Homesqre</div>
           <h2 className="font-display text-5xl mb-12">Built to make life easier.</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-[#FAF9F6]/15">
-            {content.why_choose_us.map((s) => {
+            {(content.why_choose_us || []).map((s) => {
               const Ic = ICONS[s.icon] || ShieldCheck;
               return (
                 <div key={`${s.value}-${s.label}`} className="bg-[#06402B] p-6 lg:p-8">
@@ -251,7 +256,7 @@ export default function Interiors() {
               <div>
                 <label className="label-eyebrow mb-3 block">Apartment size</label>
                 <div className="flex flex-wrap gap-2">
-                  {Object.keys(content.cost_matrix).map((b) => (
+                  {Object.keys(content.cost_matrix || {}).map((b) => (
                     <button
                       key={b}
                       onClick={() => setBhk(b)}
@@ -306,7 +311,7 @@ export default function Interiors() {
           <div className="label-eyebrow mb-3">Testimonials</div>
           <h2 className="font-display text-5xl mb-12">Love letters from our clients.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {content.reviews.map((r) => (
+            {(content.reviews || []).map((r) => (
               <div key={`${r.name}-${r.locality}`} className="bg-white p-8 border-l-2 border-[#B68D40]">
                 <div className="flex gap-0.5 mb-4">
                   {[...Array(r.rating || 5)].map((_, j) => (
@@ -329,7 +334,7 @@ export default function Interiors() {
         <div className="label-eyebrow mb-3 text-center">FAQ</div>
         <h2 className="font-display text-5xl text-center mb-12">Good questions, good answers.</h2>
         <Accordion type="single" collapsible className="border-t border-[#E8E4D9]">
-          {content.faq.map((f) => (
+          {(content.faq || []).map((f) => (
             <AccordionItem key={f.q} value={f.q} className="border-b border-[#E8E4D9]">
               <AccordionTrigger className="font-display text-xl text-left hover:no-underline">{f.q}</AccordionTrigger>
               <AccordionContent className="text-[#4A5D54] leading-relaxed">{f.a}</AccordionContent>
@@ -340,13 +345,13 @@ export default function Interiors() {
 
       {/* Final CTA */}
       <section className="relative min-h-[60vh] flex items-center justify-center">
-        <img src={content.final_cta.background} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <img src={content.final_cta?.background} alt="" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-[#06402B]/85" />
         <div className="relative z-10 text-center text-white max-w-3xl px-6">
           <div className="label-eyebrow text-[#B68D40] mb-4">Let's begin</div>
-          <h2 className="font-display text-5xl sm:text-6xl mb-6 leading-tight">{content.final_cta.headline}</h2>
-          <p className="text-white/80 mb-10 text-lg">{content.final_cta.subtext}</p>
-          <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="final-cta">{content.final_cta.cta}</button>
+          <h2 className="font-display text-5xl sm:text-6xl mb-6 leading-tight">{content.final_cta?.headline || "Ready to design your dream home?"}</h2>
+          <p className="text-white/80 mb-10 text-lg">{content.final_cta?.subtext || ""}</p>
+          <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="final-cta">{content.final_cta?.cta || "Book Free Consultation"}</button>
         </div>
       </section>
 
