@@ -1,0 +1,153 @@
+{
+  "theme": "light",
+  "archetype": "5 (Jewel & Luxury - Light Variant) + 1 (Organic & Earthy)",
+  "vibe": "Premium Indian Real Estate & Interiors, Warm, Editorial, Spacious",
+  "typography": {
+    "headings": {
+      "font_family": "Cormorant Garamond, serif",
+      "weights": ["300", "400", "600"],
+      "strategy": "Large-scale editorial type. Clean, intentional restraint. Tracking-tight for massive headlines.",
+      "import_url": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap"
+    },
+    "body": {
+      "font_family": "Outfit, sans-serif",
+      "weights": ["300", "400", "500"],
+      "strategy": "Highly legible, geometric sans to balance the ornate serif. Crisp and modern.",
+      "import_url": "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap"
+    },
+    "hierarchy_rules": {
+      "h1": "text-5xl sm:text-6xl tracking-tight leading-none font-light",
+      "h2": "text-3xl sm:text-4xl tracking-tight leading-snug",
+      "h3": "text-xl sm:text-2xl leading-snug",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs tracking-[0.2em] uppercase font-semibold"
+    }
+  },
+  "colors": {
+    "background": {
+      "primary": "#FAF9F6",
+      "secondary": "#F3F0E9",
+      "tertiary": "#E8E4D9"
+    },
+    "text": {
+      "primary": "#1A2421",
+      "secondary": "#4A5D54",
+      "muted": "#758A80"
+    },
+    "brand": {
+      "primary": "#06402B",
+      "primary_hover": "#042B1D",
+      "accent_gold": "#B68D40",
+      "accent_gold_hover": "#947230",
+      "terracotta": "#9B4A3A"
+    },
+    "border": {
+      "light": "#E8E4D9",
+      "medium": "#D1CFC7"
+    },
+    "dashboard_specific": {
+      "kanban_new": "#E0F2FE",
+      "kanban_contacted": "#FEF08A",
+      "kanban_no_response": "#FED7AA",
+      "kanban_follow_up": "#DDD6FE",
+      "kanban_converted": "#BBF7D0",
+      "kanban_closed": "#86EFAC",
+      "kanban_not_interested": "#FECACA"
+    }
+  },
+  "layout_spacing": {
+    "philosophy": "Generous Spacing Philosophy. Wide gaps to let the property photography and typography breathe.",
+    "container_padding": "px-6 md:px-12 lg:px-24 py-16 md:py-24",
+    "bento_grid": "grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8",
+    "border_radius": "rounded-none for editorial luxury feel, or rounded-sm (2px) maximum for subtle softening."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#06402B] text-[#FAF9F6] px-8 py-3 rounded-none uppercase tracking-widest text-xs font-semibold hover:bg-[#042B1D] transition-colors",
+      "secondary": "border border-[#06402B] text-[#06402B] px-8 py-3 rounded-none uppercase tracking-widest text-xs font-semibold hover:bg-[#06402B] hover:text-[#FAF9F6] transition-colors",
+      "accent": "bg-[#B68D40] text-white px-8 py-3 rounded-none uppercase tracking-widest text-xs font-semibold hover:bg-[#947230] transition-colors"
+    },
+    "cards": {
+      "property_card": "bg-white border border-[#E8E4D9] rounded-none overflow-hidden group shadow-sm hover:shadow-md transition-shadow",
+      "amenity_card": "bg-[#F3F0E9] p-6 border-l-2 border-[#B68D40] flex flex-col gap-4",
+      "dashboard_widget": "bg-white border border-[#E8E4D9] p-6 rounded-none"
+    },
+    "forms": {
+      "input": "border-b border-[#D1CFC7] bg-transparent rounded-none px-0 py-2 focus:ring-0 focus:border-[#06402B] transition-colors text-base",
+      "label": "text-xs tracking-widest uppercase text-[#4A5D54] mb-1 block"
+    },
+    "navigation": {
+      "header": "fixed top-0 w-full z-50 bg-[#FAF9F6]/90 backdrop-blur-xl border-b border-[#E8E4D9] py-4",
+      "links": "text-sm tracking-wide text-[#1A2421] hover:text-[#B68D40] transition-colors font-medium"
+    },
+    "overlays": {
+      "hero_image_overlay": "bg-black/30 bg-gradient-to-t from-black/60 to-transparent",
+      "glassmorphism": "backdrop-blur-xl bg-white/70 border border-white/20"
+    }
+  },
+  "visual_enhancers": {
+    "motion": {
+      "hover": "Subtle scale (1.02) on property images, smooth color transitions for buttons.",
+      "scroll": "Use Lenis for smooth momentum scrolling. Staggered fade-up for grid items."
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke-width 1.5, elegant, minimal."
+    }
+  },
+  "media": {
+    "rules": "High-end architectural photography, warm lighting, luxurious interiors.",
+    "images": {
+      "hero_exterior": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ba4be26-7c73-4b9b-ba82-4bd86a9e047c/images/25f474dcb14ae60755db572457d4f593bc990704942187ff5fc435a02ef67639.png",
+        "category": "Hero Background - Main Real Estate Page",
+        "description": "Premium luxury modern Indian apartment exterior with warm sunset lighting"
+      },
+      "hero_interior": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ba4be26-7c73-4b9b-ba82-4bd86a9e047c/images/1683ee563e52d2ca27932d6af98cd95ddbdbdbc5395f7881f7070de25cf291f9.png",
+        "category": "Hero Background - Homesqre Interiors Landing Page",
+        "description": "Warm, premium modern Indian living room with fluted panels"
+      },
+      "interior_kitchen": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ba4be26-7c73-4b9b-ba82-4bd86a9e047c/images/fff29337d6066edbe7b8e31738daf2d2e555091dfbf3ee7926256211f7d794dc.png",
+        "category": "Gallery / Interiors Services",
+        "description": "High-end modular kitchen interior in emerald and gold"
+      },
+      "floor_plan": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ba4be26-7c73-4b9b-ba82-4bd86a9e047c/images/de532268156342b5d0b1261c8caf50f05f30adc4a09dd13390a131da2a31f4e6.png",
+        "category": "Property Microsite - Floor Plans Section",
+        "description": "Architectural 3D floor plan of a 3BHK luxury apartment"
+      },
+      "property_exterior_1": {
+        "url": "https://images.unsplash.com/photo-1619218070141-bcfeb8b93074?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwyfHxsdXh1cnklMjBtb2Rlcm4lMjBhcGFydG1lbnQlMjBidWlsZGluZyUyMGV4dGVyaW9yJTIwc3VubGlnaHR8ZW58MHx8fHwxNzc4OTI0NzYyfDA&ixlib=rb-4.1.0&q=85",
+        "category": "Featured Projects Grid",
+        "description": "White concrete luxury building during daytime"
+      },
+      "property_exterior_2": {
+        "url": "https://images.unsplash.com/photo-1515263487990-61b07816b324?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBtb2Rlcm4lMjBhcGFydG1lbnQlMjBidWlsZGluZyUyMGV4dGVyaW9yJTIwc3VubGlnaHR8ZW58MHx8fHwxNzc4OTI0NzYyfDA&ixlib=rb-4.1.0&q=85",
+        "category": "Property Listings",
+        "description": "Modern apartment building architecture"
+      },
+      "interior_living_1": {
+        "url": "https://images.unsplash.com/photo-1758448755952-42b404bc6f39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHw0fHxwcmVtaXVtJTIwaW50ZXJpb3IlMjBkZXNpZ24lMjBsaXZpbmclMjByb29tJTIwd2FybSUyMGxpZ2h0aW5nfGVufDB8fHx8MTc3ODkyNDc2Mnww&ixlib=rb-4.1.0&q=85",
+        "category": "Interiors Gallery",
+        "description": "Modern living room with elegant furniture"
+      },
+      "interior_living_2": {
+        "url": "https://images.unsplash.com/photo-1771219491795-3b4dafc1cdf3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwyfHxwcmVtaXVtJTIwaW50ZXJpb3IlMjBkZXNpZ24lMjBsaXZpbmclMjByb29tJTIwd2FybSUyMGxpZ2h0aW5nfGVufDB8fHx8MTc3ODkyNDc2Mnww&ixlib=rb-4.1.0&q=85",
+        "category": "Interiors Gallery",
+        "description": "Modern living room wooden walls warm lighting"
+      }
+    }
+  },
+  "testing": {
+    "data_testid_rule": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
+  },
+  "specific_instructions": {
+    "dashboards": "Dashboards should be data-dense but breathable. Use 1px borders, white backgrounds, and minimal shadows. Incorporate the Kanban pipeline with clear status color-coding as defined in 'dashboard_specific' colors.",
+    "currency_format": "Always format prices in INR with Indian numbering system (Lakhs, Cr). Example: ₹1.2 Cr, ₹85 Lakhs.",
+    "map": "Use Leaflet for map view. Style the map tiles to match the light, warm, beige aesthetic (desaturated or warm-toned map tiles if possible).",
+    "interiors_landing": "Should feel like a distinct premium brand (think Livspace/Houzz). Use large editorial type, heavy focus on the generated interior images, a bento grid for the design gallery, and crisp structured cards for the cost estimator.",
+    "forms": "Use Shadcn components for complex logic but heavily strip the 'Vercel-look'. Overwrite with flat borders, squared corners (rounded-none), and elegant typography."
+  }
+}
