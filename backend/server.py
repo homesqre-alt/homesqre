@@ -143,11 +143,13 @@ async def get_user_from_token(token: str) -> Optional[dict]:
 
 
 async def current_user(request: Request) -> dict:
-    token = request.cookies.get("access_token") or request.cookies.get("session_token")
+    # Prefer explicit Authorization header over cookies to avoid stale-cookie surprises
+    token = None
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
     if not token:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
+        token = request.cookies.get("access_token") or request.cookies.get("session_token")
     user = await get_user_from_token(token) if token else None
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -1294,19 +1296,25 @@ async def admin_update_user(user_id: str, payload: dict, user: dict = Depends(re
 
 @api.put("/admin/listings/{listing_id}/status")
 async def admin_listing_status(listing_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    await db.listings.update_one(
-        {"listing_id": listing_id},
-        {"$set": {"status": payload.get("status", "live"), "is_featured": bool(payload.get("is_featured", False))}}
-    )
+    upd = {}
+    if "status" in payload:
+        upd["status"] = payload["status"]
+    if "is_featured" in payload:
+        upd["is_featured"] = bool(payload["is_featured"])
+    if upd:
+        await db.listings.update_one({"listing_id": listing_id}, {"$set": upd})
     return await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
 
 
 @api.put("/admin/projects/{project_id}/status")
 async def admin_project_status(project_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    await db.projects.update_one(
-        {"project_id": project_id},
-        {"$set": {"status": payload.get("status", "live"), "is_featured": bool(payload.get("is_featured", False))}}
-    )
+    upd = {}
+    if "status" in payload:
+        upd["status"] = payload["status"]
+    if "is_featured" in payload:
+        upd["is_featured"] = bool(payload["is_featured"])
+    if upd:
+        await db.projects.update_one({"project_id": project_id}, {"$set": upd})
     return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
 
 
