@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 const STATUSES = ["new", "contacted", "no-response", "follow-up", "converted", "closed", "not-interested"];
@@ -77,6 +78,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
             <span>{data.name}</span>
             <button onClick={() => onOpenChange(false)} className="text-[#9B4A3A]"><X size={18} /></button>
           </DialogTitle>
+          <DialogDescription className="sr-only">Inquiry conversation, notes and status</DialogDescription>
           <div className="text-sm text-[#4A5D54] mt-1">{data.mobile} · {data.email || "—"}</div>
           <div className="text-xs text-[#758A80] mt-1">For: {data.target_title}</div>
         </DialogHeader>

@@ -69,8 +69,14 @@ Build Homesqre — an Indian real estate marketplace (launching in Bangalore) wi
 - Emergent Google OAuth (`auth.emergentagent.com`)
 
 ## ✅ Testing
-- Backend: 50/50 tests pass (100%) via `/app/backend/tests/test_homesqre_backend.py`
+- Backend: 65/65 tests pass (100%) — 50 baseline + 15 new-feature tests in `/app/backend/tests/`
 - All seeds verified, role-based auth verified, _id never exposed.
+
+## ✅ Iteration 2 additions (2026-02-16)
+- **Profile completion flow** — `PUT /api/me/profile` + `/profile/complete` page; Google OAuth + JWT login redirect when `profile_completed=false`.
+- **Homepage CMS editor** at `/dashboard/admin/cms/homepage` — edit hero, promo banner, stats; persists via `PUT /api/content/homepage`.
+- **Interiors CMS editor** at `/dashboard/admin/cms/interiors` — edit hero, how-it-works, services, why-choose-us, cost matrix (BHK × tier), gallery, reviews, FAQ, final CTA.
+- **Threaded chat in inquiries** — clicking message icon on agent/builder kanban card opens dialog with status, follow-up datetime, notes, and live chat thread (PUT /api/inquiries/{id} with message/note/next_followup).
 
 ## Backlog (P1 — next iteration)
 - File uploads UI for property photos/floor plans (currently uses URLs)
