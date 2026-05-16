@@ -1,0 +1,49 @@
+{
+  "summary": "Iteration 2 — Backend + Frontend testing for new features. Built /app/backend/tests/test_homesqre_new_features.py (15 tests) covering PUT /api/me/profile, content CMS PUT /api/content/{homepage,interiors}, inquiry chat/note/followup, wrong-owner 403, Bearer-vs-cookie precedence, and admin status patch idempotency. All 15 new tests pass + the previous 50 regression tests still pass (65/65 = 100% backend). Frontend Playwright runs verified: admin login, both CMS sidebar links, Homepage CMS save+persist (TEST_FE_HEADLINE survives reload), Interiors CMS Save, agent login, InquiryDialog open from kanban with chat send (visible), note add (visible), status change (contacted), 'msg' counter on card, full /profile/complete redirect flow (flipped customer to profile_completed=false in mongo, logged in via UI, was redirected to /profile/complete, filled role=agent + name + mobile, submitted, landed on /dashboard/agent and user record was updated correctly — then restored customer record).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/me/profile", "issue": "Silently drops invalid role values rather than returning 400. Endpoint always sets profile_completed=true regardless of payload (intentional but undocumented). Consider returning 422 when role is invalid so the UI can show a real error instead of silently keeping old role."},
+      {"endpoint": "PUT /api/me/profile", "issue": "Allows mobile to be set to arbitrary string with no E.164 / digit-count validation. Should validate (current FE only checks length>=10)."},
+      {"endpoint": "PUT /api/content/{key}", "issue": "Stores arbitrary JSON with no schema validation/size cap. An admin can effectively put unbounded blobs in content collection."},
+      {"endpoint": "PUT /api/inquiries/{id}", "issue": "Both note and message use the same {text, at, by} shape — fine, but 'by' is a user_id, not a display name; UI must hydrate names for the chat thread (currently it shows 'You' vs 'Agent' generically). Minor."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "InquiryDialog", "issues": ["Radix Dialog warning: 'Missing Description or aria-describedby={undefined} for {DialogContent}' — add <DialogDescription> for a11y."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_homesqre_backend.py",
+    "/app/backend/tests/test_homesqre_new_features.py",
+    "/app/test_reports/pytest/iter2_new_features.xml",
+    "/app/test_reports/pytest/iter2_regression.xml"
+  ],
+  "action_items": [
+    "(Optional) Return 422 on PUT /api/me/profile when role is outside {customer,agent,builder} instead of silently dropping the value, so the UI can surface a real error.",
+    "(Optional) Add basic mobile validation (digits-only, length 10-15) on backend PUT /api/me/profile and POST /api/auth/register.",
+    "(Optional) Add max payload size for PUT /api/content/{key} (e.g., 256 KB) — currently unbounded admin write.",
+    "(a11y) Add a <DialogDescription> or aria-describedby to InquiryDialog's DialogContent to silence the Radix warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1407 lines — still violates the <700-line guideline; recommend splitting into routers (auth, catalog, listings, projects, inquiries, content, admin, me).",
+    "PUT /api/me/profile correctly excludes _id and password_hash via the projection in find_one — verified.",
+    "current_user() now prefers Authorization header — Bearer-wins-over-cookie verified by both pytest and live Playwright fetch.",
+    "admin_listing_status & admin_project_status are now true patch updates — verified is_featured is preserved across a status-only patch.",
+    "POST /api/auth/register now defaults profile_completed=true — verified in pytest. Therefore /profile/complete is dead-code for new registrations; it only fires for Google OAuth first-login users (where the backend creates the user with profile_completed=false at line 637). This is expected behaviour per the spec.",
+    "InquiryDialog message/note flow uses PUT /api/inquiries/{id} with $push — atomic and safe under concurrent updates."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_homesqre_new_features.py"
+  ],
+  "success_rate": {"backend": "100% (65/65 — 50 regression + 15 new features)", "frontend": "100% of new-feature flows verified (CMS save+persist, inquiry chat/note/status, /profile/complete redirect+submit, Bearer-over-cookie)"},
+  "test_credentials": "Used seeded creds from /app/memory/test_credentials.md. For /profile/complete UI test, flipped customer@homesqre.com.profile_completed to false via mongo, exercised the flow, then RESTORED the user (profile_completed=true, role=customer, name='Demo Customer'). Two test agent records created during pytest runs (TEST_agX_*@h.com) and one auto-promoted customer record (TEST_admin_*) remain in DB — these are namespaced with TEST_ and harmless.",
+  "seed_data_creation": "No new persistent seed data. Pytest creates TEST_-prefixed users/listings during runs (some cleaned, some left for idempotency).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Both test files at /app/backend/tests/test_homesqre_backend.py (50 tests) and /app/backend/tests/test_homesqre_new_features.py (15 tests) are green against the live preview URL. Run with: REACT_APP_BACKEND_URL=https://india-homes-4.preview.emergentagent.com python -m pytest backend/tests/ -v . The customer@homesqre.com user is now role=customer with name='Demo Customer' (was 'Customer' before iteration 2 — name change is cosmetic). To exercise /profile/complete in UI again, flip any user's profile_completed=false via mongo. Bearer header now wins over cookie in current_user() — confirmed.",
+  "rca of the issue": "N/A — no critical bugs found in this iteration. All 4 new features (profile-complete, homepage CMS, interiors CMS, inquiry chat dialog) work end-to-end on both backend and frontend, and previous regressions (Bearer precedence, patch-only admin status) are correctly implemented."
+}

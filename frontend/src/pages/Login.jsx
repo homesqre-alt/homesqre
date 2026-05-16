@@ -23,6 +23,10 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success("Welcome back!");
+      if (!u.profile_completed) {
+        nav("/profile/complete");
+        return;
+      }
       const dash =
         u.role === "admin"
           ? "/dashboard/admin"

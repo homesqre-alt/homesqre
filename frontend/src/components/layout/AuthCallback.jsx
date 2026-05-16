@@ -25,6 +25,12 @@ export default function AuthCallback() {
         const { data } = await api.post("/auth/google/session", { session_id: m[1] });
         if (data.token) localStorage.setItem("hs_token", data.token);
         setUserData(data.user);
+        // Clean URL hash
+        window.history.replaceState({}, "", "/");
+        if (!data.user?.profile_completed) {
+          nav("/profile/complete");
+          return;
+        }
         const role = data.user?.role;
         const dashHref =
           role === "admin"
@@ -34,8 +40,6 @@ export default function AuthCallback() {
             : role === "builder"
             ? "/dashboard/builder"
             : "/dashboard/customer";
-        // Clean URL hash
-        window.history.replaceState({}, "", "/");
         nav(dashHref);
       } catch {
         nav("/login?error=oauth");

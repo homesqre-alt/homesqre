@@ -515,7 +515,7 @@ async def auth_register(body: RegisterRequest, response: Response):
         "mobile": body.mobile,
         "role": role,
         "is_verified": False,
-        "profile_completed": False,
+        "profile_completed": True,
         "password_hash": hash_password(body.password),
         "otp": otp,
         "otp_expires_at": iso(now_utc() + timedelta(minutes=10)),
@@ -527,7 +527,7 @@ async def auth_register(body: RegisterRequest, response: Response):
     response.set_cookie("access_token", token, httponly=True, samesite="lax", max_age=604800, path="/")
     return {
         "user": {"user_id": user_id, "email": email, "name": body.name, "role": role,
-                 "mobile": body.mobile, "is_verified": False, "profile_completed": False},
+                 "mobile": body.mobile, "is_verified": False, "profile_completed": True},
         "token": token,
         "dev_otp": otp,
     }
@@ -1335,6 +1335,17 @@ async def admin_analytics(user: dict = Depends(require_role("admin"))):
             "customer": await db.users.count_documents({"role": "customer"}),
         },
     }
+
+
+@api.put("/me/profile")
+async def update_my_profile(payload: dict, user: dict = Depends(current_user)):
+    allowed = {"name", "mobile", "role", "picture"}
+    upd = {k: payload[k] for k in payload if k in allowed and payload[k] not in (None, "")}
+    if upd.get("role") and upd["role"] not in {"customer", "agent", "builder"}:
+        upd.pop("role")
+    upd["profile_completed"] = True
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+    return await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 0})
 
 
 # ---------------------------------------------------------------------------

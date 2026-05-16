@@ -15,6 +15,7 @@ import Interiors from "@/pages/Interiors";
 import EmiCalculatorPage from "@/pages/EmiCalculatorPage";
 import Compare from "@/pages/Compare";
 import Favourites from "@/pages/Favourites";
+import ProfileComplete from "@/pages/ProfileComplete";
 
 import AdminDashboard from "@/pages/dashboards/AdminDashboard";
 import AgentDashboard from "@/pages/dashboards/AgentDashboard";
@@ -47,6 +48,7 @@ function AppRouter() {
       <Route path="/emi-calculator" element={<EmiCalculatorPage />} />
       <Route path="/compare" element={<Compare />} />
       <Route path="/favourites" element={<Favourites />} />
+      <Route path="/profile/complete" element={<ProfileComplete />} />
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<AdminDashboard tab="overview" />} />
@@ -58,6 +60,8 @@ function AppRouter() {
       <Route path="/dashboard/admin/loan-leads" element={<AdminDashboard tab="loan-leads" />} />
       <Route path="/dashboard/admin/banks" element={<AdminDashboard tab="banks" />} />
       <Route path="/dashboard/admin/amenities" element={<AdminDashboard tab="amenities" />} />
+      <Route path="/dashboard/admin/cms/homepage" element={<AdminDashboard tab="cms-homepage" />} />
+      <Route path="/dashboard/admin/cms/interiors" element={<AdminDashboard tab="cms-interiors" />} />
 
       {/* Agent */}
       <Route path="/dashboard/agent" element={<AgentDashboard tab="listings" />} />

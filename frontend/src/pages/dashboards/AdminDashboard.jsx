@@ -4,6 +4,8 @@ import { Navigate } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import DashShell from "@/components/layout/DashShell";
 import { toast } from "sonner";
+import HomepageEditor from "@/components/admin/HomepageEditor";
+import InteriorsEditor from "@/components/admin/InteriorsEditor";
 
 const LINKS = [
   { to: "/dashboard/admin", label: "Overview" },
@@ -15,6 +17,8 @@ const LINKS = [
   { to: "/dashboard/admin/loan-leads", label: "Loan Leads" },
   { to: "/dashboard/admin/banks", label: "Banks" },
   { to: "/dashboard/admin/amenities", label: "Amenities" },
+  { to: "/dashboard/admin/cms/homepage", label: "CMS · Homepage" },
+  { to: "/dashboard/admin/cms/interiors", label: "CMS · Interiors" },
 ];
 
 export default function AdminDashboard({ tab = "overview" }) {
@@ -33,6 +37,8 @@ export default function AdminDashboard({ tab = "overview" }) {
     "loan-leads": "Loan Leads",
     banks: "Banks Management",
     amenities: "Amenities Management",
+    "cms-homepage": "Homepage Content",
+    "cms-interiors": "Interiors Page Content",
   };
 
   return (
@@ -46,6 +52,8 @@ export default function AdminDashboard({ tab = "overview" }) {
       {tab === "loan-leads" && <LoanLeads />}
       {tab === "banks" && <BanksMgmt />}
       {tab === "amenities" && <AmenitiesMgmt />}
+      {tab === "cms-homepage" && <HomepageEditor />}
+      {tab === "cms-interiors" && <InteriorsEditor />}
     </DashShell>
   );
 }

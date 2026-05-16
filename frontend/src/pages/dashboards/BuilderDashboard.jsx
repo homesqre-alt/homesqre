@@ -4,7 +4,8 @@ import { Navigate } from "react-router-dom";
 import api, { formatINR, formatApiError } from "@/lib/api";
 import DashShell from "@/components/layout/DashShell";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, MessageSquare } from "lucide-react";
+import InquiryDialog from "@/components/InquiryDialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -260,6 +261,7 @@ function F({ label, full = false, children }) {
 
 function Inquiries() {
   const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(null);
   const reload = () => api.get("/inquiries").then(({ data }) => setItems(data || []));
   useEffect(() => { reload(); }, []);
 
@@ -269,6 +271,7 @@ function Inquiries() {
   };
 
   return (
+    <>
     <div className="overflow-x-auto pb-4">
       <div className="flex gap-4 min-w-max">
         {STATUSES.map((s) => (
@@ -281,10 +284,23 @@ function Inquiries() {
             </div>
             <div className="space-y-3">
               {items.filter((i) => i.status === s).map((i) => (
-                <div key={i.inquiry_id} className="bg-[#FAF9F6] border border-[#E8E4D9] p-3">
-                  <div className="font-semibold text-sm">{i.name}</div>
-                  <div className="text-xs text-[#4A5D54] mt-1">{i.mobile}</div>
+                <div key={i.inquiry_id} className="bg-[#FAF9F6] border border-[#E8E4D9] p-3" data-testid={`inq-${i.inquiry_id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm truncate">{i.name}</div>
+                      <div className="text-xs text-[#4A5D54] mt-1">{i.mobile}</div>
+                    </div>
+                    <button onClick={() => setOpen(i)} className="text-[#06402B] hover:text-[#B68D40]" data-testid={`open-inq-${i.inquiry_id}`}>
+                      <MessageSquare size={15} />
+                    </button>
+                  </div>
                   <div className="text-xs text-[#758A80] mt-1 line-clamp-2">{i.target_title}</div>
+                  {(i.messages?.length > 0 || i.notes?.length > 0) && (
+                    <div className="flex gap-3 mt-2 text-[10px] text-[#B68D40] tracking-widest uppercase">
+                      {i.messages?.length > 0 && <span>{i.messages.length} msg</span>}
+                      {i.notes?.length > 0 && <span>{i.notes.length} note</span>}
+                    </div>
+                  )}
                   <select
                     className="hs-input mt-2 text-xs py-1"
                     value={i.status}
@@ -299,6 +315,8 @@ function Inquiries() {
         ))}
       </div>
     </div>
+    <InquiryDialog inquiry={open} open={!!open} onOpenChange={(o) => !o && setOpen(null)} onChanged={reload} />
+    </>
   );
 }
 
