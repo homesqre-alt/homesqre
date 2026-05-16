@@ -1,0 +1,47 @@
+{
+  "summary": "First backend test iteration for Homesqre MVP. Built /app/backend/tests/test_homesqre_backend.py with 50 pytest tests covering auth (register/verify/login/me/logout/forgot/reset), catalog seeds (banks/amenities/cities/localities), listings CRUD + view counter, projects CRUD + by-slug, public inquiries with duplicate prevention, interior + loan leads, universal search, content CMS, full admin surface (users/listings/projects/banks/amenities/analytics), favourites, and role-based authorization (agent vs other-agent listing, builder vs other-builder project). All 50 tests pass (100% backend success).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/auth/me (current_user)", "issue": "Auth precedence reads cookies BEFORE Authorization Bearer header. A stale cookie in a shared HTTP client silently overrides an explicit Bearer token, leading to surprising auth-as-wrong-user. Recommend: prefer Authorization header when present, fall back to cookie."},
+      {"endpoint": "POST /api/auth/login", "issue": "No brute-force lockout (playbook requires lockout after 5 failed attempts). No rate limit on /auth/* endpoints."},
+      {"endpoint": "POST /api/auth/forgot-password", "issue": "Response leaks email existence via presence/absence of dev_token key. Acceptable for dev, but gate behind ENV flag for prod."},
+      {"endpoint": "POST /api/auth/verify-otp", "issue": "Universal bypass OTP '000000' accepted regardless of stored OTP. Mock by design, but should be ENV-gated."},
+      {"endpoint": "POST /api/auth/register & /auth/reset-password", "issue": "No password complexity validation."},
+      {"endpoint": "PUT /api/admin/listings/{id}/status and /admin/projects/{id}/status", "issue": "Always overwrites is_featured to False when not provided in payload (defaults). Should patch only provided keys to avoid accidental unfeature."},
+      {"endpoint": "POST /api/upload", "issue": "No max upload size enforced. Storage will 500 in test env (Emergent object storage init may fail) — known."},
+      {"endpoint": "CORS", "issue": "allow_origins=['*'] with allow_credentials=False, but app sets httpOnly cookies for auth. Cross-origin cookie auth from production frontend will not work — will need to switch to explicit origins + allow_credentials=True or rely solely on Bearer."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_homesqre_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Flip auth precedence in current_user() to prefer Authorization: Bearer over cookie — current ordering causes wrong-user bugs when a client has stale cookies.",
+    "Add brute-force lockout (5 failed attempts) on /api/auth/login per security playbook.",
+    "ENV-gate the '000000' OTP bypass and the dev_otp/dev_token fields so they are not exposed in production.",
+    "Patch-style update for admin /listings/{id}/status and /projects/{id}/status so is_featured is preserved when omitted.",
+    "Add password complexity validation on register & reset.",
+    "Plan CORS strategy: switch to explicit allowed origins + allow_credentials=True if cookie auth is intended cross-origin; otherwise document Bearer-only.",
+    "Consider splitting server.py (1388 lines) into routers (auth, catalog, listings, projects, inquiries, admin, me) for maintainability."
+  ],
+  "critical_code_review_comments": [
+    "current_user() cookie-before-Bearer precedence is a footgun (root cause of half my initial test failures before I introduced a stateless session).",
+    "server.py at 1388 lines violates the <700 line file-size guideline; split by domain.",
+    "@app.on_event is deprecated in FastAPI ≥0.95 — migrate to lifespan context manager.",
+    "Raw user-supplied regex in /listings ?q= and /search ?q= — minor ReDoS risk; escape with re.escape() before $regex.",
+    "No pagination on list endpoints (just .limit(N)); will scale poorly.",
+    "Mongo _id correctly stripped via projections everywhere I tested — verified no _id in 50 responses.",
+    "Slug uniqueness enforced via unique index on listings.slug and projects.slug — good.",
+    "Inquiry duplicate prevention via mobile+listing/project within 24h — works (verified 409 on retry)."
+  ],
+  "updated_files": ["/app/backend/tests/test_homesqre_backend.py"],
+  "success_rate": {"backend": "100% (50/50)", "frontend": "not tested"},
+  "test_credentials": "Used seeded creds from /app/memory/test_credentials.md (admin/agent/builder/customer @homesqre.com). All four seeded accounts login successfully.",
+  "seed_data_creation": "No new seed data needed. Backend seeds on startup: 4 users, 8 banks, 35 amenities, 1 city (Bangalore), 15 localities, 12 listings, 4 projects — all verified.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend is fully green. For frontend testing: REACT_APP_BACKEND_URL=https://india-homes-4.preview.emergentagent.com. Login flows use cookie OR Bearer. IMPORTANT: The backend's current_user() prefers cookie over Bearer — when writing playwright tests that POST /api/auth/login via fetch with credentials:'include', the httpOnly cookie will set automatically, so subsequent calls work cookie-based. The test file at /app/backend/tests/test_homesqre_backend.py uses a NoCookieSession to force Bearer auth (working around the precedence quirk) — keep this in mind if extending the suite."
+}
