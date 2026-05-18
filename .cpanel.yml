@@ -1,0 +1,10 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/homesqre/
+    - export REPOPATH=/home/homesqre/repositories/homesqre
+    - export FRONTEND=$REPOPATH/frontend
+    - /bin/echo "==> Homesqre frontend build starting at $(date)"
+    - cd $FRONTEND && npm install --include=dev --legacy-peer-deps
+    - cd $FRONTEND && npm run build
+    - /bin/echo "==> Build complete. Output at $FRONTEND/build"
