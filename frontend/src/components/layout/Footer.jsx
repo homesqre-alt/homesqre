@@ -55,7 +55,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[#FAF9F6]/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-6 flex flex-col md:flex-row justify-between text-xs text-[#FAF9F6]/50">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-6 flex flex-col md:flex-row justify-between text-xs text-[#FAF9F6]/50 pb-24 md:pb-6">
           <span>© {new Date().getFullYear()} Homesqre. All rights reserved.</span>
           <span>Made in Bangalore.</span>
         </div>

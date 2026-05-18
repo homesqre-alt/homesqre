@@ -7,6 +7,7 @@ import InquiryForm from "@/components/InquiryForm";
 import EmiCalculator from "@/components/EmiCalculator";
 import MapView from "@/components/MapView";
 import PropertyCard from "@/components/PropertyCard";
+import StickyInquiryBar from "@/components/StickyInquiryBar";
 import { formatINR } from "@/lib/api";
 import { MapPin, BedDouble, Bath, Maximize2, Home, Calendar } from "lucide-react";
 
@@ -137,6 +138,13 @@ export default function PropertyDetail() {
       )}
 
       <Footer />
+      <StickyInquiryBar
+        title={item.title}
+        subtitle={`${item.locality}, ${item.city}`}
+        price={item.price}
+        priceLabel={item.kind === "rent" ? "Monthly" : "Price"}
+        listing_id={item.listing_id}
+      />
     </div>
   );
 }

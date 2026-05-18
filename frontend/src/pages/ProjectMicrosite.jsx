@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import InquiryForm from "@/components/InquiryForm";
 import EmiCalculator from "@/components/EmiCalculator";
 import MapView from "@/components/MapView";
+import StickyInquiryBar from "@/components/StickyInquiryBar";
 import { ShieldCheck, MapPin, Building, Calendar, ChevronRight } from "lucide-react";
 
 export default function ProjectMicrosite() {
@@ -216,6 +217,13 @@ export default function ProjectMicrosite() {
       </section>
 
       <Footer />
+      <StickyInquiryBar
+        title={project.name}
+        subtitle={project.builder_name}
+        price={project.price_min}
+        priceLabel="Starting from"
+        project_id={project.project_id}
+      />
     </div>
   );
 }
