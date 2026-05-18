@@ -102,7 +102,7 @@ export default function ProjectMicrosite() {
             <Stat label="RERA State" value={project.rera_state} />
           </div>
         </div>
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 lg:hidden">
           <InquiryForm project_id={project.project_id} title="Request a callback" />
         </div>
       </section>

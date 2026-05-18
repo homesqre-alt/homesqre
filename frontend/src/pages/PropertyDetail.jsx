@@ -118,7 +118,7 @@ export default function PropertyDetail() {
           </div>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 lg:hidden">
           <div className="lg:sticky lg:top-24">
             <InquiryForm listing_id={item.listing_id} />
           </div>
