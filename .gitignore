@@ -26,14 +26,19 @@ next-env.d.ts
 *.tsbuildinfo
 
 # Production builds
-# /build  <-- Adding the '#' makes Git ignore this comment, effectively "un-ignoring" the folder
+# /build
 dist/
 dist
 
-# Environment files (comprehensive coverage)
-
+# Environment files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
 *token.json*
-*credentials.json*
 
 # Logs and debug files
 npm-debug.log*
@@ -75,37 +80,4 @@ agenthub/agents/youtube/db
 
 # Build caches
 .cache/
-
 memory/test_credentials.md
-
-# Mobile development
-android-sdk/frontend/node_modules/.cache/default-development/1.pack
-frontend/node_modules/.cache/default-development/1.pack
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/0.pack
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
