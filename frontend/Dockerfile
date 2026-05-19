@@ -1,5 +1,5 @@
-# Stage 1: Build the React Code
-FROM node:18 AS react-build
+# Stage 1: Build the React Code using Node 16 (Bypasses the OpenSSL Webpack crash)
+FROM node:16 AS react-build
 
 WORKDIR /app
 
@@ -12,14 +12,12 @@ RUN npm install --legacy-peer-deps
 # Copy source code
 COPY . .
 
-# Set environment variables for the API
+# Set environment variables for the API and allocate specific memory for the build
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-# THE ULTIMATE BUILD COMMAND: 
-# CI=false (Ignores warnings)
-# DISABLE_ESLINT_PLUGIN=true (Ignores strict code formatting errors)
-# GENERATE_SOURCEMAP=false (Saves massive amounts of RAM)
+# Build the app
 RUN CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false npm run build
 
 # Stage 2: Serve the website using Nginx
