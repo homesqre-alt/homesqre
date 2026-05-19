@@ -37,6 +37,16 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
+# Local modules
+from defaults import (
+    SEED_BANKS,
+    SEED_AMENITIES,
+    BANGALORE_LOCALITIES,
+    DEFAULT_HOMEPAGE_CONTENT,
+    DEFAULT_INTERIORS_CONTENT,
+)
+from storage import get_storage
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -208,122 +218,33 @@ class ResetRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Object Storage
+# Object Storage  --  delegated to storage.py (Emergent / local / extensible)
 # ---------------------------------------------------------------------------
-storage_key: Optional[str] = None
-
-
 def init_storage():
-    global storage_key
-    if storage_key:
-        return storage_key
-    if not EMERGENT_LLM_KEY:
-        return None
     try:
-        r = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        r.raise_for_status()
-        storage_key = r.json()["storage_key"]
-        log.info("Storage initialised")
-        return storage_key
+        get_storage()  # warm up
+        log.info("Storage backend ready")
     except Exception as e:
-        log.error(f"Storage init failed: {e}")
-        return None
+        log.warning(f"Storage init: {e}")
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=500, detail="Storage unavailable")
-    r = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data,
-        timeout=120,
-    )
-    r.raise_for_status()
-    return r.json()
+    try:
+        return get_storage().put(path, data, content_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage unavailable: {e}")
 
 
 def get_object(path: str):
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=500, detail="Storage unavailable")
-    r = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key},
-        timeout=60,
-    )
-    r.raise_for_status()
-    return r.content, r.headers.get("Content-Type", "application/octet-stream")
+    try:
+        return get_storage().get(path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Storage unavailable: {e}")
 
 
 # ---------------------------------------------------------------------------
-# Seeds
+# Seeds  (static data lives in defaults.py)
 # ---------------------------------------------------------------------------
-SEED_BANKS = [
-    {"name": "SBI", "rate_min": 8.40, "rate_max": 9.65, "logo": ""},
-    {"name": "HDFC Bank", "rate_min": 8.50, "rate_max": 9.80, "logo": ""},
-    {"name": "ICICI Bank", "rate_min": 8.55, "rate_max": 9.75, "logo": ""},
-    {"name": "Axis Bank", "rate_min": 8.60, "rate_max": 9.90, "logo": ""},
-    {"name": "Kotak Mahindra Bank", "rate_min": 8.65, "rate_max": 9.95, "logo": ""},
-    {"name": "Bank of Baroda", "rate_min": 8.45, "rate_max": 9.70, "logo": ""},
-    {"name": "PNB Housing Finance", "rate_min": 8.70, "rate_max": 10.20, "logo": ""},
-    {"name": "LIC Housing Finance", "rate_min": 8.65, "rate_max": 10.10, "logo": ""},
-]
-
-SEED_AMENITIES: List[Dict[str, Any]] = [
-    # Sports & Fitness
-    {"name": "Swimming Pool", "category": "Sports & Fitness", "icon": "waves"},
-    {"name": "Gym", "category": "Sports & Fitness", "icon": "dumbbell"},
-    {"name": "Badminton Court", "category": "Sports & Fitness", "icon": "circle"},
-    {"name": "Tennis Court", "category": "Sports & Fitness", "icon": "circle"},
-    {"name": "Cricket Pitch", "category": "Sports & Fitness", "icon": "circle"},
-    {"name": "Jogging Track", "category": "Sports & Fitness", "icon": "footprints"},
-    {"name": "Yoga Deck", "category": "Sports & Fitness", "icon": "flower"},
-    {"name": "Basketball Court", "category": "Sports & Fitness", "icon": "circle"},
-    # Lifestyle
-    {"name": "Clubhouse", "category": "Lifestyle", "icon": "home"},
-    {"name": "Party Hall", "category": "Lifestyle", "icon": "party-popper"},
-    {"name": "Rooftop Terrace", "category": "Lifestyle", "icon": "sun"},
-    {"name": "BBQ Area", "category": "Lifestyle", "icon": "flame"},
-    {"name": "Amphitheatre", "category": "Lifestyle", "icon": "users"},
-    {"name": "Co-working Space", "category": "Lifestyle", "icon": "briefcase"},
-    {"name": "Library", "category": "Lifestyle", "icon": "book-open"},
-    # Kids & Family
-    {"name": "Children's Play Area", "category": "Kids & Family", "icon": "baby"},
-    {"name": "Creche/Daycare", "category": "Kids & Family", "icon": "baby"},
-    {"name": "Kids Pool", "category": "Kids & Family", "icon": "waves"},
-    {"name": "Toddler Zone", "category": "Kids & Family", "icon": "baby"},
-    # Security
-    {"name": "24/7 Security", "category": "Security", "icon": "shield"},
-    {"name": "CCTV Surveillance", "category": "Security", "icon": "video"},
-    {"name": "Gated Community", "category": "Security", "icon": "lock"},
-    {"name": "Video Door Phone", "category": "Security", "icon": "phone"},
-    {"name": "Boom Barrier", "category": "Security", "icon": "shield"},
-    # Convenience
-    {"name": "Power Backup", "category": "Convenience", "icon": "zap"},
-    {"name": "Rainwater Harvesting", "category": "Convenience", "icon": "cloud-rain"},
-    {"name": "EV Charging", "category": "Convenience", "icon": "battery-charging"},
-    {"name": "Covered Parking", "category": "Convenience", "icon": "car"},
-    {"name": "Visitor Parking", "category": "Convenience", "icon": "car"},
-    {"name": "Supermarket", "category": "Convenience", "icon": "shopping-cart"},
-    {"name": "Café", "category": "Convenience", "icon": "coffee"},
-    # Green & Wellness
-    {"name": "Landscaped Gardens", "category": "Green & Wellness", "icon": "trees"},
-    {"name": "Organic Garden", "category": "Green & Wellness", "icon": "leaf"},
-    {"name": "Senior Citizen Corner", "category": "Green & Wellness", "icon": "armchair"},
-    {"name": "Meditation Zone", "category": "Green & Wellness", "icon": "flower"},
-    {"name": "Pet-friendly Zone", "category": "Green & Wellness", "icon": "paw-print"},
-]
-
-BANGALORE_LOCALITIES = [
-    "Whitefield", "Sarjapur Road", "Electronic City", "HSR Layout",
-    "Indiranagar", "Koramangala", "JP Nagar", "Hebbal", "Yelahanka",
-    "Bellandur", "Marathahalli", "Bannerghatta Road", "Hennur",
-    "Devanahalli", "Kanakapura Road",
-]
-
-
 async def seed_data():
     # indexes
     await db.users.create_index("email", unique=True)
@@ -608,6 +529,14 @@ async def auth_reset(body: ResetRequest):
     return {"ok": True}
 
 
+# ===========================================================================
+# EMERGENT-SPECIFIC: Google OAuth via Emergent's hosted auth bridge.
+# To migrate to standard Google OAuth:
+#   1. Replace EMERGENT_AUTH_SESSION_URL with direct Google token verification
+#      (use `google-auth` + `google-auth-oauthlib` libraries).
+#   2. Update frontend/src/lib/oauth.js to use Google's authorize URL directly.
+# Everything else (cookies, user creation, dashboards) stays unchanged.
+# ===========================================================================
 @api.post("/auth/google/session")
 async def auth_google_session(body: GoogleSessionRequest, response: Response):
     try:
