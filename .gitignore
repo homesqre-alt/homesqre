@@ -26,14 +26,19 @@ next-env.d.ts
 *.tsbuildinfo
 
 # Production builds
-/build
+# /build
 dist/
 dist
 
-# Environment files (comprehensive coverage)
-
+# Environment files
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials
 *token.json*
-*credentials.json*
 
 # Logs and debug files
 npm-debug.log*
@@ -75,7 +80,6 @@ agenthub/agents/youtube/db
 
 # Build caches
 .cache/
-
 memory/test_credentials.md
 
 # Mobile development

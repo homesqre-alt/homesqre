@@ -1,55 +1,18 @@
-# Homesqre — one-command deploy for Hostinger VPS / any Docker host.
-#
-# Usage:
-#   docker compose up -d
-#
-# What you get:
-#   - MongoDB 6 with a persisted volume
-#   - Homesqre backend on :8001
-#   - Local object storage on a persisted volume
-#
-# Front-end is built separately (yarn build) and served by Nginx /
-# cPanel / any static host pointing REACT_APP_BACKEND_URL at this API.
-
+version: '3'
 services:
-  mongo:
-    image: mongo:6
-    restart: unless-stopped
+  frontend:
+    image: nginx:alpine
     volumes:
-      - mongo_data:/data/db
-    # Bind only to localhost so the DB is not exposed publicly.
-    # Remove or change to "27017:27017" if you need external access.
+      # This connects the files GitHub sent to the Nginx folder
+      - /var/www/homesqre/frontend:/usr/share/nginx/html
     ports:
-      - "127.0.0.1:27017:27017"
+      - "80:80"
+    restart: always
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - mongo
-    environment:
-      MONGO_URL: "mongodb://mongo:27017"
-      DB_NAME: "${DB_NAME:-homesqre}"
-      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env}"
-      APP_NAME: "${APP_NAME:-homesqre}"
-      # CORS / cookies — set to your real domains in production
-      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
-      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
-      # Storage — "local" works out of the box on a VPS
-      STORAGE_BACKEND: "${STORAGE_BACKEND:-local}"
-      LOCAL_STORAGE_DIR: "/app/backend/uploads"
-      # Optional — only needed if you keep Emergent integrations
-      EMERGENT_LLM_KEY: "${EMERGENT_LLM_KEY:-}"
-      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@homesqre.com}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Homesqre@2026}"
-    volumes:
-      - uploads:/app/backend/uploads
-    ports:
-      - "8001:8001"
+    # ... your existing backend config ...
+    restart: always
 
-volumes:
-  mongo_data:
-  uploads:
+  mongo:
+    # ... your existing mongo config ...
+    restart: always
