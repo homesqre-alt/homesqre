@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 4 — backend-only regression after the defaults.py / storage.py adapter / CORS+cookie env refactor. Created a comprehensive new pytest suite (/app/backend/tests/test_refactor_full_regression.py, 19 tests) that covers every item in the review_request: health, /api/content/{homepage,interiors} defaults including 1BHK/2BHK/3BHK/4BHK keys, banks (>=8 including SBI + HDFC Bank), amenities (>=30 across categories), Bangalore localities (>=15), full auth lifecycle (login cookie HttpOnly+SameSite, /auth/me via Bearer excludes _id+password_hash, /auth/me via cookie-only, logout clears cookies and invalidates /me), listings, projects (with amenity_ids+bank_ids+units), universal search, public inquiry POST + 24h duplicate prevention (409), admin PUT /api/content/homepage deep_merge persistence + non-clobbering of sibling keys, CORS preflight ACAO header, /api/upload (Emergent storage backend) authenticated non-500, admin route gating (admin 200 / customer 403), and project-by-slug microsite. All 19 new tests PASS. Re-ran the full backend test suite end-to-end: 94/94 tests pass (existing 50 in test_homesqre_backend.py + 15 in test_homesqre_new_features.py + 10 in test_refactor_regression.py + 19 new). Refactor preserves all previous behaviour. Observed only one minor data-drift artefact (seed inserts 12 listings but 11 are currently `status=live`, 2 extra `pending` listings exist from earlier test runs — NOT a refactor regression; documented in test as `>=11` tolerance).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/listings", "issue": "Seed claims 12 listings but only 11 are status=live (13 total in DB: 11 live + 2 pending). Likely caused by earlier iteration test data; not a refactor regression. If a fully clean seed is expected, consider an idempotent reseed that re-flips seeded listings back to status=live on startup, or filter seeded listings by a `seeded=true` marker."},
+      {"endpoint": "POST /api/inquiries", "issue": "Duplicate-prevention keys on `mobile` (not email/phone). Field is named `mobile` in DB/response but several FE forms historically used `phone`. If the FE submits {phone: ...}, mobile will be empty and dedup will never fire (since first row also has empty mobile and matches everything). Confirm FE sends `mobile`."},
+      {"endpoint": "GET /api/projects", "issue": "5 projects returned vs 4 seeded — one is a stub with slug='x' from a prior test run. Harmless but worth cleaning."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_full_regression.py",
+    "/app/backend/tests/test_refactor_regression.py",
+    "/app/backend/tests/test_homesqre_backend.py",
+    "/app/backend/tests/test_homesqre_new_features.py",
+    "/app/test_reports/pytest/iter4_full.xml",
+    "/app/test_reports/pytest/iter4_all.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: ensure FE inquiry forms POST `mobile` (not `phone`), otherwise the 24h duplicate-prevention guard is bypassed.",
+    "OPTIONAL: clean up the leftover stub project with slug='x' and the 2 pending-status listings created in prior test iterations.",
+    "OPTIONAL: as iteration_3 already flagged — keep the FE Interiors.jsx hero?.backgrounds guard and CostMatrixCell range coercion fixes (those are frontend issues, out of scope for this backend-only iteration but still worth retesting in the next FE pass)."
+  ],
+  "critical_code_review_comments": [
+    "defaults.py extraction is clean: SEED_BANKS / SEED_AMENITIES / BANGALORE_LOCALITIES / DEFAULT_HOMEPAGE_CONTENT / DEFAULT_INTERIORS_CONTENT all import and surface correctly through the seed_data() flow and the public content endpoints — no duplicate DEFAULT_*_CONTENT blocks remain in server.py.",
+    "storage.py adapter loads, get_storage() returns a backend with .put/.get, and /api/upload as authenticated admin does NOT 500 with STORAGE_BACKEND=emergent — good. Recommend a follow-up unit test that exercises the `local` backend path too (set STORAGE_BACKEND=local in a test fixture) to lock the migration target before the Hostinger move.",
+    "Cookie attributes are env-driven: with COOKIE_SAMESITE=lax and COOKIE_SECURE=false the Set-Cookie header correctly emits `samesite=lax` and omits `secure`, while HttpOnly is unconditionally present. Login + cookie-only /me round-trip works.",
+    "CORS: with CORS_ORIGINS=* the preflight OPTIONS for /api/listings returns ACAO=* on an arbitrary origin and credentials are disabled (correct — wildcard origin with credentials would be rejected by browsers). When CORS_ORIGINS is set to an explicit list and credentials=true, please add a separate test fixture in a future iteration.",
+    "Inquiry duplicate guard keys on `mobile` only. If `mobile` is empty for both rows the guard still fires (matches empty string), which is actually OK — but means FE must always send a non-empty mobile or every empty-mobile inquiry will be blocked after the first. Consider keying on `(listing_id|project_id) + (mobile OR email)` and require at least one to be non-empty.",
+    "Listings seed is non-idempotent (only inserts when count==0) — once one row drifts to a non-live status, the seed never repairs it. Same for projects. For a deploy-and-migrate workflow this is probably fine, but flag it for the migration runbook."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_refactor_full_regression.py (NEW — 19 tests, 100% pass)"
+  ],
+  "success_rate": {
+    "backend": "100% (94/94 — 19/19 new + 75/75 prior)",
+    "frontend": "n/a (frontend skipped per review_request)"
+  },
+  "test_credentials": "Used seeded creds from /app/memory/test_credentials.md (admin@homesqre.com / Homesqre@2026, customer@homesqre.com / Customer@2026).",
+  "seed_data_creation": "Each run creates one inquiry row with TEST_inq_* email and a random mobile, used to verify 24h duplicate-prevention (409). One CMS homepage hero.headline marker write is performed and then restored to the prior value in the same test. Both are non-destructive.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression for the modularization+CORS/cookie refactor is GREEN — 94/94 pytest passes against the public REACT_APP_BACKEND_URL. To re-run: `REACT_APP_BACKEND_URL=https://india-homes-4.preview.emergentagent.com python -m pytest backend/tests/ -v` (~22s). The new authoritative file is test_refactor_full_regression.py. If main agent later wires STORAGE_BACKEND=local, add a fixture that flips the env var and re-runs test_upload_authenticated_does_not_500 to verify the local-filesystem branch of storage.py. The two frontend regressions flagged in iteration_3 (Interiors.jsx hero guard + CostMatrixCell range coercion) are still open and need a frontend pass before declaring the refactor fully shipped.",
+  "rca of the issue": "No backend bugs uncovered in this iteration. The two transient test-script failures during authoring were RCA-d as: (a) FE field naming — server stores `mobile` not `phone`, so my initial test payload {phone: ...} caused the dup-prevention guard to miss because the matched `mobile` field was empty on both rows but the unique email I sent meant the find_one matched neither (the dup query is mobile-only + listing_id + 24h, not email). Fixed by switching the payload to `mobile`. (b) Project slug — first project in the listing had slug='x' (stale test stub) so by-slug routing wasn't expressive enough; fixed by skipping single-char slugs and using `city_slug`/`locality_slug` when present."
+}
