@@ -1,24 +1,9 @@
-# Homesqre — one-command deploy for Hostinger VPS / any Docker host.
-#
-# Usage:
-#   docker compose up -d
-#
-# What you get:
-#   - MongoDB 6 with a persisted volume
-#   - Homesqre backend on :8001
-#   - Local object storage on a persisted volume
-#
-# Front-end is built separately (yarn build) and served by Nginx /
-# cPanel / any static host pointing REACT_APP_BACKEND_URL at this API.
-
 services:
   mongo:
     image: mongo:6
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
-    # Bind only to localhost so the DB is not exposed publicly.
-    # Remove or change to "27017:27017" if you need external access.
     ports:
       - "127.0.0.1:27017:27017"
 
@@ -34,14 +19,11 @@ services:
       DB_NAME: "${DB_NAME:-homesqre}"
       JWT_SECRET: "${JWT_SECRET:-HomesqreSecureKey2026!xyz}"
       APP_NAME: "${APP_NAME:-homesqre}"
-      # CORS / cookies — set to your real domains in production
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
       COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
-      # Storage — "local" works out of the box on a VPS
       STORAGE_BACKEND: "${STORAGE_BACKEND:-local}"
       LOCAL_STORAGE_DIR: "/app/backend/uploads"
-      # Optional — only needed if you keep Emergent integrations
       EMERGENT_LLM_KEY: "${EMERGENT_LLM_KEY:-}"
       ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@homesqre.com}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Homesqre@2026}"
@@ -49,12 +31,12 @@ services:
       - uploads:/app/backend/uploads
     ports:
       - "8001:8001"
-frontend:
+
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # This links your frontend to your specific VPS API address!
         - REACT_APP_BACKEND_URL=http://72.61.233.193:8001
     restart: unless-stopped
     ports:
@@ -65,5 +47,3 @@ frontend:
 volumes:
   mongo_data:
   uploads:
-
-  
