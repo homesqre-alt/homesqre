@@ -1,0 +1,25 @@
+name: Deploy to Hostinger
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install and Build
+        run: |
+          cd frontend
+          yarn install --legacy-peer-deps
+          CI=false yarn build
+      - name: Deploy to Server
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: "-rltgoDzvO --delete"
+          SOURCE: "frontend/build/"
+          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+          REMOTE_USER: "root"
+          TARGET: "/var/www/homesqre/frontend"
