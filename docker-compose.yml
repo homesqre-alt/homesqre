@@ -32,7 +32,7 @@ services:
     environment:
       MONGO_URL: "mongodb://mongo:27017"
       DB_NAME: "${DB_NAME:-homesqre}"
-      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env}"
+      JWT_SECRET: "${JWT_SECRET:-HomesqreSecureKey2026!xyz}"
       APP_NAME: "${APP_NAME:-homesqre}"
       # CORS / cookies — set to your real domains in production
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
