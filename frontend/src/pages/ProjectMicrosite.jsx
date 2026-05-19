@@ -89,132 +89,142 @@ export default function ProjectMicrosite() {
         </div>
       </section>
 
-      {/* Description */}
-      <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-20 grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-8">
-          <div className="label-eyebrow mb-3">Project Overview</div>
-          <h2 className="font-display text-4xl sm:text-5xl mb-6">A new chapter, beautifully written.</h2>
-          <p className="text-[#1A2421] leading-relaxed mb-8">{project.description}</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <Stat label="Unit Types" value={project.unit_types} />
-            <Stat label="Sqft Range" value={`${project.sqft_min}–${project.sqft_max}`} />
-            <Stat label="Approvals" value={(project.approvals || []).join(", ")} />
-            <Stat label="RERA State" value={project.rera_state} />
-          </div>
-        </div>
-        <div className="lg:col-span-4 lg:hidden">
-          <InquiryForm project_id={project.project_id} title="Request a callback" />
-        </div>
-      </section>
+      {/* Body — 2-column layout with sticky inquiry rail on desktop */}
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16 lg:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
+          {/* LEFT — scrollable content */}
+          <main className="lg:col-span-8 space-y-20">
+            {/* Overview */}
+            <section id="overview">
+              <div className="label-eyebrow mb-3">Project Overview</div>
+              <h2 className="font-display text-4xl sm:text-5xl mb-6">A new chapter, beautifully written.</h2>
+              <p className="text-[#1A2421] leading-relaxed mb-8">{project.description}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <Stat label="Unit Types" value={project.unit_types} />
+                <Stat label="Sqft Range" value={`${project.sqft_min}–${project.sqft_max}`} />
+                <Stat label="Approvals" value={(project.approvals || []).join(", ")} />
+                <Stat label="RERA State" value={project.rera_state} />
+              </div>
+            </section>
 
-      {/* Amenities */}
-      <section className="bg-[#F3F0E9] py-20">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div className="label-eyebrow mb-3">Lifestyle</div>
-          <h2 className="font-display text-4xl sm:text-5xl mb-12">Amenities crafted around you.</h2>
-          <div className="space-y-10">
-            {Object.entries(amByCat).map(([cat, items]) => (
-              <div key={cat}>
-                <div className="font-display text-2xl text-[#06402B] mb-4 flex items-center gap-3">
-                  {cat}
-                  <span className="flex-1 h-px bg-[#D1CFC7]" />
-                  <span className="label-eyebrow">{items.length}</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {items.map((a) => (
-                    <div key={a.amenity_id} className="bg-white border-l-2 border-[#B68D40] p-4 text-sm text-[#1A2421]">
-                      {a.name}
+            {/* Configurations / Floor Plans */}
+            <section id="configurations">
+              <div className="label-eyebrow mb-3">Configurations</div>
+              <h2 className="font-display text-4xl sm:text-5xl mb-10">Floor plans & units.</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(project.units || []).map((u, i) => (
+                  <div key={i} className="bg-[#FAF9F6] p-7 border border-[#E8E4D9]">
+                    <div className="font-display text-3xl text-[#06402B] mb-2">{u.type}</div>
+                    <div className="text-sm text-[#4A5D54] mb-5">{u.size_sqft} sqft · {u.availability}</div>
+                    <div className="aspect-[5/3] bg-white border border-[#E8E4D9] mb-5 flex items-center justify-center text-xs text-[#758A80]">
+                      {u.floor_plan ? <img src={u.floor_plan} alt="" className="w-full h-full object-contain" /> : "Floor plan coming soon"}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Banks + EMI */}
-      <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-20">
-        <div className="label-eyebrow mb-3">Home Loans</div>
-        <h2 className="font-display text-4xl sm:text-5xl mb-12">Approved bank partners.</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-5 space-y-3">
-            {banks.map((b) => (
-              <button
-                key={b.bank_id}
-                onClick={() => setSelectedBank(b)}
-                className={`w-full text-left p-5 border transition-all ${
-                  selectedBank?.bank_id === b.bank_id
-                    ? "border-[#06402B] bg-white shadow-sm"
-                    : "border-[#E8E4D9] bg-white/60 hover:bg-white"
-                }`}
-                data-testid={`bank-${b.bank_id}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-display text-xl">{b.name}</span>
-                  <span className="text-xs text-[#B68D40] tracking-widest uppercase">{b.rate_min}% – {b.rate_max}%</span>
-                </div>
-                <div className="text-xs text-[#4A5D54]">Floating rate · Last updated {new Date().toLocaleDateString()}</div>
-              </button>
-            ))}
-          </div>
-          <div className="lg:col-span-7">
-            <EmiCalculator initialPrice={project.price_min} defaultBank={selectedBank?.bank_id} />
-          </div>
-        </div>
-      </section>
-
-      {/* Units / Floor Plans */}
-      <section className="bg-[#F3F0E9] py-20">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div className="label-eyebrow mb-3">Configurations</div>
-          <h2 className="font-display text-4xl sm:text-5xl mb-12">Floor plans & units.</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {(project.units || []).map((u, i) => (
-              <div key={i} className="bg-white p-8 border border-[#E8E4D9]">
-                <div className="font-display text-3xl text-[#06402B] mb-2">{u.type}</div>
-                <div className="text-sm text-[#4A5D54] mb-5">{u.size_sqft} sqft · {u.availability}</div>
-                <div className="aspect-[5/3] bg-[#F3F0E9] mb-5 flex items-center justify-center text-xs text-[#758A80]">
-                  {u.floor_plan ? <img src={u.floor_plan} alt="" className="w-full h-full object-contain" /> : "Floor plan coming soon"}
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <div className="label-eyebrow mb-1">Price</div>
-                    <div className="font-display text-2xl">{formatINR(u.price)}</div>
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <div className="label-eyebrow mb-1">Price</div>
+                        <div className="font-display text-2xl">{formatINR(u.price)}</div>
+                      </div>
+                      <a href="#inquire" className="text-xs tracking-widest uppercase text-[#B68D40]">Enquire →</a>
+                    </div>
                   </div>
-                  <a href="#inquire" className="text-xs tracking-widest uppercase text-[#B68D40]">Enquire →</a>
-                </div>
+                ))}
               </div>
-            ))}
+            </section>
+
+            {/* Amenities */}
+            <section id="amenities">
+              <div className="label-eyebrow mb-3">Lifestyle</div>
+              <h2 className="font-display text-4xl sm:text-5xl mb-10">Amenities crafted around you.</h2>
+              <div className="space-y-8">
+                {Object.entries(amByCat).map(([cat, items]) => (
+                  <div key={cat}>
+                    <div className="font-display text-xl text-[#06402B] mb-3 flex items-center gap-3">
+                      {cat}
+                      <span className="flex-1 h-px bg-[#D1CFC7]" />
+                      <span className="label-eyebrow">{items.length}</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {items.map((a) => (
+                        <div key={a.amenity_id} className="bg-[#FAF9F6] border-l-2 border-[#B68D40] p-3 text-sm text-[#1A2421]">
+                          {a.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Location */}
+            <section id="location">
+              <div className="label-eyebrow mb-3">Location</div>
+              <h2 className="font-display text-4xl sm:text-5xl mb-6">{project.locality}, {project.city}</h2>
+              <MapView items={[project]} center={[project.lat || 12.9716, project.lng || 77.5946]} zoom={14} height={360} />
+            </section>
+
+            {/* Banks + EMI */}
+            <section id="loans">
+              <div className="label-eyebrow mb-3">Home Loans</div>
+              <h2 className="font-display text-4xl sm:text-5xl mb-10">Approved bank partners.</h2>
+              <div className="space-y-3 mb-8">
+                {banks.map((b) => (
+                  <button
+                    key={b.bank_id}
+                    onClick={() => setSelectedBank(b)}
+                    className={`w-full text-left p-5 border transition-all ${
+                      selectedBank?.bank_id === b.bank_id
+                        ? "border-[#06402B] bg-white shadow-sm"
+                        : "border-[#E8E4D9] bg-white/60 hover:bg-white"
+                    }`}
+                    data-testid={`bank-${b.bank_id}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-display text-xl">{b.name}</span>
+                      <span className="text-xs text-[#B68D40] tracking-widest uppercase">{b.rate_min}% – {b.rate_max}%</span>
+                    </div>
+                    <div className="text-xs text-[#4A5D54]">Floating rate · Last updated {new Date().toLocaleDateString()}</div>
+                  </button>
+                ))}
+              </div>
+              <EmiCalculator initialPrice={project.price_min} defaultBank={selectedBank?.bank_id} />
+            </section>
+
+            {/* Interior add-on */}
+            <section id="interiors" className="bg-[#F3F0E9] -mx-6 lg:-mx-12 px-6 lg:px-12 py-14">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                <div>
+                  <div className="label-eyebrow mb-3">Move-in ready</div>
+                  <h2 className="font-display text-3xl sm:text-4xl mb-5 leading-tight">
+                    Design your home in <span className="italic text-[#B68D40]">{project.unit_types}</span>.
+                  </h2>
+                  <p className="text-[#4A5D54] mb-2">Estimated interior budget:</p>
+                  <div className="font-display text-2xl text-[#06402B] mb-5">
+                    {formatINR(interiorBudget)} – {formatINR(interiorBudget * 2)}
+                  </div>
+                  <Link to="/interiors" className="btn-gold inline-flex">Design My Home <ChevronRight size={16} /></Link>
+                </div>
+                <img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80" alt="" className="aspect-[5/4] object-cover w-full" />
+              </div>
+            </section>
+          </main>
+
+          {/* RIGHT — sticky inquiry form (desktop) */}
+          <aside className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-24" id="inquire" data-testid="microsite-sticky-inquiry">
+              <InquiryForm
+                project_id={project.project_id}
+                title={`Enquire about ${project.name}`}
+                compact
+              />
+            </div>
+          </aside>
+
+          {/* Mobile inline inquiry form (above the fold of content) */}
+          <div className="lg:hidden order-first" id="inquire-mobile">
+            <InquiryForm project_id={project.project_id} title={`Enquire about ${project.name}`} compact />
           </div>
         </div>
-      </section>
-
-      {/* Interior suggestion */}
-      <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-        <div>
-          <div className="label-eyebrow mb-3">Move-in ready</div>
-          <h2 className="font-display text-4xl sm:text-5xl mb-6 leading-tight">
-            Design your home in <span className="italic text-[#B68D40]">{project.unit_types}</span>.
-          </h2>
-          <p className="text-[#4A5D54] mb-3">Estimated interior budget for this project:</p>
-          <div className="font-display text-3xl text-[#06402B] mb-6">
-            {formatINR(interiorBudget)} – {formatINR(interiorBudget * 2)}
-          </div>
-          <p className="text-sm text-[#4A5D54] mb-8 max-w-md">
-            Based on average sqft and Homesqre's curated package range. Final pricing depends on materials and customisation.
-          </p>
-          <Link to="/interiors" className="btn-gold inline-flex">Design My Home <ChevronRight size={16} /></Link>
-        </div>
-        <img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=80" alt="" className="aspect-[5/4] object-cover" />
-      </section>
-
-      {/* Location map */}
-      <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-10">
-        <div className="label-eyebrow mb-3">Location</div>
-        <h2 className="font-display text-4xl mb-6">{project.locality}, {project.city}</h2>
-        <MapView items={[project]} center={[project.lat || 12.9716, project.lng || 77.5946]} zoom={14} height={420} />
-      </section>
+      </div>
 
       <Footer />
       <StickyInquiryBar
@@ -223,6 +233,7 @@ export default function ProjectMicrosite() {
         price={project.price_min}
         priceLabel="Starting from"
         project_id={project.project_id}
+        mobileOnly
       />
     </div>
   );

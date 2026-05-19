@@ -27,6 +27,7 @@ export default function StickyInquiryBar({
   priceLabel = "Starting from",
   project_id,
   listing_id,
+  mobileOnly = false,
 }) {
   const [show, setShow] = useState(false);
   const [open, setOpen] = useState(false);
@@ -43,22 +44,24 @@ export default function StickyInquiryBar({
   return (
     <>
       {/* Desktop — full inquiry form fixed to right side */}
-      <aside
-        className={`hidden lg:block fixed z-40 top-24 right-6 w-[360px] max-h-[calc(100vh-7rem)] overflow-auto bg-white border border-[#E8E4D9] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.25)] transition-all duration-300 ${
-          show
-            ? "opacity-100 translate-x-0 pointer-events-auto"
-            : "opacity-0 translate-x-8 pointer-events-none"
-        }`}
-        data-testid="sticky-inquiry-side"
-        aria-label="Inquiry form"
-      >
-        <InquiryForm
-          project_id={project_id}
-          listing_id={listing_id}
-          title={formTitle}
-          compact
-        />
-      </aside>
+      {!mobileOnly && (
+        <aside
+          className={`hidden lg:block fixed z-40 top-24 right-6 w-[360px] max-h-[calc(100vh-7rem)] overflow-auto bg-white border border-[#E8E4D9] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.25)] transition-all duration-300 ${
+            show
+              ? "opacity-100 translate-x-0 pointer-events-auto"
+              : "opacity-0 translate-x-8 pointer-events-none"
+          }`}
+          data-testid="sticky-inquiry-side"
+          aria-label="Inquiry form"
+        >
+          <InquiryForm
+            project_id={project_id}
+            listing_id={listing_id}
+            title={formTitle}
+            compact
+          />
+        </aside>
+      )}
 
       {/* Mobile — bottom bar opens modal */}
       <div
