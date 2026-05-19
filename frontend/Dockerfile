@@ -1,27 +1,22 @@
-# Stage 1: Build the React Code
-FROM node:18-alpine AS build
-
-# Add compatibility for some node modules
-RUN apk add --no-cache libc6-compat
+# Use a more complete image to avoid missing build tools
+FROM node:18
 
 WORKDIR /app
 
 # Copy package files
 COPY package.json yarn.lock* package-lock.json* ./
 
-# Force install (try yarn first, then npm, without crashing)
-RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci; \
-    else npm install; fi
+# Install dependencies
+RUN npm install
 
-# Copy the rest of the frontend code
+# Copy source code
 COPY . .
 
-# Build args
+# Set environment variables for build
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
 
-# Compile
+# Build the app
 RUN npm run build
 
 # Stage 2: Serve the website using Nginx
