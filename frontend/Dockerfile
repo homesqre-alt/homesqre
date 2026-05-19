@@ -1,8 +1,9 @@
 # 1. Use Node 18
 FROM node:18-alpine AS react-build
 
-# 2. Install git
-RUN apk add --no-cache git
+# 2. Install essential build tools (Git, Python, Make, G++)
+# These are required to compile native code dependencies
+RUN apk add --no-cache git python3 make g++
 
 # 3. Set working directory
 WORKDIR /app
@@ -10,7 +11,7 @@ WORKDIR /app
 # 4. Copy package files
 COPY package.json yarn.lock* ./
 
-# 5. Robust Install: Disable network timeout and use a fresh cache
+# 5. Robust Install
 RUN yarn config set network-timeout 600000 && \
     yarn install --legacy-peer-deps --frozen-lockfile --network-concurrency 1
 
