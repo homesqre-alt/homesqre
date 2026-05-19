@@ -78,6 +78,14 @@ Build Homesqre — an Indian real estate marketplace (launching in Bangalore) wi
 - **Interiors CMS editor** at `/dashboard/admin/cms/interiors` — edit hero, how-it-works, services, why-choose-us, cost matrix (BHK × tier), gallery, reviews, FAQ, final CTA.
 - **Threaded chat in inquiries** — clicking message icon on agent/builder kanban card opens dialog with status, follow-up datetime, notes, and live chat thread (PUT /api/inquiries/{id} with message/note/next_followup).
 
+## ✅ Iteration 4 additions (2026-05-19) — "Light & Migratable" refactor
+- **Modularized `server.py`**: extracted seeds + content defaults to `backend/defaults.py`; removed duplicate `DEFAULT_*_CONTENT` blocks. server.py down to ~1290 lines.
+- **Pluggable storage**: `backend/storage.py` adapter with `emergent` (default) and `local` backends, selectable via `STORAGE_BACKEND` env. Future S3/GCS = one class.
+- **Env-driven CORS + cookies**: `CORS_ORIGINS` (comma-separated → enables `allow_credentials=True`), `COOKIE_SAMESITE`, `COOKIE_SECURE`. Ready for cross-origin frontend on Hostinger / cPanel.
+- **Deploy artefacts**: `/app/backend/Dockerfile`, `/app/docker-compose.yml`, `/app/.env.example` for one-command VPS deploy.
+- **`/app/MIGRATION.md`**: step-by-step guide to move off Emergent (DB, storage, OAuth, cookies).
+- **Regression**: 94/94 backend tests pass (existing 65 + 10 new refactor + 19 testing-agent additions).
+
 ## Backlog (P1 — next iteration)
 - File uploads UI for property photos/floor plans (currently uses URLs)
 - Email notifications via Resend/SendGrid (currently mocked)
