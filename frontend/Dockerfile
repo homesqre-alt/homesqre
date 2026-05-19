@@ -1,5 +1,5 @@
-# Stage 1: Build the React Code using Node 16 (Bypasses the OpenSSL Webpack crash)
-FROM node:16 AS react-build
+# Stage 1: Build the React Code using Node 18 (Bypasses the OpenSSL Webpack crash)
+FROM node:18-alpine AS react-build
 
 WORKDIR /app
 
