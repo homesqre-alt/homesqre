@@ -49,7 +49,21 @@ services:
       - uploads:/app/backend/uploads
     ports:
       - "8001:8001"
+frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # This links your frontend to your specific VPS API address!
+        - REACT_APP_BACKEND_URL=http://72.61.233.193:8001
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   mongo_data:
   uploads:
+
+  
