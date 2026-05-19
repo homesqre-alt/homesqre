@@ -26,7 +26,7 @@ next-env.d.ts
 *.tsbuildinfo
 
 # Production builds
-/build
+# /build  <-- Adding the '#' makes Git ignore this comment, effectively "un-ignoring" the folder
 dist/
 dist
 
