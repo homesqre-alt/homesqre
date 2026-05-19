@@ -1,28 +1,23 @@
-# Stage 1: Build the React Code using Node 18 (Bypasses the OpenSSL Webpack crash)
+# 1. Use Node 18
 FROM node:18-alpine AS react-build
 
+# 2. Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json yarn.lock* package-lock.json* ./
+# 3. Copy package files
+COPY package.json yarn.lock* ./
 
-# Force NPM to ignore strict version conflicts
-RUN npm install --legacy-peer-deps
+# 4. Install dependencies using YARN
+RUN yarn install --legacy-peer-deps
 
-# Copy source code
+# 5. Copy the rest of the code
 COPY . .
 
-# Set environment variables for the API and allocate specific memory for the build
-ARG REACT_APP_BACKEND_URL
-ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+# 6. Build using YARN
+RUN CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false yarn build
 
-# Build the app
-RUN CI=false DISABLE_ESLINT_PLUGIN=true GENERATE_SOURCEMAP=false npm run build
-
-# Stage 2: Serve the website using Nginx
+# 7. Serve using Nginx
 FROM nginx:alpine
 COPY --from=react-build /app/build /usr/share/nginx/html
-RUN echo "server { listen 80; location / { root /usr/share/nginx/html; index index.html index.htm; try_files \$uri \$uri/ /index.html; } }" > /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
