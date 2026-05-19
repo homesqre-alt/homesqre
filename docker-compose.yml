@@ -1,49 +1,18 @@
+version: '3'
 services:
-  mongo:
-    image: mongo:6
-    restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - "127.0.0.1:27017:27017"
-
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      - mongo
-    environment:
-      MONGO_URL: "mongodb://mongo:27017"
-      DB_NAME: "${DB_NAME:-homesqre}"
-      JWT_SECRET: "${JWT_SECRET:-HomesqreSecureKey2026!xyz}"
-      APP_NAME: "${APP_NAME:-homesqre}"
-      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
-      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-lax}"
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
-      STORAGE_BACKEND: "${STORAGE_BACKEND:-local}"
-      LOCAL_STORAGE_DIR: "/app/backend/uploads"
-      EMERGENT_LLM_KEY: "${EMERGENT_LLM_KEY:-}"
-      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@homesqre.com}"
-      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-Homesqre@2026}"
-    volumes:
-      - uploads:/app/backend/uploads
-    ports:
-      - "8001:8001"
-
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_BACKEND_URL=http://72.61.233.193:8001
-    restart: unless-stopped
+    image: nginx:alpine
+    volumes:
+      # This connects the files GitHub sent to the Nginx folder
+      - /var/www/homesqre/frontend:/usr/share/nginx/html
     ports:
       - "80:80"
-    depends_on:
-      - backend
+    restart: always
 
-volumes:
-  mongo_data:
-  uploads:
+  backend:
+    # ... your existing backend config ...
+    restart: always
+
+  mongo:
+    # ... your existing mongo config ...
+    restart: always
