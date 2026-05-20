@@ -243,8 +243,8 @@ class TestListings:
         assert r.json()["status"] == "pending"
         assert r.json()["agent_id"] == agent_auth[1]["user_id"]
 
-        # GET persists
-        g = s.get(f"{API}/listings/{lid}")
+        # GET persists — owner can see their own pending listing
+        g = s.get(f"{API}/listings/{lid}", headers=h)
         assert g.status_code == 200
         assert g.json()["title"] == payload["title"]
 
@@ -442,7 +442,7 @@ class TestAdmin:
         items = s.get(f"{API}/listings").json()
         lid = items[0]["listing_id"]
         r = s.put(f"{API}/admin/listings/{lid}/status",
-                  json={"status": "live", "is_featured": True}, headers=admin_auth[0])
+                  json={"status": "approved", "is_featured": True}, headers=admin_auth[0])
         assert r.status_code == 200
         assert r.json()["is_featured"] is True
 
@@ -450,7 +450,7 @@ class TestAdmin:
         items = s.get(f"{API}/projects").json()
         pid = items[0]["project_id"]
         r = s.put(f"{API}/admin/projects/{pid}/status",
-                  json={"status": "live", "is_featured": True}, headers=admin_auth[0])
+                  json={"status": "approved", "is_featured": True}, headers=admin_auth[0])
         assert r.status_code == 200
 
     def test_admin_update_bank_logs_rate(self, s, admin_auth):

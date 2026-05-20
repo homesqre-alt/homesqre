@@ -6,9 +6,11 @@ import DashShell from "@/components/layout/DashShell";
 import { toast } from "sonner";
 import HomepageEditor from "@/components/admin/HomepageEditor";
 import InteriorsEditor from "@/components/admin/InteriorsEditor";
+import ModerationQueue from "@/components/admin/ModerationQueue";
 
 const LINKS = [
   { to: "/dashboard/admin", label: "Overview" },
+  { to: "/dashboard/admin/moderation", label: "Moderation Queue" },
   { to: "/dashboard/admin/users", label: "Users" },
   { to: "/dashboard/admin/listings", label: "Listings" },
   { to: "/dashboard/admin/projects", label: "Projects" },
@@ -29,6 +31,7 @@ export default function AdminDashboard({ tab = "overview" }) {
 
   const titleMap = {
     overview: "Platform Overview",
+    moderation: "Moderation Queue",
     users: "Users",
     listings: "All Listings",
     projects: "All Projects",
@@ -44,6 +47,7 @@ export default function AdminDashboard({ tab = "overview" }) {
   return (
     <DashShell links={LINKS} title={titleMap[tab]}>
       {tab === "overview" && <Overview />}
+      {tab === "moderation" && <ModerationQueue />}
       {tab === "users" && <Users />}
       {tab === "listings" && <ListingsAdmin />}
       {tab === "projects" && <ProjectsAdmin />}
@@ -65,7 +69,8 @@ function Overview() {
 
   const blocks = [
     ["Total Users", a.total_users],
-    ["Listings (Live)", `${a.live_listings} / ${a.total_listings}`],
+    ["Listings (Approved)", `${a.live_listings} / ${a.total_listings}`],
+    ["Pending Review", (a.pending_listings || 0) + (a.pending_projects || 0) + (a.pending_localities || 0)],
     ["Projects", a.total_projects],
     ["Inquiries", a.total_inquiries],
     ["New Inquiries", a.new_inquiries],
@@ -155,7 +160,7 @@ function ListingsAdmin() {
               <td className="p-4">{l.kind}</td>
               <td className="p-4">
                 <select value={l.status} onChange={e => setStatus(l.listing_id, e.target.value, l.is_featured)} className="hs-input text-xs py-1">
-                  <option>draft</option><option>pending</option><option>live</option><option>rejected</option>
+                  <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
                 </select>
               </td>
               <td className="p-4">
@@ -192,7 +197,7 @@ function ProjectsAdmin() {
               <td className="p-4">{p.builder_name}</td>
               <td className="p-4">
                 <select value={p.status} onChange={e => setStatus(p.project_id, e.target.value, p.is_featured)} className="hs-input text-xs py-1">
-                  <option>draft</option><option>pending</option><option>live</option><option>rejected</option>
+                  <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
                 </select>
               </td>
               <td className="p-4">

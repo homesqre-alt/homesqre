@@ -105,6 +105,26 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("homesqre")
 
 # ---------------------------------------------------------------------------
+# Moderation helpers
+# ---------------------------------------------------------------------------
+MODERATION_STATUSES = {"pending", "approved", "rejected"}
+
+
+def _public_status_filter(value: Optional[str]):
+    """Build a Mongo filter for the public-facing list endpoints.
+
+    - None or "approved" → only approved (public default)
+    - "" or "all"        → no filter (used by dashboards to see everything)
+    - explicit status    → as given
+    """
+    if value is None or value == "approved":
+        return "approved"
+    if value in ("all", ""):
+        return None
+    return value
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 def now_utc() -> datetime:
@@ -273,6 +293,17 @@ def get_object(path: str):
 # ---------------------------------------------------------------------------
 # Seeds  (static data lives in defaults.py)
 # ---------------------------------------------------------------------------
+async def _migrate_status_fields():
+    """One-shot migration: rename legacy `status="live"` to `status="approved"`
+    on listings and projects, and backfill a `status="approved"` on existing
+    localities that don't have one yet. Safe to re-run."""
+    await db.listings.update_many({"status": "live"}, {"$set": {"status": "approved"}})
+    await db.projects.update_many({"status": "live"}, {"$set": {"status": "approved"}})
+    await db.localities.update_many(
+        {"status": {"$exists": False}}, {"$set": {"status": "approved"}}
+    )
+
+
 async def seed_data():
     # indexes
     await db.users.create_index("email", unique=True)
@@ -347,6 +378,7 @@ async def seed_data():
                 "city": "Bangalore",
                 "city_slug": "bangalore",
                 "is_active": True,
+                "status": "approved",
             })
 
     # sample listings + projects (only if none)
@@ -382,7 +414,7 @@ async def seed_data():
                     "videos": [],
                     "floor_plans": [],
                     "agent_id": agent["user_id"] if agent else None,
-                    "status": "live",
+                    "status": "approved",
                     "is_featured": i < 3,
                     "views": random.randint(20, 250),
                     "created_at": iso(now_utc()),
@@ -439,7 +471,7 @@ async def seed_data():
                 ],
                 "brochure_url": "",
                 "brand_color": "#06402B",
-                "status": "live",
+                "status": "approved",
                 "is_featured": i < 3,
                 "views": random.randint(50, 400),
                 "last_updated": iso(now_utc()),
@@ -710,8 +742,11 @@ async def list_cities():
 
 
 @api.get("/localities")
-async def list_localities(city: Optional[str] = None):
-    q = {"is_active": True}
+async def list_localities(city: Optional[str] = None, status: Optional[str] = None):
+    q: Dict[str, Any] = {"is_active": True}
+    effective_status = _public_status_filter(status)
+    if effective_status:
+        q["status"] = effective_status
     if city:
         q["city"] = city
     return await db.localities.find(q, {"_id": 0}).to_list(500)
@@ -727,11 +762,17 @@ async def create_city(payload: dict, user: dict = Depends(require_role("admin"))
 
 
 @api.post("/localities")
-async def create_locality(payload: dict, user: dict = Depends(require_role("admin"))):
+async def create_locality(payload: dict, user: dict = Depends(current_user)):
+    is_admin = user.get("role") == "admin"
+    if user.get("role") not in {"admin", "builder", "agent"}:
+        raise HTTPException(status_code=403, detail="Forbidden")
     payload["locality_id"] = f"loc_{uuid.uuid4().hex[:8]}"
     payload["slug"] = payload.get("slug") or slugify(payload.get("name", ""))
     payload["city_slug"] = payload.get("city_slug") or slugify(payload.get("city", ""))
     payload["is_active"] = True
+    payload["status"] = "approved" if is_admin else "pending"
+    payload["suggested_by"] = user["user_id"]
+    payload["created_at"] = iso(now_utc())
     await db.localities.insert_one(payload)
     return clean_doc(payload)
 
@@ -747,7 +788,7 @@ async def list_listings(
     bedrooms: Optional[int] = None,
     price_min: Optional[float] = None,
     price_max: Optional[float] = None,
-    status: Optional[str] = "live",
+    status: Optional[str] = None,
     featured: Optional[bool] = None,
     sort: Optional[str] = "newest",
     limit: int = 60,
@@ -755,8 +796,9 @@ async def list_listings(
     q: Optional[str] = None,
 ):
     query: Dict[str, Any] = {}
-    if status:
-        query["status"] = status
+    effective_status = _public_status_filter(status)
+    if effective_status:
+        query["status"] = effective_status
     if city:
         query["city"] = city
     if locality:
@@ -791,10 +833,16 @@ async def list_listings(
 
 
 @api.get("/listings/{listing_id}")
-async def get_listing(listing_id: str):
+async def get_listing(listing_id: str, user: Optional[dict] = Depends(current_user_optional)):
     item = await db.listings.find_one({"$or": [{"listing_id": listing_id}, {"slug": listing_id}]}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Listing not found")
+    # Public can only see approved. Owner or admin can see any status.
+    if item.get("status") != "approved":
+        is_admin = user and user.get("role") == "admin"
+        is_owner = user and item.get("agent_id") == user.get("user_id")
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=404, detail="Listing not found")
     await db.listings.update_one({"listing_id": item["listing_id"]}, {"$inc": {"views": 1}})
     return item
 
@@ -805,7 +853,13 @@ async def create_listing(payload: dict, user: dict = Depends(require_role("agent
     payload["listing_id"] = listing_id
     payload["slug"] = payload.get("slug") or slugify(f"{payload.get('title','listing')}-{listing_id[-4:]}")
     payload["agent_id"] = user["user_id"]
-    payload["status"] = payload.get("status", "pending")
+    is_admin = user.get("role") == "admin"
+    # Admin may explicitly set any status; non-admins always start pending
+    requested = payload.get("status")
+    if is_admin and requested in MODERATION_STATUSES:
+        payload["status"] = requested
+    else:
+        payload["status"] = "pending"
     payload["views"] = 0
     payload["is_featured"] = False
     payload["created_at"] = iso(now_utc())
@@ -848,15 +902,16 @@ async def delete_listing(listing_id: str, user: dict = Depends(current_user)):
 async def list_projects(
     city: Optional[str] = None,
     locality: Optional[str] = None,
-    status: Optional[str] = "live",
+    status: Optional[str] = None,
     featured: Optional[bool] = None,
     builder_id: Optional[str] = None,
     limit: int = 60,
     q: Optional[str] = None,
 ):
     query: Dict[str, Any] = {}
-    if status:
-        query["status"] = status
+    effective_status = _public_status_filter(status)
+    if effective_status:
+        query["status"] = effective_status
     if city:
         query["city"] = city
     if locality:
@@ -875,7 +930,7 @@ async def list_projects(
 
 
 @api.get("/projects/by-slug/{city}/{locality}/{slug}")
-async def get_project_by_slug(city: str, locality: str, slug: str):
+async def get_project_by_slug(city: str, locality: str, slug: str, user: Optional[dict] = Depends(current_user_optional)):
     item = await db.projects.find_one({
         "city_slug": city,
         "locality_slug": locality,
@@ -883,15 +938,25 @@ async def get_project_by_slug(city: str, locality: str, slug: str):
     }, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Project not found")
+    if item.get("status") != "approved":
+        is_admin = user and user.get("role") == "admin"
+        is_owner = user and item.get("builder_id") == user.get("user_id")
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=404, detail="Project not found")
     await db.projects.update_one({"project_id": item["project_id"]}, {"$inc": {"views": 1}})
     return item
 
 
 @api.get("/projects/{project_id}")
-async def get_project(project_id: str):
+async def get_project(project_id: str, user: Optional[dict] = Depends(current_user_optional)):
     item = await db.projects.find_one({"$or": [{"project_id": project_id}, {"slug": project_id}]}, {"_id": 0})
     if not item:
         raise HTTPException(status_code=404, detail="Project not found")
+    if item.get("status") != "approved":
+        is_admin = user and user.get("role") == "admin"
+        is_owner = user and item.get("builder_id") == user.get("user_id")
+        if not (is_admin or is_owner):
+            raise HTTPException(status_code=404, detail="Project not found")
     return item
 
 
@@ -903,7 +968,12 @@ async def create_project(payload: dict, user: dict = Depends(require_role("build
     payload["city_slug"] = slugify(payload.get("city", ""))
     payload["locality_slug"] = slugify(payload.get("locality", ""))
     payload["builder_id"] = user["user_id"]
-    payload["status"] = payload.get("status", "pending")
+    is_admin = user.get("role") == "admin"
+    requested = payload.get("status")
+    if is_admin and requested in MODERATION_STATUSES:
+        payload["status"] = requested
+    else:
+        payload["status"] = "pending"
     payload["views"] = 0
     payload["is_featured"] = False
     payload["amenity_ids"] = payload.get("amenity_ids", [])
@@ -1119,15 +1189,15 @@ async def universal_search(q: str = Query(..., min_length=1)):
             {"title": regex}, {"locality": regex}, {"city": regex},
             {"property_type": regex},
         ],
-        "status": "live",
+        "status": "approved",
     }, {"_id": 0}).limit(8).to_list(8)
     projects = await db.projects.find({
         "$or": [
             {"name": regex}, {"locality": regex}, {"city": regex}, {"builder_name": regex},
         ],
-        "status": "live",
+        "status": "approved",
     }, {"_id": 0}).limit(8).to_list(8)
-    localities = await db.localities.find({"name": regex}, {"_id": 0}).limit(6).to_list(6)
+    localities = await db.localities.find({"name": regex, "status": "approved"}, {"_id": 0}).limit(6).to_list(6)
     return {"listings": listings, "projects": projects, "localities": localities}
 
 
@@ -1211,12 +1281,80 @@ async def admin_project_status(project_id: str, payload: dict, user: dict = Depe
     return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
 
 
+# ---------------------------------------------------------------------------
+# Moderation Queue — approve/reject pending user-submitted content
+# ---------------------------------------------------------------------------
+@api.get("/admin/moderation/queue")
+async def admin_moderation_queue(user: dict = Depends(require_role("admin"))):
+    listings = await db.listings.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    projects = await db.projects.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    localities = await db.localities.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    return {
+        "listings": listings,
+        "projects": projects,
+        "localities": localities,
+        "counts": {
+            "listings": len(listings),
+            "projects": len(projects),
+            "localities": len(localities),
+            "total": len(listings) + len(projects) + len(localities),
+        },
+    }
+
+
+def _moderation_action(payload: dict) -> dict:
+    """Validate {action: 'approve'|'reject', reason?: str} → mongo update dict."""
+    action = (payload or {}).get("action")
+    if action == "approve":
+        upd = {"status": "approved", "moderated_at": iso(now_utc())}
+        upd["rejection_reason"] = None
+        return upd
+    if action == "reject":
+        upd = {"status": "rejected", "moderated_at": iso(now_utc())}
+        upd["rejection_reason"] = (payload.get("reason") or "").strip() or "No reason provided"
+        return upd
+    raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+
+@api.put("/admin/listings/{listing_id}/moderation")
+async def admin_moderate_listing(listing_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    upd = _moderation_action(payload)
+    upd["moderated_by"] = user["user_id"]
+    result = await db.listings.update_one({"listing_id": listing_id}, {"$set": upd})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
+
+
+@api.put("/admin/projects/{project_id}/moderation")
+async def admin_moderate_project(project_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    upd = _moderation_action(payload)
+    upd["moderated_by"] = user["user_id"]
+    result = await db.projects.update_one({"project_id": project_id}, {"$set": upd})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
+
+
+@api.put("/admin/localities/{locality_id}/moderation")
+async def admin_moderate_locality(locality_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    upd = _moderation_action(payload)
+    upd["moderated_by"] = user["user_id"]
+    result = await db.localities.update_one({"locality_id": locality_id}, {"$set": upd})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Locality not found")
+    return await db.localities.find_one({"locality_id": locality_id}, {"_id": 0})
+
+
 @api.get("/admin/analytics")
 async def admin_analytics(user: dict = Depends(require_role("admin"))):
     return {
         "total_users": await db.users.count_documents({}),
         "total_listings": await db.listings.count_documents({}),
-        "live_listings": await db.listings.count_documents({"status": "live"}),
+        "live_listings": await db.listings.count_documents({"status": "approved"}),
+        "pending_listings": await db.listings.count_documents({"status": "pending"}),
+        "pending_projects": await db.projects.count_documents({"status": "pending"}),
+        "pending_localities": await db.localities.count_documents({"status": "pending"}),
         "total_projects": await db.projects.count_documents({}),
         "total_inquiries": await db.inquiries.count_documents({}),
         "new_inquiries": await db.inquiries.count_documents({"status": "new"}),
@@ -1289,6 +1427,7 @@ async def startup_event():
         log.warning(f"storage init: {e}")
     try:
         await seed_data()
+        await _migrate_status_fields()
         log.info("Seeds ensured")
     except Exception as e:
         log.error(f"seed failed: {e}")

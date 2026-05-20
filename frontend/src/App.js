@@ -59,6 +59,7 @@ function AppRouter() {
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<AdminDashboard tab="overview" />} />
+      <Route path="/dashboard/admin/moderation" element={<AdminDashboard tab="moderation" />} />
       <Route path="/dashboard/admin/users" element={<AdminDashboard tab="users" />} />
       <Route path="/dashboard/admin/listings" element={<AdminDashboard tab="listings" />} />
       <Route path="/dashboard/admin/projects" element={<AdminDashboard tab="projects" />} />

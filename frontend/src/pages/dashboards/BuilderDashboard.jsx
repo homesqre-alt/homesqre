@@ -93,9 +93,11 @@ function Projects() {
                 <td className="p-4 text-[#06402B] font-semibold">{formatINR(p.price_min)}</td>
                 <td className="p-4">
                   <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${
-                    p.status === "live" ? "bg-[#BBF7D0] text-[#06402B]" :
-                    p.status === "pending" ? "bg-[#FEF08A]" : "bg-[#E8E4D9]"
-                  }`}>{p.status}</span>
+                    p.status === "approved" ? "bg-[#BBF7D0] text-[#06402B]" :
+                    p.status === "pending" ? "bg-[#FEF08A] text-[#7C5800]" :
+                    p.status === "rejected" ? "bg-[#FCA5A5] text-[#7F1D1D]" :
+                    "bg-[#E8E4D9]"
+                  }`}>{p.status === "approved" ? "Live" : p.status}</span>
                 </td>
                 <td className="p-4 flex gap-2">
                   <button onClick={() => setSettingsFor(p)} className="text-xs underline text-[#06402B]">Settings</button>

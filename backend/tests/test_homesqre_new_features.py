@@ -242,12 +242,12 @@ class TestRegressions:
         lid = items[0]["listing_id"]
         # set is_featured=true
         s.put(f"{API}/admin/listings/{lid}/status",
-              json={"status": "live", "is_featured": True}, headers=admin_auth[0])
+              json={"status": "approved", "is_featured": True}, headers=admin_auth[0])
         g1 = s.get(f"{API}/listings/{lid}").json()
         assert g1["is_featured"] is True
         # patch only status; is_featured must remain True
         s.put(f"{API}/admin/listings/{lid}/status",
-              json={"status": "live"}, headers=admin_auth[0])
+              json={"status": "approved"}, headers=admin_auth[0])
         g2 = s.get(f"{API}/listings/{lid}").json()
         assert g2["is_featured"] is True, "is_featured was wiped by patch"
 
@@ -255,10 +255,10 @@ class TestRegressions:
         items = s.get(f"{API}/projects").json()
         pid = items[0]["project_id"]
         s.put(f"{API}/admin/projects/{pid}/status",
-              json={"status": "live", "is_featured": True}, headers=admin_auth[0])
+              json={"status": "approved", "is_featured": True}, headers=admin_auth[0])
         g1 = next(p for p in s.get(f"{API}/projects").json() if p["project_id"] == pid)
         assert g1["is_featured"] is True
         s.put(f"{API}/admin/projects/{pid}/status",
-              json={"status": "live"}, headers=admin_auth[0])
+              json={"status": "approved"}, headers=admin_auth[0])
         g2 = next(p for p in s.get(f"{API}/projects").json() if p["project_id"] == pid)
         assert g2["is_featured"] is True

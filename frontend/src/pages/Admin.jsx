@@ -279,7 +279,7 @@ function ListingForm({ onCreated }) {
     area_sqft: 1000,
     description: "",
     photos: "",
-    status: "live",
+    status: "approved",
   });
   const [busy, setBusy] = useState(false);
 
@@ -362,8 +362,9 @@ function ListingForm({ onCreated }) {
       </Field>
       <Field label="Status">
         <select className={inputCls} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} data-testid="listing-status">
-          <option value="live">Live</option>
-          <option value="pending">Pending</option>
+          <option value="approved">Approved (Live)</option>
+          <option value="pending">Pending Review</option>
+          <option value="rejected">Rejected</option>
           <option value="draft">Draft</option>
         </select>
       </Field>

@@ -192,11 +192,12 @@ function Field({ label, full = false, children }) {
 function StatusPill({ status }) {
   const map = {
     draft: "bg-[#E8E4D9] text-[#1A2421]",
-    pending: "bg-[#FEF08A] text-[#1A2421]",
-    live: "bg-[#BBF7D0] text-[#06402B]",
+    pending: "bg-[#FEF08A] text-[#7C5800]",
+    approved: "bg-[#BBF7D0] text-[#06402B]",
     rejected: "bg-[#FECACA] text-[#9B4A3A]",
   };
-  return <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${map[status] || "bg-[#E8E4D9]"}`}>{status || "—"}</span>;
+  const label = status === "approved" ? "live" : status;
+  return <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${map[status] || "bg-[#E8E4D9]"}`}>{label || "—"}</span>;
 }
 
 function Leads() {

@@ -171,18 +171,16 @@ def test_logout_clears_cookies():
 # Listings + Projects + Search
 # =========================================================
 def test_listings_seeded_at_least_12():
-    # Seed inserts 6 localities x 2 kinds (sale/rent) = 12 listings with status "live".
-    # We assert >=11 because prior test iterations may have flipped one to pending/draft.
-    # If <12 we surface it but don't fail the refactor regression on prior data drift.
-    r = requests.get(f"{BASE}/listings?limit=100", timeout=15)
+    # Public endpoint returns only approved. Use status=all to count seeded total.
+    r = requests.get(f"{BASE}/listings?limit=200&status=all", timeout=15)
     assert r.status_code == 200
     body = r.json()
     items = body if isinstance(body, list) else body.get("items") or body.get("results") or []
-    assert len(items) >= 11, f"listings={len(items)} (expected ~12 seeded live listings)"
+    assert len(items) >= 11, f"listings={len(items)} (expected ~12 seeded approved listings)"
 
 
 def test_projects_seeded_with_relations():
-    r = requests.get(f"{BASE}/projects", timeout=15)
+    r = requests.get(f"{BASE}/projects?status=all", timeout=15)
     assert r.status_code == 200
     body = r.json()
     items = body if isinstance(body, list) else body.get("items") or body.get("results") or []

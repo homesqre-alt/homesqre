@@ -30,7 +30,7 @@ export default function Properties() {
 
   useEffect(() => {
     setLoading(true);
-    const p = { status: "live", limit: 60 };
+    const p = { status: "approved", limit: 60 };
     if (filters.kind) p.kind = filters.kind;
     if (filters.locality) p.locality = filters.locality;
     if (filters.bedrooms) p.bedrooms = filters.bedrooms;
