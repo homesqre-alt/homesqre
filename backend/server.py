@@ -852,16 +852,21 @@ async def create_listing(payload: dict, user: dict = Depends(require_role("agent
     listing_id = f"lst_{uuid.uuid4().hex[:10]}"
     payload["listing_id"] = listing_id
     payload["slug"] = payload.get("slug") or slugify(f"{payload.get('title','listing')}-{listing_id[-4:]}")
-    payload["agent_id"] = user["user_id"]
     is_admin = user.get("role") == "admin"
-    # Admin may explicitly set any status; non-admins always start pending
+    # Admin can assign ownership; everyone else owns what they create
+    if is_admin:
+        requested_owner = payload.get("agent_id") or user["user_id"]
+        payload["agent_id"] = requested_owner
+    else:
+        payload["agent_id"] = user["user_id"]
+    # Admin may explicitly set any status (default approved); non-admins start pending
     requested = payload.get("status")
-    if is_admin and requested in MODERATION_STATUSES:
-        payload["status"] = requested
+    if is_admin:
+        payload["status"] = requested if requested in MODERATION_STATUSES else "approved"
     else:
         payload["status"] = "pending"
     payload["views"] = 0
-    payload["is_featured"] = False
+    payload["is_featured"] = payload.get("is_featured", False) if is_admin else False
     payload["created_at"] = iso(now_utc())
     await db.listings.insert_one(payload)
     return clean_doc(payload)
@@ -872,11 +877,13 @@ async def update_listing(listing_id: str, payload: dict, user: dict = Depends(cu
     existing = await db.listings.find_one({"listing_id": listing_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
-    if user["role"] != "admin" and existing.get("agent_id") != user["user_id"]:
+    is_admin = user["role"] == "admin"
+    if not is_admin and existing.get("agent_id") != user["user_id"]:
         raise HTTPException(status_code=403, detail="Not your listing")
     payload.pop("listing_id", None)
-    payload.pop("agent_id", None)
-    if user["role"] != "admin":
+    if not is_admin:
+        # Non-admins cannot reassign ownership or feature, and re-edits go pending
+        payload.pop("agent_id", None)
         payload.pop("is_featured", None)
         if payload.get("status") not in {"draft", "pending"}:
             payload["status"] = "pending"
@@ -967,15 +974,16 @@ async def create_project(payload: dict, user: dict = Depends(require_role("build
     payload["slug"] = payload.get("slug") or slugify(payload.get("name", project_id))
     payload["city_slug"] = slugify(payload.get("city", ""))
     payload["locality_slug"] = slugify(payload.get("locality", ""))
-    payload["builder_id"] = user["user_id"]
     is_admin = user.get("role") == "admin"
-    requested = payload.get("status")
-    if is_admin and requested in MODERATION_STATUSES:
-        payload["status"] = requested
+    if is_admin:
+        payload["builder_id"] = payload.get("builder_id") or user["user_id"]
+        requested = payload.get("status")
+        payload["status"] = requested if requested in MODERATION_STATUSES else "approved"
     else:
+        payload["builder_id"] = user["user_id"]
         payload["status"] = "pending"
     payload["views"] = 0
-    payload["is_featured"] = False
+    payload["is_featured"] = payload.get("is_featured", False) if is_admin else False
     payload["amenity_ids"] = payload.get("amenity_ids", [])
     payload["bank_ids"] = payload.get("bank_ids", [])
     payload["units"] = payload.get("units", [])
@@ -990,11 +998,12 @@ async def update_project(project_id: str, payload: dict, user: dict = Depends(cu
     existing = await db.projects.find_one({"project_id": project_id})
     if not existing:
         raise HTTPException(status_code=404, detail="Not found")
-    if user["role"] != "admin" and existing.get("builder_id") != user["user_id"]:
+    is_admin = user["role"] == "admin"
+    if not is_admin and existing.get("builder_id") != user["user_id"]:
         raise HTTPException(status_code=403, detail="Not your project")
     payload.pop("project_id", None)
-    payload.pop("builder_id", None)
-    if user["role"] != "admin":
+    if not is_admin:
+        payload.pop("builder_id", None)
         payload.pop("is_featured", None)
     if payload.get("name"):
         payload["slug"] = payload.get("slug") or slugify(payload["name"])

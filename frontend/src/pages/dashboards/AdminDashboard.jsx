@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import HomepageEditor from "@/components/admin/HomepageEditor";
 import InteriorsEditor from "@/components/admin/InteriorsEditor";
 import ModerationQueue from "@/components/admin/ModerationQueue";
+import { AdminListingDialog, AdminProjectDialog } from "@/components/admin/AdminListingProjectDialogs";
+import { Plus, Edit } from "lucide-react";
 
 const LINKS = [
   { to: "/dashboard/admin", label: "Overview" },
@@ -140,6 +142,8 @@ function Users() {
 
 function ListingsAdmin() {
   const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const reload = useCallback(() => api.get("/listings", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
   useEffect(() => { reload(); }, [reload]);
 
@@ -149,34 +153,57 @@ function ListingsAdmin() {
   };
 
   return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Title", "Locality", "Kind", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(l => (
-            <tr key={l.listing_id} className="border-t border-[#E8E4D9]">
-              <td className="p-4">{l.title}</td>
-              <td className="p-4">{l.locality}</td>
-              <td className="p-4">{l.kind}</td>
-              <td className="p-4">
-                <select value={l.status} onChange={e => setStatus(l.listing_id, e.target.value, l.is_featured)} className="hs-input text-xs py-1">
-                  <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
-                </select>
-              </td>
-              <td className="p-4">
-                <input type="checkbox" checked={!!l.is_featured} onChange={e => setStatus(l.listing_id, l.status, e.target.checked)} />
-              </td>
-              <td className="p-4"><a href={`/properties/${l.listing_id}`} className="text-xs underline">View</a></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={() => { setEditing(null); setOpen(true); }}
+          className="btn-primary inline-flex items-center gap-2"
+          data-testid="admin-listing-create"
+        >
+          <Plus size={16} /> Create Listing
+        </button>
+      </div>
+      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[#F3F0E9]"><tr>{["Title", "Locality", "Kind", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
+          <tbody>
+            {items.map(l => (
+              <tr key={l.listing_id} className="border-t border-[#E8E4D9]">
+                <td className="p-4">{l.title}</td>
+                <td className="p-4">{l.locality}</td>
+                <td className="p-4">{l.kind}</td>
+                <td className="p-4">
+                  <select value={l.status} onChange={e => setStatus(l.listing_id, e.target.value, l.is_featured)} className="hs-input text-xs py-1">
+                    <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
+                  </select>
+                </td>
+                <td className="p-4">
+                  <input type="checkbox" checked={!!l.is_featured} onChange={e => setStatus(l.listing_id, l.status, e.target.checked)} />
+                </td>
+                <td className="p-4 flex items-center gap-3">
+                  <button
+                    onClick={() => { setEditing(l); setOpen(true); }}
+                    className="inline-flex items-center gap-1 text-xs text-[#06402B] hover:text-[#053220]"
+                    data-testid={`admin-listing-edit-${l.listing_id}`}
+                  >
+                    <Edit size={13} /> Edit
+                  </button>
+                  <a href={`/properties/${l.listing_id}`} className="text-xs underline">View</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <AdminListingDialog open={open} setOpen={setOpen} editing={editing} onSaved={reload} />
     </div>
   );
 }
 
 function ProjectsAdmin() {
   const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const reload = useCallback(() => api.get("/projects", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
   useEffect(() => { reload(); }, [reload]);
 
@@ -186,28 +213,49 @@ function ProjectsAdmin() {
   };
 
   return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Project", "Locality", "Builder", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(p => (
-            <tr key={p.project_id} className="border-t border-[#E8E4D9]">
-              <td className="p-4">{p.name}</td>
-              <td className="p-4">{p.locality}</td>
-              <td className="p-4">{p.builder_name}</td>
-              <td className="p-4">
-                <select value={p.status} onChange={e => setStatus(p.project_id, e.target.value, p.is_featured)} className="hs-input text-xs py-1">
-                  <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
-                </select>
-              </td>
-              <td className="p-4">
-                <input type="checkbox" checked={!!p.is_featured} onChange={e => setStatus(p.project_id, p.status, e.target.checked)} />
-              </td>
-              <td className="p-4"><a href={`/projects/${p.city_slug}/${p.locality_slug}/${p.slug}`} className="text-xs underline">View</a></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={() => { setEditing(null); setOpen(true); }}
+          className="btn-primary inline-flex items-center gap-2"
+          data-testid="admin-project-create"
+        >
+          <Plus size={16} /> Create Project
+        </button>
+      </div>
+      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[#F3F0E9]"><tr>{["Project", "Locality", "Builder", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
+          <tbody>
+            {items.map(p => (
+              <tr key={p.project_id} className="border-t border-[#E8E4D9]">
+                <td className="p-4">{p.name}</td>
+                <td className="p-4">{p.locality}</td>
+                <td className="p-4">{p.builder_name}</td>
+                <td className="p-4">
+                  <select value={p.status} onChange={e => setStatus(p.project_id, e.target.value, p.is_featured)} className="hs-input text-xs py-1">
+                    <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
+                  </select>
+                </td>
+                <td className="p-4">
+                  <input type="checkbox" checked={!!p.is_featured} onChange={e => setStatus(p.project_id, p.status, e.target.checked)} />
+                </td>
+                <td className="p-4 flex items-center gap-3">
+                  <button
+                    onClick={() => { setEditing(p); setOpen(true); }}
+                    className="inline-flex items-center gap-1 text-xs text-[#06402B] hover:text-[#053220]"
+                    data-testid={`admin-project-edit-${p.project_id}`}
+                  >
+                    <Edit size={13} /> Edit
+                  </button>
+                  <a href={`/projects/${p.city_slug}/${p.locality_slug}/${p.slug}`} className="text-xs underline">View</a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <AdminProjectDialog open={open} setOpen={setOpen} editing={editing} onSaved={reload} />
     </div>
   );
 }
