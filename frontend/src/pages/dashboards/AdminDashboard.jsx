@@ -39,7 +39,10 @@ export default function AdminDashboard() {
 
   if (user === undefined) return null;
   if (user === null) return <Navigate to="/login" />;
-  if (user.role !== "admin" && user.role !== "sales" && user.role !== "designer") {
+  if (user.role !== "admin") {
+    // Sales / designer have their own dedicated dashboards.
+    if (user.role === "sales") return <Navigate to="/dashboard/sales" />;
+    if (user.role === "designer") return <Navigate to="/dashboard/designer" />;
     return <Navigate to="/" />;
   }
 
@@ -73,7 +76,7 @@ export default function AdminDashboard() {
 // ==========================================
 // TAB 1: OVERVIEW & PLANNER
 // ==========================================
-function TabOverview() {
+export function TabOverview() {
   return (
     <div className="animate-in fade-in space-y-8">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -101,7 +104,7 @@ function TabOverview() {
 // ==========================================
 // TAB 2: DISCOVERY CALLS (CRM)
 // ==========================================
-function TabDiscoveryCalls({ triggerNotification, currentUser }) {
+export function TabDiscoveryCalls({ triggerNotification, currentUser }) {
   const [calls, setCalls] = useState([]);
   
   const loadCalls = useCallback(async () => {
@@ -196,7 +199,7 @@ function TabDiscoveryCalls({ triggerNotification, currentUser }) {
 // ==========================================
 // TAB 3: VERIFICATION & SITE VISITS
 // ==========================================
-function TabSiteVisits() {
+export function TabSiteVisits() {
   const [verifications, setVerifications] = useState([]);
 
   const loadVerifications = useCallback(async () => {

@@ -19,10 +19,10 @@ export default function Login() {
     const dash =
       u.role === "admin"
         ? "/dashboard/admin"
-        : u.role === "agent"
-        ? "/dashboard/agent"
-        : u.role === "builder"
-        ? "/dashboard/builder"
+        : u.role === "sales"
+        ? "/dashboard/sales"
+        : u.role === "designer"
+        ? "/dashboard/designer"
         : "/dashboard/customer";
     nav(dash);
   };

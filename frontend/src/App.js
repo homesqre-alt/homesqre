@@ -12,6 +12,8 @@ import ProfileComplete from "@/pages/ProfileComplete";
 
 import AdminDashboard from "@/pages/dashboards/AdminDashboard";
 import CustomerDashboard from "@/pages/dashboards/CustomerDashboard";
+import SalesDashboard from "@/pages/dashboards/SalesDashboard";
+import DesignerDashboard from "@/pages/dashboards/DesignerDashboard";
 import AuthCallback from "@/components/layout/AuthCallback";
 import AdminLogin from "@/pages/AdminLogin";
 
@@ -54,6 +56,10 @@ function AppRouter() {
 
       {/* Customer Dashboard */}
       <Route path="/dashboard/customer" element={<CustomerDashboard />} />
+
+      {/* Staff Dashboards (role-gated inside each component) */}
+      <Route path="/dashboard/sales" element={<SalesDashboard />} />
+      <Route path="/dashboard/designer" element={<DesignerDashboard />} />
     </Routes>
   );
 }
