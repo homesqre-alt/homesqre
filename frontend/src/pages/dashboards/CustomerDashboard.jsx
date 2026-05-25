@@ -6,17 +6,27 @@ import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function CustomerDashboard() {
-  const { user } = useAuth();
-  
-  // Simulated Backend States (In a full app, fetch these from user profile)
-  const [currentPhase, setCurrentPhase] = useState("unpaid");
+  const { user, refresh } = useAuth();
+
+  // Project phase is driven by `user.project_phase` on the server.
+  // We keep a local mirror so dev-mode toggles can preview UI without a round-trip.
+  const [currentPhase, setCurrentPhase] = useState(user?.project_phase || "unpaid");
   const [callStatus, setCallStatus] = useState("none"); 
+
+  // Keep the local phase in sync if the user record updates (e.g. after refresh()).
+  useEffect(() => {
+    if (user?.project_phase) setCurrentPhase(user.project_phase);
+  }, [user?.project_phase]);
 
   // Onboarding Form States (Phase 1)
   const [budgetType, setBudgetType] = useState("");
   const [customBudget, setCustomBudget] = useState("");
   const [styles, setStyles] = useState({ design: "" });
   const [roomRequirements, setRoomRequirements] = useState("");
+
+  // Floor plan upload state (Briefing phase)
+  const [floorPlan, setFloorPlan] = useState(null); // { url, name, file_id }
+  const [isUploadingPlan, setIsUploadingPlan] = useState(false);
 
   // Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -105,17 +115,69 @@ export default function CustomerDashboard() {
   };
 
   const handleSubmitBrief = async () => {
+    if (!floorPlan?.url) {
+      toast.error("Please upload a floor plan (PDF, PNG, JPG, JPEG or WEBP) before submitting.");
+      return;
+    }
     setIsLoading(true);
     try {
       await api.post("/verifications", {
         property_type: propertyType,
         bhk_or_units: propertyType === "apartment" ? bhkType : (propertyType === "villa" ? villaType : unitCount.toString()),
         invoice_paid: calculatedPrice,
-        pdf_url: "pending_upload.pdf", // Placeholder for actual file URL
+        pdf_url: floorPlan.url,
         room_requirements: roomRequirements || "None provided"
       });
       toast.success("Brief submitted successfully for verification.");
-      setCurrentPhase('verification');
+      // Backend already set project_phase="verification"; refresh user to pick it up.
+      await refresh();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ----- Floor-plan upload -----
+  const ALLOWED_FLOOR_PLAN_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"];
+  const handleFloorPlanChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!ALLOWED_FLOOR_PLAN_TYPES.includes(file.type)) {
+      toast.error("Only PDF, PNG, JPG, JPEG or WEBP files are allowed.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("File too large (max 15 MB).");
+      e.target.value = "";
+      return;
+    }
+    setIsUploadingPlan(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const { data } = await api.post("/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setFloorPlan({ url: data.url, file_id: data.file_id, name: file.name });
+      toast.success("Floor plan uploaded.");
+    } catch (err) {
+      toast.error(formatApiError(err));
+      e.target.value = "";
+    } finally {
+      setIsUploadingPlan(false);
+    }
+  };
+
+  // ----- Payment completion -----
+  const handleConfirmPayment = async () => {
+    setIsLoading(true);
+    try {
+      await api.put("/me/phase", { phase: "briefing" });
+      toast.success(`Payment of ₹${calculatedPrice.toLocaleString("en-IN")} verified.`);
+      await refresh();
+      setIsCheckoutOpen(false);
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -213,8 +275,32 @@ export default function CustomerDashboard() {
                 )}
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">Upload Floor Plan (2D PDF/JPG)</label>
-                <input type="file" className="w-full p-2 border border-[#E8E4D9] text-sm file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#06402B] hover:file:bg-[#E8E4D9]" />
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">
+                  Upload Floor Plan <span className="text-gray-400 font-normal lowercase tracking-normal">(PDF, PNG, JPG, JPEG or WEBP — max 15 MB)</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                  onChange={handleFloorPlanChange}
+                  disabled={isUploadingPlan}
+                  data-testid="floor-plan-upload-input"
+                  className="w-full p-2 border border-[#E8E4D9] text-sm file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#06402B] hover:file:bg-[#E8E4D9] disabled:opacity-50"
+                />
+                {isUploadingPlan && (
+                  <p className="mt-2 text-xs text-[#4A5D54]">Uploading…</p>
+                )}
+                {floorPlan?.url && !isUploadingPlan && (
+                  <p className="mt-2 text-xs text-[#06402B] font-semibold" data-testid="floor-plan-upload-success">
+                    ✓ {floorPlan.name} uploaded.
+                    <button
+                      type="button"
+                      onClick={() => setFloorPlan(null)}
+                      className="ml-3 underline text-[#B68D40] hover:text-[#9d7936]"
+                    >
+                      Replace
+                    </button>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -404,15 +490,12 @@ export default function CustomerDashboard() {
                 <p className="font-display text-4xl text-[#06402B] mb-6">₹{calculatedPrice.toLocaleString('en-IN')}</p>
                 
                 <button 
-                  onClick={() => {
-                    // Simulating Razorpay success for now
-                    toast.success(`Payment of ₹${calculatedPrice} verified.`);
-                    setCurrentPhase('briefing');
-                    setIsCheckoutOpen(false);
-                  }}
-                  className="bg-[#B68D40] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#9d7936] transition w-full shadow-md"
+                  onClick={handleConfirmPayment}
+                  disabled={isLoading}
+                  data-testid="confirm-payment-btn"
+                  className="bg-[#B68D40] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#9d7936] transition w-full shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Proceed to Secure Payment
+                  {isLoading ? "Confirming…" : "Proceed to Secure Payment"}
                 </button>
                 <p className="text-[10px] text-gray-500 mt-3 uppercase tracking-wide">100% Secure Payment • Instant Invoice Generation</p>
               </div>

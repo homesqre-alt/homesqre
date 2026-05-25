@@ -448,6 +448,31 @@ async def auth_logout(response: Response, request: Request):
 async def auth_me(user: dict = Depends(current_user)):
     return user
 
+
+# Client-initiated phase transitions (e.g. "unpaid" → "briefing" after payment).
+# Backend-driven transitions (verification → scheduling etc.) happen via their
+# dedicated admin endpoints — they are intentionally NOT permitted here.
+ALLOWED_PHASE_TRANSITIONS = {
+    "unpaid": {"briefing"},
+}
+
+
+@api.put("/me/phase")
+async def update_my_phase(payload: dict, user: dict = Depends(current_user)):
+    target = (payload.get("phase") or "").strip()
+    current = (user.get("project_phase") or "unpaid")
+    allowed_next = ALLOWED_PHASE_TRANSITIONS.get(current, set())
+    if target not in allowed_next:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot transition from '{current}' to '{target}'"
+        )
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"project_phase": target, "phase_updated_at": iso(now_utc())}}
+    )
+    return {"ok": True, "project_phase": target}
+
 @api.post("/auth/forgot-password")
 async def auth_forgot(body: ForgotRequest):
     user = await db.users.find_one({"email": body.email.lower()})
@@ -524,10 +549,32 @@ async def auth_google(body: dict, response: Response):
 # ---------------------------------------------------------------------------
 # UPLOADS
 # ---------------------------------------------------------------------------
+# Allowed file types for customer floor-plan uploads. Used by the generic
+# /upload endpoint plus dedicated /upload/floor-plan endpoint.
+FLOOR_PLAN_ALLOWED_TYPES = {
+    "image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"
+}
+FLOOR_PLAN_ALLOWED_EXTS = {"png", "jpg", "jpeg", "webp", "pdf"}
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+
+
+def _validate_upload(file: UploadFile, data: bytes, allowed_types: set, allowed_exts: set):
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 15 MB)")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    ctype = (file.content_type or "").lower()
+    if ext not in allowed_exts and ctype not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PNG, JPG, JPEG, WEBP, or PDF files are allowed."
+        )
+
+
 @api.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(current_user)):
     data = await file.read()
-    ext = file.filename.split(".")[-1] if "." in file.filename else "bin"
+    _validate_upload(file, data, FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS)
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
     path = f"{APP_NAME}/uploads/{user['user_id']}/{uuid.uuid4().hex}.{ext}"
     result = put_object(path, data, file.content_type or "application/octet-stream")
     rec = {
