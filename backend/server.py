@@ -723,10 +723,13 @@ async def update_team_member(email: str, payload: dict, user: dict = Depends(req
 @api.get("/content/{key}")
 async def get_content(key: str):
     doc = await db.content.find_one({"key": key})
-    if doc:
-        return doc.get("data", {})
-    # Lazy fallback if seeding hasn't run yet
     defaults_map = {"interiors": DEFAULT_INTERIORS_CONTENT, "homepage": DEFAULT_HOMEPAGE_CONTENT}
+    # Accept either schema: new docs use `data`, legacy docs may use `value`
+    if doc:
+        payload = doc.get("data") or doc.get("value")
+        if isinstance(payload, dict) and payload:
+            return payload
+    # Fallback to defaults if doc missing or empty (handles legacy/stale docs in prod)
     if key in defaults_map:
         return defaults_map[key]
     raise HTTPException(status_code=404, detail="Content not found")
