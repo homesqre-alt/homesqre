@@ -279,6 +279,29 @@ async def _migrate_status_fields():
         {"status": {"$exists": False}}, {"$set": {"status": "approved"}}
     )
 
+async def _migrate_stale_discovery_assignees():
+    """One-time cleanup: rewrite leads still assigned to legacy hard-coded names
+    (Girish/Rajendra/Karunakar) onto a real sales rep from the users collection."""
+    legacy_names = ["Girish", "Rajendra", "Karunakar"]
+    # Skip migration if any of those names actually belong to a real user — that
+    # means the hard-coded name happens to match a real rep and we shouldn't touch it.
+    real_sales_names = set()
+    async for u in db.users.find({"role": {"$in": ["sales", "admin"]}}, {"_id": 0, "name": 1, "email": 1}):
+        real_sales_names.add(u.get("name") or u.get("email", "").split("@")[0])
+    targets = [n for n in legacy_names if n not in real_sales_names]
+    if not targets:
+        return
+    stale = await db.discovery_calls.find({"assigned_to": {"$in": targets}}).to_list(None)
+    if not stale:
+        return
+    for call in stale:
+        next_assignee = await _pick_next_assignee(call.get("assigned_to"))
+        await db.discovery_calls.update_one(
+            {"_id": call["_id"]},
+            {"$set": {"assigned_to": next_assignee}}
+        )
+    log.info(f"[MIGRATE] Reassigned {len(stale)} legacy-named discovery calls to real sales reps")
+
 async def seed_data():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
@@ -532,15 +555,48 @@ async def serve_file(path: str):
 # ---------------------------------------------------------------------------
 # HOMESQRE INTERIORS: DISCOVERY CALLS & AUTO-ROUTING
 # ---------------------------------------------------------------------------
+async def _get_sales_team() -> List[str]:
+    """Return list of sales-rep display names from the users collection, sorted
+    by created_at so round-robin order is stable. Falls back to admin if empty."""
+    reps = await db.users.find(
+        {"role": "sales"},
+        {"_id": 0, "name": 1, "email": 1, "created_at": 1}
+    ).sort("created_at", 1).to_list(None)
+    names = [(r.get("name") or r["email"].split("@")[0]) for r in reps if r.get("email")]
+    if names:
+        return names
+    # Fallback so leads aren't lost when no sales rep exists yet
+    admin = await db.users.find_one({"role": "admin"}, {"_id": 0, "name": 1, "email": 1})
+    if admin:
+        return [admin.get("name") or admin["email"].split("@")[0]]
+    return ["Unassigned"]
+
+
+async def _pick_next_assignee(current: Optional[str]) -> str:
+    team = await _get_sales_team()
+    if not team:
+        return "Unassigned"
+    if current and current in team:
+        idx = (team.index(current) + 1) % len(team)
+    else:
+        idx = 0
+    return team[idx]
+
+
 @api.post("/discovery-calls")
 async def create_discovery_call(payload: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
     call_id = f"call_{uuid.uuid4().hex[:10]}"
+    # Round-robin: assign to the rep AFTER the most recently assigned lead so
+    # consecutive calls don't all stack on the first rep.
+    last_call = await db.discovery_calls.find_one({}, sort=[("created_at", -1)])
+    last_assignee = last_call.get("assigned_to") if last_call else None
+    assignee = await _pick_next_assignee(last_assignee)
     rec = {
         "call_id": call_id,
         "user_id": user["user_id"] if user else None,
         "name": payload.name,
         "phone": payload.phone,
-        "assigned_to": "Girish", 
+        "assigned_to": assignee,
         "status": "pending",
         "assigned_at": iso(now_utc()),
         "created_at": iso(now_utc()),
@@ -613,9 +669,8 @@ async def admin_moderate_verification(ver_id: str, payload: dict, user: dict = D
 # BACKGROUND WORKER: 15-MINUTE AUTO-ASSIGN ROUTER
 # ---------------------------------------------------------------------------
 async def discovery_call_auto_router():
-    """Runs continuously in the background. Rotates leads every 15 mins."""
-    SALES_TEAM = ["Girish", "Rajendra", "Karunakar"]
-    
+    """Runs continuously in the background. Rotates stale pending leads every
+    15 minutes through the active sales team (loaded from the users collection)."""
     while True:
         try:
             timeout_threshold = now_utc() - timedelta(minutes=15)
@@ -625,14 +680,11 @@ async def discovery_call_auto_router():
             }).to_list(None)
 
             for call in stale_calls:
-                current_assignee = call.get("assigned_to", "Girish")
-                try:
-                    current_index = SALES_TEAM.index(current_assignee)
-                    next_index = (current_index + 1) % len(SALES_TEAM)
-                except ValueError:
-                    next_index = 0
-                
-                next_assignee = SALES_TEAM[next_index]
+                current_assignee = call.get("assigned_to")
+                next_assignee = await _pick_next_assignee(current_assignee)
+                if next_assignee == current_assignee:
+                    # Only one rep on the team — no point reassigning.
+                    continue
                 await db.discovery_calls.update_one(
                     {"_id": call["_id"]},
                     {"$set": {
@@ -777,6 +829,7 @@ async def startup_event():
     try:
         await seed_data()
         await _migrate_status_fields()
+        await _migrate_stale_discovery_assignees()
         log.info("Seeds ensured")
     except Exception as e:
         log.error(f"seed failed: {e}")
