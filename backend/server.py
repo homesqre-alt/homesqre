@@ -329,6 +329,20 @@ async def seed_data():
             })
         log.info("Demo users seeded (SEED_DEMO_USERS=true)")
 
+    # Seed CMS content blobs (idempotent)
+    for key, payload in [
+        ("interiors", DEFAULT_INTERIORS_CONTENT),
+        ("homepage", DEFAULT_HOMEPAGE_CONTENT),
+    ]:
+        existing = await db.content.find_one({"key": key})
+        if not existing:
+            await db.content.insert_one({
+                "key": key,
+                "data": payload,
+                "updated_at": iso(now_utc()),
+            })
+            log.info(f"Content seeded: {key}")
+
 
 # ---------------------------------------------------------------------------
 # AUTH ROUTES
@@ -702,6 +716,45 @@ async def update_team_member(email: str, payload: dict, user: dict = Depends(req
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"ok": True, "message": f"Successfully updated {email} to {new_role}"}
+
+# ---------------------------------------------------------------------------
+# Public content (CMS) + interior leads
+# ---------------------------------------------------------------------------
+@api.get("/content/{key}")
+async def get_content(key: str):
+    doc = await db.content.find_one({"key": key})
+    if doc:
+        return doc.get("data", {})
+    # Lazy fallback if seeding hasn't run yet
+    defaults_map = {"interiors": DEFAULT_INTERIORS_CONTENT, "homepage": DEFAULT_HOMEPAGE_CONTENT}
+    if key in defaults_map:
+        return defaults_map[key]
+    raise HTTPException(status_code=404, detail="Content not found")
+
+
+@api.post("/interior-leads")
+async def create_interior_lead(payload: Dict[str, Any]):
+    lead = {
+        "lead_id": f"lead_{uuid.uuid4().hex[:10]}",
+        "name": (payload.get("name") or "").strip(),
+        "phone": (payload.get("phone") or "").strip(),
+        "email": (payload.get("email") or "").strip(),
+        "whatsapp": bool(payload.get("whatsapp", True)),
+        "property_type": payload.get("property_type") or "Apartment",
+        "flat_size": payload.get("flat_size") or "",
+        "budget": payload.get("budget") or "",
+        "style": payload.get("style") or "",
+        "move_in": payload.get("move_in") or "",
+        "locality": payload.get("locality") or "",
+        "status": "new",
+        "source": "interiors_page",
+        "created_at": iso(now_utc()),
+    }
+    if not lead["name"] or not lead["phone"]:
+        raise HTTPException(status_code=400, detail="Name and phone are required")
+    await db.interior_leads.insert_one(lead)
+    return {"ok": True, "lead_id": lead["lead_id"]}
+
 
 # ---------------------------------------------------------------------------
 # Health + startup

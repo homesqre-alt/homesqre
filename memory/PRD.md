@@ -33,6 +33,11 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 - Employees: `GET / POST / PUT / DELETE /api/admin/employees[/{email}]`
 
 ## Changelog
+- **2026-05-25 (later)** — **Homepage Restored.** Re-added two endpoints to `server.py` to bring `/interiors` back online:
+  - `GET /api/content/{key}` — returns CMS content blob (auto-seeds `interiors` and `homepage` from `defaults.py` on startup; falls back to defaults if doc missing).
+  - `POST /api/interior-leads` — captures booking form (8 fields: name, phone, email, whatsapp, property_type, flat_size, budget, style, move_in, locality). Validates name+phone required.
+  - Cleared 2 stale legacy `content` docs that had an empty `value` field from the old marketplace server.
+  - Verified `/interiors` page renders end-to-end (hero, offer banner, form, cost estimator, gallery, etc.).
 - **2026-05-25** — **Major Pivot Adoption.** User uploaded GitHub zip of new "Homesqre Interiors" product. Adopted in full:
   - Replaced backend `server.py` (1447 → 732 lines). All marketplace endpoints removed; discovery-calls / verifications / employees endpoints added.
   - `requirements.txt`: switched Google auth from `emergentintegrations` to `google-auth>=2.29.0`.
@@ -49,7 +54,7 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 ## Known Issues / Tech Debt
 | # | Issue | Status |
 |---|---|---|
-| 1 | `/interiors` page crashes — calls deleted `/content/interiors` & `/interior-leads` endpoints. Public domain `/` redirects here. | **OPEN — user still deciding on homepage** |
+| 1 | ~~`/interiors` page crashes~~ | **✅ FIXED 2026-05-25** — Re-added `/api/content/{key}` + `/api/interior-leads` endpoints. |
 | 2 | Old pytest suites (`test_admin_overrides.py`, `test_moderation_pipeline.py`, `test_refactor_full_regression.py`, `test_refactor_regression.py`) reference removed endpoints — will fail if run. | Open |
 | 3 | "Proceed to Secure Payment" button in CustomerDashboard checkout modal is a placeholder (just toast). Razorpay/Stripe not wired. | Open |
 | 4 | Floor plan upload field in Briefing phase is a plain `<input type="file">` — not yet wired to `/api/upload`. | Open |
