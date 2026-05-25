@@ -14,8 +14,6 @@ import AdminDashboard from "@/pages/dashboards/AdminDashboard";
 import CustomerDashboard from "@/pages/dashboards/CustomerDashboard";
 import AuthCallback from "@/components/layout/AuthCallback";
 import AdminLogin from "@/pages/AdminLogin";
-import Admin from "@/pages/Admin";
-import RequireAdmin from "@/components/RequireAdmin";
 
 function AppRouter() {
   // Detect session_id during render (sync) — handles OAuth race condition
@@ -40,7 +38,6 @@ function AppRouter() {
 
       {/* Admin Console (quick add) */}
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
 
       {/* Admin Dashboard */}
       <Route path="/dashboard/admin" element={<AdminDashboard tab="overview" />} />
