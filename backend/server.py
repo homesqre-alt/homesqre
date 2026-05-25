@@ -7,6 +7,7 @@ Includes:
   - Object Storage uploads via Emergent integration
   - CRUD: listings, projects, inquiries, banks, amenities, cities/localities
   - Interior leads, loan leads, content CMS, search, admin
+  - Homesqre Interiors: Verifications, Discovery Calls & 15-Min Auto-Router
   - Seeds on startup: admin/test users, banks, amenities, Bangalore cities + localities
 """
 
@@ -22,12 +23,15 @@ import logging
 import random
 import re
 import secrets
+import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
 import bcrypt
 import jwt
 import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from fastapi import (
     FastAPI, APIRouter, Request, Response, HTTPException, Depends,
     UploadFile, File, Header, Query
@@ -58,17 +62,6 @@ EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 APP_NAME = os.environ.get("APP_NAME", "homesqre")
 EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 
-# CORS — comma-separated list, or "*". When an explicit list is given we
-# enable credentials so cookies work cross-origin (required for separate
-# frontend domains, e.g., frontend on cPanel + backend on a VPS).
-_raw_origins = os.environ.get("CORS_ORIGINS", "*").strip()
-if _raw_origins == "*" or not _raw_origins:
-    CORS_ORIGINS: List[str] = ["*"]
-    CORS_ALLOW_CREDENTIALS = False
-else:
-    CORS_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
-    CORS_ALLOW_CREDENTIALS = True
-
 # Cookie flags — set COOKIE_SAMESITE=none + COOKIE_SECURE=true in production
 # when frontend and backend are on different domains.
 COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").lower()
@@ -80,10 +73,11 @@ db = client[DB_NAME]
 app = FastAPI(title="Homesqre API")
 api = APIRouter(prefix="/api")
 
+# C-4 SECURITY PATCH: Restricted CORS Origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_origins=["https://homesqre.com", "http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -109,14 +103,8 @@ log = logging.getLogger("homesqre")
 # ---------------------------------------------------------------------------
 MODERATION_STATUSES = {"pending", "approved", "rejected"}
 
-
 def _public_status_filter(value: Optional[str]):
-    """Build a Mongo filter for the public-facing list endpoints.
-
-    - None or "approved" → only approved (public default)
-    - "" or "all"        → no filter (used by dashboards to see everything)
-    - explicit status    → as given
-    """
+    """Build a Mongo filter for the public-facing list endpoints."""
     if value is None or value == "approved":
         return "approved"
     if value in ("all", ""):
@@ -130,10 +118,8 @@ def _public_status_filter(value: Optional[str]):
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
-
 def iso(dt: datetime) -> str:
     return dt.isoformat()
-
 
 def slugify(text: str) -> str:
     text = (text or "").lower().strip()
@@ -141,17 +127,14 @@ def slugify(text: str) -> str:
     text = re.sub(r"[\s_-]+", "-", text)
     return text.strip("-") or uuid.uuid4().hex[:8]
 
-
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
 
 def verify_password(plain: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(plain.encode(), hashed.encode())
     except Exception:
         return False
-
 
 def make_access_token(user_id: str, email: str, role: str) -> str:
     payload = {
@@ -163,13 +146,11 @@ def make_access_token(user_id: str, email: str, role: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALG)
 
-
 def decode_token(token: str) -> Optional[dict]:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
     except Exception:
         return None
-
 
 def clean_doc(doc: Optional[dict]) -> Optional[dict]:
     if doc is None:
@@ -177,7 +158,6 @@ def clean_doc(doc: Optional[dict]) -> Optional[dict]:
     doc.pop("_id", None)
     doc.pop("password_hash", None)
     return doc
-
 
 async def get_user_from_token(token: str) -> Optional[dict]:
     if not token:
@@ -187,7 +167,6 @@ async def get_user_from_token(token: str) -> Optional[dict]:
         user = await db.users.find_one({"user_id": payload["sub"]}, {"_id": 0, "password_hash": 0})
         if user:
             return user
-    # else: try Emergent session_token
     session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
     if session:
         expires_at = session["expires_at"]
@@ -200,9 +179,7 @@ async def get_user_from_token(token: str) -> Optional[dict]:
             return user
     return None
 
-
 async def current_user(request: Request) -> dict:
-    # Prefer explicit Authorization header over cookies to avoid stale-cookie surprises
     token = None
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
@@ -214,13 +191,11 @@ async def current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
-
 async def current_user_optional(request: Request) -> Optional[dict]:
     try:
         return await current_user(request)
     except HTTPException:
         return None
-
 
 def require_role(*roles: str):
     async def _dep(user: dict = Depends(current_user)):
@@ -240,48 +215,52 @@ class RegisterRequest(BaseModel):
     password: str
     role: str = "customer"
 
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-
 
 class OtpVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
 
-
 class GoogleSessionRequest(BaseModel):
     session_id: str
     role: Optional[str] = "customer"
 
-
 class ForgotRequest(BaseModel):
     email: EmailStr
-
 
 class ResetRequest(BaseModel):
     token: str
     new_password: str
 
+class DiscoveryCallCreate(BaseModel):
+    name: str
+    phone: str
+
+class VerificationCreate(BaseModel):
+    property_type: str
+    bhk_or_units: str
+    invoice_paid: float
+    pdf_url: str
+    room_requirements: str
+
 
 # ---------------------------------------------------------------------------
-# Object Storage  --  delegated to storage.py (Emergent / local / extensible)
+# Object Storage
 # ---------------------------------------------------------------------------
 def init_storage():
     try:
-        get_storage()  # warm up
+        get_storage() 
         log.info("Storage backend ready")
     except Exception as e:
         log.warning(f"Storage init: {e}")
-
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
     try:
         return get_storage().put(path, data, content_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Storage unavailable: {e}")
-
 
 def get_object(path: str):
     try:
@@ -291,21 +270,16 @@ def get_object(path: str):
 
 
 # ---------------------------------------------------------------------------
-# Seeds  (static data lives in defaults.py)
+# Seeds
 # ---------------------------------------------------------------------------
 async def _migrate_status_fields():
-    """One-shot migration: rename legacy `status="live"` to `status="approved"`
-    on listings and projects, and backfill a `status="approved"` on existing
-    localities that don't have one yet. Safe to re-run."""
     await db.listings.update_many({"status": "live"}, {"$set": {"status": "approved"}})
     await db.projects.update_many({"status": "live"}, {"$set": {"status": "approved"}})
     await db.localities.update_many(
         {"status": {"$exists": False}}, {"$set": {"status": "approved"}}
     )
 
-
 async def seed_data():
-    # indexes
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
@@ -313,170 +287,47 @@ async def seed_data():
     await db.listings.create_index("slug", unique=True)
     await db.projects.create_index("slug", unique=True)
 
-    # users
-    for u in [
-        ("admin@homesqre.com", "Homesqre@2026", "admin", "Homesqre Admin", "+919999999999"),
-        ("agent@homesqre.com", "Agent@2026", "agent", "Demo Agent", "+919999999991"),
-        ("builder@homesqre.com", "Builder@2026", "builder", "Demo Builder", "+919999999992"),
-        ("customer@homesqre.com", "Customer@2026", "customer", "Demo Customer", "+919999999993"),
-    ]:
-        email, pwd, role, name, mobile = u
-        existing = await db.users.find_one({"email": email})
-        if existing:
-            continue
-        await db.users.insert_one({
-            "user_id": f"user_{uuid.uuid4().hex[:12]}",
-            "email": email,
-            "name": name,
-            "mobile": mobile,
-            "role": role,
-            "is_verified": True,
-            "profile_completed": True,
-            "password_hash": hash_password(pwd),
-            "created_at": iso(now_utc()),
-        })
-
-    # banks
-    for b in SEED_BANKS:
-        exist = await db.banks.find_one({"name": b["name"]})
-        if not exist:
-            await db.banks.insert_one({
-                "bank_id": f"bank_{uuid.uuid4().hex[:8]}",
-                "is_active": True,
-                "updated_at": iso(now_utc()),
-                **b,
-            })
-
-    # amenities
-    for a in SEED_AMENITIES:
-        exist = await db.amenities.find_one({"name": a["name"]})
-        if not exist:
-            await db.amenities.insert_one({
-                "amenity_id": f"am_{uuid.uuid4().hex[:8]}",
-                "is_active": True,
-                **a,
-            })
-
-    # cities/localities
-    exist = await db.cities.find_one({"name": "Bangalore"})
-    if not exist:
-        await db.cities.insert_one({
-            "city_id": f"city_{uuid.uuid4().hex[:8]}",
-            "name": "Bangalore",
-            "slug": "bangalore",
-            "is_active": True,
-            "state": "Karnataka",
-            "intro": "India's Silicon Valley — a thriving metropolis of tech, gardens and modern living.",
-        })
-    for loc in BANGALORE_LOCALITIES:
-        exist = await db.localities.find_one({"name": loc})
-        if not exist:
-            await db.localities.insert_one({
-                "locality_id": f"loc_{uuid.uuid4().hex[:8]}",
-                "name": loc,
-                "slug": slugify(loc),
-                "city": "Bangalore",
-                "city_slug": "bangalore",
-                "is_active": True,
-                "status": "approved",
-            })
-
-    # sample listings + projects (only if none)
-    listing_count = await db.listings.count_documents({})
-    if listing_count == 0:
-        agent = await db.users.find_one({"email": "agent@homesqre.com"})
-        for i, locality in enumerate(BANGALORE_LOCALITIES[:6]):
-            for kind, price, beds in [("sale", 12500000 + i * 1000000, 3), ("rent", 45000 + i * 5000, 2)]:
-                listing_id = f"lst_{uuid.uuid4().hex[:10]}"
-                title = f"{beds}BHK {'Apartment' if kind=='sale' else 'Flat'} in {locality}"
-                await db.listings.insert_one({
-                    "listing_id": listing_id,
-                    "slug": slugify(f"{title}-{listing_id[-4:]}"),
-                    "title": title,
-                    "description": "Spacious well-ventilated home with modern fittings, gated community amenities and excellent connectivity.",
-                    "kind": kind,
-                    "city": "Bangalore",
-                    "locality": locality,
-                    "address": f"Near main road, {locality}, Bangalore",
-                    "lat": 12.9716 + (i * 0.02),
-                    "lng": 77.5946 + (i * 0.02),
-                    "price": price,
-                    "area_sqft": 1450 + i * 100,
-                    "area_type": "super_builtup",
-                    "bedrooms": beds,
-                    "bathrooms": beds,
-                    "property_type": "Apartment",
-                    "possession_status": "Ready to Move",
-                    "photos": [
-                        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200",
-                        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200",
-                    ],
-                    "videos": [],
-                    "floor_plans": [],
-                    "agent_id": agent["user_id"] if agent else None,
-                    "status": "approved",
-                    "is_featured": i < 3,
-                    "views": random.randint(20, 250),
-                    "created_at": iso(now_utc()),
-                })
-
-    project_count = await db.projects.count_documents({})
-    if project_count == 0:
-        builder = await db.users.find_one({"email": "builder@homesqre.com"})
-        sample_projects = [
-            ("Prestige Lakeside Habitat", "Whitefield", 18500000, 32500000, "3BHK & 4BHK"),
-            ("Sobha Royal Pavilion", "Sarjapur Road", 14500000, 24500000, "2BHK & 3BHK"),
-            ("Brigade Cornerstone Utopia", "Electronic City", 9500000, 18500000, "2BHK & 3BHK"),
-            ("Godrej Reflections", "HSR Layout", 22500000, 42500000, "3BHK & 4BHK"),
-        ]
-        all_amenities = await db.amenities.find({}, {"_id": 0}).to_list(100)
-        all_banks = await db.banks.find({}, {"_id": 0}).to_list(20)
-        for i, (name, locality, pmin, pmax, types) in enumerate(sample_projects):
-            project_id = f"prj_{uuid.uuid4().hex[:10]}"
-            await db.projects.insert_one({
-                "project_id": project_id,
-                "slug": slugify(name),
-                "name": name,
-                "tagline": "Live elevated.",
-                "description": f"{name} offers thoughtfully crafted homes with world-class amenities, set in the heart of {locality}.",
-                "builder_id": builder["user_id"] if builder else None,
-                "builder_name": "Premium Builders",
-                "city": "Bangalore",
-                "city_slug": "bangalore",
-                "locality": locality,
-                "locality_slug": slugify(locality),
-                "address": f"{locality}, Bangalore",
-                "lat": 12.9716 + i * 0.03,
-                "lng": 77.5946 + i * 0.03,
-                "price_min": pmin,
-                "price_max": pmax,
-                "sqft_min": 1200 + i * 100,
-                "sqft_max": 2400 + i * 200,
-                "unit_types": types,
-                "approvals": ["BBMP", "BMRDA", "BWSSB"],
-                "rera_number": f"PRM/KA/RERA/1251/446/PR/22030{i}/0040{i}",
-                "rera_state": "Karnataka",
-                "rera_date": "2022-03-15",
-                "rera_expiry": "2027-03-14",
-                "amenity_ids": [a["amenity_id"] for a in all_amenities[: 12 + i]],
-                "bank_ids": [b["bank_id"] for b in all_banks],
-                "units": [
-                    {"type": "3BHK", "size_sqft": 1650, "price": pmin, "availability": "Available", "floor_plan": ""},
-                    {"type": "4BHK", "size_sqft": 2400, "price": pmax, "availability": "Limited", "floor_plan": ""},
-                ],
-                "banner_image": "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600",
-                "gallery": [
-                    "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600",
-                    "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1600",
-                ],
-                "brochure_url": "",
-                "brand_color": "#06402B",
-                "status": "approved",
-                "is_featured": i < 3,
-                "views": random.randint(50, 400),
-                "last_updated": iso(now_utc()),
+    admin_pwd = os.environ.get("ADMIN_PASSWORD")
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@homesqre.com")
+    if admin_pwd:
+        existing = await db.users.find_one({"email": admin_email})
+        if not existing:
+            await db.users.insert_one({
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": admin_email,
+                "name": "Homesqre Admin",
+                "mobile": os.environ.get("ADMIN_MOBILE", "+919999999999"),
+                "role": "admin",
+                "is_verified": True,
+                "profile_completed": True,
+                "password_hash": hash_password(admin_pwd),
                 "created_at": iso(now_utc()),
+                "project_phase": "unpaid"
             })
+            log.info(f"Admin user seeded: {admin_email}")
+
+    if os.environ.get("SEED_DEMO_USERS", "false").lower() == "true":
+        for email, pwd, role, name, mobile in [
+            ("agent@homesqre.com", "Agent@2026", "agent", "Demo Agent", "+919999999991"),
+            ("builder@homesqre.com", "Builder@2026", "builder", "Demo Builder", "+919999999992"),
+            ("customer@homesqre.com", "Customer@2026", "customer", "Demo Customer", "+919999999993"),
+        ]:
+            existing = await db.users.find_one({"email": email})
+            if existing:
+                continue
+            await db.users.insert_one({
+                "user_id": f"user_{uuid.uuid4().hex[:12]}",
+                "email": email,
+                "name": name,
+                "mobile": mobile,
+                "role": role,
+                "is_verified": True,
+                "profile_completed": True,
+                "password_hash": hash_password(pwd),
+                "created_at": iso(now_utc()),
+                "project_phase": "unpaid"
+            })
+        log.info("Demo users seeded (SEED_DEMO_USERS=true)")
 
 
 # ---------------------------------------------------------------------------
@@ -487,7 +338,10 @@ async def auth_register(body: RegisterRequest, response: Response):
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="Email already registered")
-    role = body.role if body.role in {"customer", "agent", "builder"} else "customer"
+        
+    # C-1 SECURITY PATCH: Force all new signups to be customers
+    role = "customer" 
+    
     otp = f"{secrets.randbelow(900000) + 100000}"
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     doc = {
@@ -502,18 +356,17 @@ async def auth_register(body: RegisterRequest, response: Response):
         "otp": otp,
         "otp_expires_at": iso(now_utc() + timedelta(minutes=10)),
         "created_at": iso(now_utc()),
+        "project_phase": "unpaid"
     }
     await db.users.insert_one(doc)
-    log.info(f"[OTP] {email} → {otp}")
+    log.info(f"[OTP] OTP generated for {email}")
     token = make_access_token(user_id, email, role)
     _set_auth_cookie(response, "access_token", token)
     return {
         "user": {"user_id": user_id, "email": email, "name": body.name, "role": role,
                  "mobile": body.mobile, "is_verified": False, "profile_completed": True},
         "token": token,
-        "dev_otp": otp,
     }
-
 
 @api.post("/auth/verify-otp")
 async def auth_verify_otp(body: OtpVerifyRequest):
@@ -521,12 +374,22 @@ async def auth_verify_otp(body: OtpVerifyRequest):
     user = await db.users.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    # accept any 6-digit OTP for development if matches OR if generic dev shortcut "000000"
-    if body.otp != user.get("otp") and body.otp != "000000":
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    await db.users.update_one({"email": email}, {"$set": {"is_verified": True}, "$unset": {"otp": ""}})
-    return {"ok": True}
 
+    otp_exp = user.get("otp_expires_at")
+    if otp_exp:
+        exp_dt = datetime.fromisoformat(otp_exp) if isinstance(otp_exp, str) else otp_exp
+        if exp_dt.tzinfo is None:
+            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+        if exp_dt < now_utc():
+            raise HTTPException(status_code=400, detail="OTP has expired")
+    if not user.get("otp") or body.otp != user["otp"]:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {"is_verified": True}, "$unset": {"otp": "", "otp_expires_at": ""}}
+    )
+    return {"ok": True}
 
 @api.post("/auth/login")
 async def auth_login(body: LoginRequest, response: Response):
@@ -538,26 +401,21 @@ async def auth_login(body: LoginRequest, response: Response):
     _set_auth_cookie(response, "access_token", token)
     return {"user": clean_doc(user), "token": token}
 
-
 @api.post("/auth/logout")
 async def auth_logout(response: Response, request: Request):
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("session_token", path="/")
     return {"ok": True}
 
-
 @api.get("/auth/me")
 async def auth_me(user: dict = Depends(current_user)):
     return user
-
 
 @api.post("/auth/forgot-password")
 async def auth_forgot(body: ForgotRequest):
     user = await db.users.find_one({"email": body.email.lower()})
     if not user:
-        # don't leak; pretend success
         return {"ok": True}
-    import secrets
     token = secrets.token_urlsafe(32)
     await db.password_reset_tokens.insert_one({
         "token": token,
@@ -565,9 +423,8 @@ async def auth_forgot(body: ForgotRequest):
         "expires_at": now_utc() + timedelta(hours=1),
         "used": False,
     })
-    log.info(f"[RESET] {body.email}: token={token}")
-    return {"ok": True, "dev_token": token}
-
+    log.info(f"[RESET] Password reset requested for {body.email.lower()}")
+    return {"ok": True}
 
 @api.post("/auth/reset-password")
 async def auth_reset(body: ResetRequest):
@@ -588,57 +445,43 @@ async def auth_reset(body: ResetRequest):
     await db.password_reset_tokens.update_one({"_id": rec["_id"]}, {"$set": {"used": True}})
     return {"ok": True}
 
+# ---------------------------------------------------------------------------
+# CUSTOM GOOGLE OAUTH
+# ---------------------------------------------------------------------------
+GOOGLE_CLIENT_ID = "792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com"
 
-# ===========================================================================
-# EMERGENT-SPECIFIC: Google OAuth via Emergent's hosted auth bridge.
-# To migrate to standard Google OAuth:
-#   1. Replace EMERGENT_AUTH_SESSION_URL with direct Google token verification
-#      (use `google-auth` + `google-auth-oauthlib` libraries).
-#   2. Update frontend/src/lib/oauth.js to use Google's authorize URL directly.
-# Everything else (cookies, user creation, dashboards) stays unchanged.
-# ===========================================================================
-@api.post("/auth/google/session")
-async def auth_google_session(body: GoogleSessionRequest, response: Response):
+@api.post("/auth/google")
+async def auth_google(body: dict, response: Response):
+    token = body.get("token")
+    if not token:
+        raise HTTPException(status_code=400, detail="No token provided")
     try:
-        r = requests.get(
-            EMERGENT_AUTH_SESSION_URL,
-            headers={"X-Session-ID": body.session_id},
-            timeout=20,
-        )
-        r.raise_for_status()
-        data = r.json()
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        email = idinfo['email'].lower()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid session: {e}")
-    email = (data.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="No email in session")
+        log.error(f"Google token verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid Google token")
+
     user = await db.users.find_one({"email": email})
     if not user:
-        role = body.role if body.role in {"customer", "agent", "builder"} else "customer"
         user_id = f"user_{uuid.uuid4().hex[:12]}"
         user = {
             "user_id": user_id,
             "email": email,
-            "name": data.get("name", ""),
-            "picture": data.get("picture", ""),
+            "name": idinfo.get("name", ""),
+            "picture": idinfo.get("picture", ""),
             "mobile": "",
-            "role": role,
+            "role": "customer",
             "is_verified": True,
             "profile_completed": False,
+            "project_phase": "unpaid",
             "created_at": iso(now_utc()),
         }
         await db.users.insert_one(user)
-    session_token = data.get("session_token") or jwt.encode(
-        {"sub": user["user_id"], "exp": now_utc() + timedelta(days=7)}, JWT_SECRET, algorithm=JWT_ALG
-    )
-    await db.user_sessions.insert_one({
-        "session_token": session_token,
-        "user_id": user["user_id"],
-        "expires_at": now_utc() + timedelta(days=7),
-        "created_at": now_utc(),
-    })
-    _set_auth_cookie(response, "session_token", session_token)
-    return {"user": clean_doc(user), "token": session_token}
+    
+    token = make_access_token(user["user_id"], email, user["role"])
+    _set_auth_cookie(response, "access_token", token)
+    return {"user": clean_doc(user), "token": token}
 
 
 # ---------------------------------------------------------------------------
@@ -663,7 +506,6 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(current
     await db.files.insert_one(rec)
     return {"file_id": rec["file_id"], "url": f"/api/files/{result['path']}", "path": result["path"]}
 
-
 @api.get("/files/{path:path}")
 async def serve_file(path: str):
     rec = await db.files.find_one({"storage_path": path, "is_deleted": False})
@@ -674,748 +516,192 @@ async def serve_file(path: str):
 
 
 # ---------------------------------------------------------------------------
-# CATALOG: banks / amenities / cities / localities
+# HOMESQRE INTERIORS: DISCOVERY CALLS & AUTO-ROUTING
 # ---------------------------------------------------------------------------
-@api.get("/banks")
-async def list_banks(active_only: bool = True):
-    q = {"is_active": True} if active_only else {}
-    return await db.banks.find(q, {"_id": 0}).to_list(100)
-
-
-@api.post("/banks")
-async def create_bank(payload: dict, user: dict = Depends(require_role("admin"))):
-    payload["bank_id"] = f"bank_{uuid.uuid4().hex[:8]}"
-    payload["is_active"] = payload.get("is_active", True)
-    payload["updated_at"] = iso(now_utc())
-    await db.banks.insert_one(payload)
-    return clean_doc(payload)
-
-
-@api.put("/banks/{bank_id}")
-async def update_bank(bank_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    payload["updated_at"] = iso(now_utc())
-    await db.banks.update_one({"bank_id": bank_id}, {"$set": payload})
-    bank = await db.banks.find_one({"bank_id": bank_id}, {"_id": 0})
-    if bank:
-        await db.bank_rates_log.insert_one({
-            "bank_id": bank_id,
-            "rate_min": bank.get("rate_min"),
-            "rate_max": bank.get("rate_max"),
-            "changed_at": iso(now_utc()),
-        })
-    return bank
-
-
-@api.delete("/banks/{bank_id}")
-async def delete_bank(bank_id: str, user: dict = Depends(require_role("admin"))):
-    await db.banks.delete_one({"bank_id": bank_id})
-    return {"ok": True}
-
-
-@api.get("/amenities")
-async def list_amenities(active_only: bool = True):
-    q = {"is_active": True} if active_only else {}
-    items = await db.amenities.find(q, {"_id": 0}).to_list(500)
-    return items
-
-
-@api.post("/amenities")
-async def create_amenity(payload: dict, user: dict = Depends(current_user)):
-    is_admin = user.get("role") == "admin"
-    payload["amenity_id"] = f"am_{uuid.uuid4().hex[:8]}"
-    payload["is_active"] = is_admin  # builder-suggested goes pending
-    payload["pending_approval"] = not is_admin
-    payload["suggested_by"] = user["user_id"]
-    await db.amenities.insert_one(payload)
-    return clean_doc(payload)
-
-
-@api.put("/amenities/{amenity_id}")
-async def update_amenity(amenity_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    await db.amenities.update_one({"amenity_id": amenity_id}, {"$set": payload})
-    return await db.amenities.find_one({"amenity_id": amenity_id}, {"_id": 0})
-
-
-@api.get("/cities")
-async def list_cities():
-    return await db.cities.find({"is_active": True}, {"_id": 0}).to_list(100)
-
-
-@api.get("/localities")
-async def list_localities(city: Optional[str] = None, status: Optional[str] = None):
-    q: Dict[str, Any] = {"is_active": True}
-    effective_status = _public_status_filter(status)
-    if effective_status:
-        q["status"] = effective_status
-    if city:
-        q["city"] = city
-    return await db.localities.find(q, {"_id": 0}).to_list(500)
-
-
-@api.post("/cities")
-async def create_city(payload: dict, user: dict = Depends(require_role("admin"))):
-    payload["city_id"] = f"city_{uuid.uuid4().hex[:8]}"
-    payload["slug"] = payload.get("slug") or slugify(payload.get("name", ""))
-    payload["is_active"] = True
-    await db.cities.insert_one(payload)
-    return clean_doc(payload)
-
-
-@api.post("/localities")
-async def create_locality(payload: dict, user: dict = Depends(current_user)):
-    is_admin = user.get("role") == "admin"
-    if user.get("role") not in {"admin", "builder", "agent"}:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    payload["locality_id"] = f"loc_{uuid.uuid4().hex[:8]}"
-    payload["slug"] = payload.get("slug") or slugify(payload.get("name", ""))
-    payload["city_slug"] = payload.get("city_slug") or slugify(payload.get("city", ""))
-    payload["is_active"] = True
-    payload["status"] = "approved" if is_admin else "pending"
-    payload["suggested_by"] = user["user_id"]
-    payload["created_at"] = iso(now_utc())
-    await db.localities.insert_one(payload)
-    return clean_doc(payload)
-
-
-# ---------------------------------------------------------------------------
-# LISTINGS
-# ---------------------------------------------------------------------------
-@api.get("/listings")
-async def list_listings(
-    city: Optional[str] = None,
-    locality: Optional[str] = None,
-    kind: Optional[str] = None,
-    bedrooms: Optional[int] = None,
-    price_min: Optional[float] = None,
-    price_max: Optional[float] = None,
-    status: Optional[str] = None,
-    featured: Optional[bool] = None,
-    sort: Optional[str] = "newest",
-    limit: int = 60,
-    agent_id: Optional[str] = None,
-    q: Optional[str] = None,
-):
-    query: Dict[str, Any] = {}
-    effective_status = _public_status_filter(status)
-    if effective_status:
-        query["status"] = effective_status
-    if city:
-        query["city"] = city
-    if locality:
-        query["locality"] = locality
-    if kind:
-        query["kind"] = kind
-    if bedrooms:
-        query["bedrooms"] = bedrooms
-    if price_min is not None:
-        query.setdefault("price", {})["$gte"] = price_min
-    if price_max is not None:
-        query.setdefault("price", {})["$lte"] = price_max
-    if featured is not None:
-        query["is_featured"] = featured
-    if agent_id:
-        query["agent_id"] = agent_id
-    if q:
-        query["$or"] = [
-            {"title": {"$regex": q, "$options": "i"}},
-            {"locality": {"$regex": q, "$options": "i"}},
-            {"city": {"$regex": q, "$options": "i"}},
-        ]
-    sort_field = [("created_at", -1)]
-    if sort == "price_asc":
-        sort_field = [("price", 1)]
-    elif sort == "price_desc":
-        sort_field = [("price", -1)]
-    elif sort == "popular":
-        sort_field = [("views", -1)]
-    items = await db.listings.find(query, {"_id": 0}).sort(sort_field).limit(limit).to_list(limit)
-    return items
-
-
-@api.get("/listings/{listing_id}")
-async def get_listing(listing_id: str, user: Optional[dict] = Depends(current_user_optional)):
-    item = await db.listings.find_one({"$or": [{"listing_id": listing_id}, {"slug": listing_id}]}, {"_id": 0})
-    if not item:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    # Public can only see approved. Owner or admin can see any status.
-    if item.get("status") != "approved":
-        is_admin = user and user.get("role") == "admin"
-        is_owner = user and item.get("agent_id") == user.get("user_id")
-        if not (is_admin or is_owner):
-            raise HTTPException(status_code=404, detail="Listing not found")
-    await db.listings.update_one({"listing_id": item["listing_id"]}, {"$inc": {"views": 1}})
-    return item
-
-
-@api.post("/listings")
-async def create_listing(payload: dict, user: dict = Depends(require_role("agent", "builder", "admin"))):
-    listing_id = f"lst_{uuid.uuid4().hex[:10]}"
-    payload["listing_id"] = listing_id
-    payload["slug"] = payload.get("slug") or slugify(f"{payload.get('title','listing')}-{listing_id[-4:]}")
-    is_admin = user.get("role") == "admin"
-    # Admin can assign ownership; everyone else owns what they create
-    if is_admin:
-        requested_owner = payload.get("agent_id") or user["user_id"]
-        payload["agent_id"] = requested_owner
-    else:
-        payload["agent_id"] = user["user_id"]
-    # Admin may explicitly set any status (default approved); non-admins start pending
-    requested = payload.get("status")
-    if is_admin:
-        payload["status"] = requested if requested in MODERATION_STATUSES else "approved"
-    else:
-        payload["status"] = "pending"
-    payload["views"] = 0
-    payload["is_featured"] = payload.get("is_featured", False) if is_admin else False
-    payload["created_at"] = iso(now_utc())
-    await db.listings.insert_one(payload)
-    return clean_doc(payload)
-
-
-@api.put("/listings/{listing_id}")
-async def update_listing(listing_id: str, payload: dict, user: dict = Depends(current_user)):
-    existing = await db.listings.find_one({"listing_id": listing_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Not found")
-    is_admin = user["role"] == "admin"
-    if not is_admin and existing.get("agent_id") != user["user_id"]:
-        raise HTTPException(status_code=403, detail="Not your listing")
-    payload.pop("listing_id", None)
-    if not is_admin:
-        # Non-admins cannot reassign ownership or feature, and re-edits go pending
-        payload.pop("agent_id", None)
-        payload.pop("is_featured", None)
-        if payload.get("status") not in {"draft", "pending"}:
-            payload["status"] = "pending"
-    await db.listings.update_one({"listing_id": listing_id}, {"$set": payload})
-    return await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
-
-
-@api.delete("/listings/{listing_id}")
-async def delete_listing(listing_id: str, user: dict = Depends(current_user)):
-    existing = await db.listings.find_one({"listing_id": listing_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Not found")
-    if user["role"] != "admin" and existing.get("agent_id") != user["user_id"]:
-        raise HTTPException(status_code=403, detail="Not your listing")
-    await db.listings.delete_one({"listing_id": listing_id})
-    return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# PROJECTS
-# ---------------------------------------------------------------------------
-@api.get("/projects")
-async def list_projects(
-    city: Optional[str] = None,
-    locality: Optional[str] = None,
-    status: Optional[str] = None,
-    featured: Optional[bool] = None,
-    builder_id: Optional[str] = None,
-    limit: int = 60,
-    q: Optional[str] = None,
-):
-    query: Dict[str, Any] = {}
-    effective_status = _public_status_filter(status)
-    if effective_status:
-        query["status"] = effective_status
-    if city:
-        query["city"] = city
-    if locality:
-        query["locality"] = locality
-    if featured is not None:
-        query["is_featured"] = featured
-    if builder_id:
-        query["builder_id"] = builder_id
-    if q:
-        query["$or"] = [
-            {"name": {"$regex": q, "$options": "i"}},
-            {"locality": {"$regex": q, "$options": "i"}},
-            {"builder_name": {"$regex": q, "$options": "i"}},
-        ]
-    return await db.projects.find(query, {"_id": 0}).sort([("created_at", -1)]).limit(limit).to_list(limit)
-
-
-@api.get("/projects/by-slug/{city}/{locality}/{slug}")
-async def get_project_by_slug(city: str, locality: str, slug: str, user: Optional[dict] = Depends(current_user_optional)):
-    item = await db.projects.find_one({
-        "city_slug": city,
-        "locality_slug": locality,
-        "slug": slug,
-    }, {"_id": 0})
-    if not item:
-        raise HTTPException(status_code=404, detail="Project not found")
-    if item.get("status") != "approved":
-        is_admin = user and user.get("role") == "admin"
-        is_owner = user and item.get("builder_id") == user.get("user_id")
-        if not (is_admin or is_owner):
-            raise HTTPException(status_code=404, detail="Project not found")
-    await db.projects.update_one({"project_id": item["project_id"]}, {"$inc": {"views": 1}})
-    return item
-
-
-@api.get("/projects/{project_id}")
-async def get_project(project_id: str, user: Optional[dict] = Depends(current_user_optional)):
-    item = await db.projects.find_one({"$or": [{"project_id": project_id}, {"slug": project_id}]}, {"_id": 0})
-    if not item:
-        raise HTTPException(status_code=404, detail="Project not found")
-    if item.get("status") != "approved":
-        is_admin = user and user.get("role") == "admin"
-        is_owner = user and item.get("builder_id") == user.get("user_id")
-        if not (is_admin or is_owner):
-            raise HTTPException(status_code=404, detail="Project not found")
-    return item
-
-
-@api.post("/projects")
-async def create_project(payload: dict, user: dict = Depends(require_role("builder", "admin"))):
-    project_id = f"prj_{uuid.uuid4().hex[:10]}"
-    payload["project_id"] = project_id
-    payload["slug"] = payload.get("slug") or slugify(payload.get("name", project_id))
-    payload["city_slug"] = slugify(payload.get("city", ""))
-    payload["locality_slug"] = slugify(payload.get("locality", ""))
-    is_admin = user.get("role") == "admin"
-    if is_admin:
-        payload["builder_id"] = payload.get("builder_id") or user["user_id"]
-        requested = payload.get("status")
-        payload["status"] = requested if requested in MODERATION_STATUSES else "approved"
-    else:
-        payload["builder_id"] = user["user_id"]
-        payload["status"] = "pending"
-    payload["views"] = 0
-    payload["is_featured"] = payload.get("is_featured", False) if is_admin else False
-    payload["amenity_ids"] = payload.get("amenity_ids", [])
-    payload["bank_ids"] = payload.get("bank_ids", [])
-    payload["units"] = payload.get("units", [])
-    payload["created_at"] = iso(now_utc())
-    payload["last_updated"] = iso(now_utc())
-    await db.projects.insert_one(payload)
-    return clean_doc(payload)
-
-
-@api.put("/projects/{project_id}")
-async def update_project(project_id: str, payload: dict, user: dict = Depends(current_user)):
-    existing = await db.projects.find_one({"project_id": project_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Not found")
-    is_admin = user["role"] == "admin"
-    if not is_admin and existing.get("builder_id") != user["user_id"]:
-        raise HTTPException(status_code=403, detail="Not your project")
-    payload.pop("project_id", None)
-    if not is_admin:
-        payload.pop("builder_id", None)
-        payload.pop("is_featured", None)
-    if payload.get("name"):
-        payload["slug"] = payload.get("slug") or slugify(payload["name"])
-    if payload.get("city"):
-        payload["city_slug"] = slugify(payload["city"])
-    if payload.get("locality"):
-        payload["locality_slug"] = slugify(payload["locality"])
-    payload["last_updated"] = iso(now_utc())
-    await db.projects.update_one({"project_id": project_id}, {"$set": payload})
-    return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
-
-
-@api.delete("/projects/{project_id}")
-async def delete_project(project_id: str, user: dict = Depends(current_user)):
-    existing = await db.projects.find_one({"project_id": project_id})
-    if not existing:
-        raise HTTPException(status_code=404, detail="Not found")
-    if user["role"] != "admin" and existing.get("builder_id") != user["user_id"]:
-        raise HTTPException(status_code=403, detail="Not your project")
-    await db.projects.delete_one({"project_id": project_id})
-    return {"ok": True}
-
-
-# ---------------------------------------------------------------------------
-# INQUIRIES & LEADS
-# ---------------------------------------------------------------------------
-@api.post("/inquiries")
-async def create_inquiry(payload: dict):
-    """Public inquiry creation. Must be linked to listing_id or project_id."""
-    listing_id = payload.get("listing_id")
-    project_id = payload.get("project_id")
-    if not listing_id and not project_id:
-        raise HTTPException(status_code=400, detail="Must link to listing or project")
-    owner_id = None
-    target_title = ""
-    if listing_id:
-        lst = await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
-        if not lst:
-            raise HTTPException(status_code=404, detail="Listing not found")
-        owner_id = lst.get("agent_id")
-        target_title = lst.get("title", "")
-    elif project_id:
-        prj = await db.projects.find_one({"project_id": project_id}, {"_id": 0})
-        if not prj:
-            raise HTTPException(status_code=404, detail="Project not found")
-        owner_id = prj.get("builder_id")
-        target_title = prj.get("name", "")
-
-    # duplicate prevention (same mobile + listing/project within 24h)
-    cutoff = iso(now_utc() - timedelta(hours=24))
-    dup_q = {"mobile": payload.get("mobile"), "created_at": {"$gt": cutoff}}
-    if listing_id:
-        dup_q["listing_id"] = listing_id
-    if project_id:
-        dup_q["project_id"] = project_id
-    if await db.inquiries.find_one(dup_q):
-        raise HTTPException(status_code=409, detail="Duplicate inquiry. Please wait 24 hours.")
-
+@api.post("/discovery-calls")
+async def create_discovery_call(payload: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
+    call_id = f"call_{uuid.uuid4().hex[:10]}"
     rec = {
-        "inquiry_id": f"inq_{uuid.uuid4().hex[:10]}",
-        "name": payload.get("name", ""),
-        "email": payload.get("email", ""),
-        "mobile": payload.get("mobile", ""),
-        "message": payload.get("message", ""),
-        "listing_id": listing_id,
-        "project_id": project_id,
-        "target_title": target_title,
-        "owner_id": owner_id,
-        "status": "new",
-        "notes": [],
-        "next_followup": None,
-        "messages": [],
+        "call_id": call_id,
+        "user_id": user["user_id"] if user else None,
+        "name": payload.name,
+        "phone": payload.phone,
+        "assigned_to": "Girish", 
+        "status": "pending",
+        "assigned_at": iso(now_utc()),
         "created_at": iso(now_utc()),
     }
-    await db.inquiries.insert_one(rec)
+    await db.discovery_calls.insert_one(rec)
     return clean_doc(rec)
 
+@api.get("/admin/discovery-calls")
+async def admin_list_discovery_calls(user: dict = Depends(require_role("admin", "sales"))):
+    return await db.discovery_calls.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
 
-@api.get("/inquiries")
-async def list_inquiries(user: dict = Depends(current_user), all_inquiries: bool = False):
-    if user["role"] == "admin" and all_inquiries:
-        q = {}
-    else:
-        q = {"owner_id": user["user_id"]}
-    return await db.inquiries.find(q, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
-
-
-@api.put("/inquiries/{inquiry_id}")
-async def update_inquiry(inquiry_id: str, payload: dict, user: dict = Depends(current_user)):
-    inq = await db.inquiries.find_one({"inquiry_id": inquiry_id})
-    if not inq:
-        raise HTTPException(status_code=404, detail="Not found")
-    if user["role"] != "admin" and inq.get("owner_id") != user["user_id"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    allowed = {"status", "next_followup"}
-    upd = {k: payload[k] for k in payload if k in allowed}
-    if "note" in payload and payload["note"]:
-        await db.inquiries.update_one(
-            {"inquiry_id": inquiry_id},
-            {"$push": {"notes": {"text": payload["note"], "at": iso(now_utc()), "by": user["user_id"]}}}
-        )
-    if "message" in payload and payload["message"]:
-        await db.inquiries.update_one(
-            {"inquiry_id": inquiry_id},
-            {"$push": {"messages": {"text": payload["message"], "at": iso(now_utc()), "by": user["user_id"]}}}
-        )
-    if upd:
-        await db.inquiries.update_one({"inquiry_id": inquiry_id}, {"$set": upd})
-    return await db.inquiries.find_one({"inquiry_id": inquiry_id}, {"_id": 0})
-
-
-@api.post("/interior-leads")
-async def create_interior_lead(payload: dict):
-    rec = {
-        "lead_id": f"int_{uuid.uuid4().hex[:10]}",
-        "name": payload.get("name", ""),
-        "phone": payload.get("phone", ""),
-        "email": payload.get("email", ""),
-        "whatsapp": payload.get("whatsapp", False),
-        "property_type": payload.get("property_type", ""),
-        "flat_size": payload.get("flat_size", ""),
-        "budget": payload.get("budget", ""),
-        "style": payload.get("style", ""),
-        "move_in": payload.get("move_in", ""),
-        "locality": payload.get("locality", ""),
-        "status": "new",
-        "assigned_to": None,
-        "notes": [],
-        "call_logs": [],
-        "next_followup": None,
-        "created_at": iso(now_utc()),
-    }
-    await db.interior_leads.insert_one(rec)
-    return clean_doc(rec)
-
-
-@api.get("/interior-leads")
-async def list_interior_leads(user: dict = Depends(require_role("admin"))):
-    return await db.interior_leads.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(2000)
-
-
-@api.put("/interior-leads/{lead_id}")
-async def update_interior_lead(lead_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    allowed = {"status", "assigned_to", "next_followup"}
-    upd = {k: payload[k] for k in payload if k in allowed}
-    if "note" in payload and payload["note"]:
-        await db.interior_leads.update_one(
-            {"lead_id": lead_id},
-            {"$push": {"notes": {"text": payload["note"], "at": iso(now_utc())}}}
-        )
-    if "call_log" in payload and payload["call_log"]:
-        await db.interior_leads.update_one(
-            {"lead_id": lead_id},
-            {"$push": {"call_logs": {"text": payload["call_log"], "at": iso(now_utc())}}}
-        )
-    if upd:
-        await db.interior_leads.update_one({"lead_id": lead_id}, {"$set": upd})
-    return await db.interior_leads.find_one({"lead_id": lead_id}, {"_id": 0})
-
-
-@api.post("/loan-leads")
-async def create_loan_lead(payload: dict):
-    rec = {
-        "lead_id": f"loan_{uuid.uuid4().hex[:10]}",
-        "name": payload.get("name", ""),
-        "email": payload.get("email", ""),
-        "phone": payload.get("phone", ""),
-        "loan_amount": payload.get("loan_amount", 0),
-        "interest_rate": payload.get("interest_rate", 0),
-        "tenure": payload.get("tenure", 0),
-        "bank": payload.get("bank", ""),
-        "emi": payload.get("emi", 0),
-        "created_at": iso(now_utc()),
-    }
-    await db.loan_leads.insert_one(rec)
-    return clean_doc(rec)
-
-
-@api.get("/loan-leads")
-async def list_loan_leads(user: dict = Depends(require_role("admin"))):
-    return await db.loan_leads.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(2000)
-
-
-# ---------------------------------------------------------------------------
-# SEARCH
-# ---------------------------------------------------------------------------
-@api.get("/search")
-async def universal_search(q: str = Query(..., min_length=1)):
-    regex = {"$regex": q, "$options": "i"}
-    listings = await db.listings.find({
-        "$or": [
-            {"title": regex}, {"locality": regex}, {"city": regex},
-            {"property_type": regex},
-        ],
-        "status": "approved",
-    }, {"_id": 0}).limit(8).to_list(8)
-    projects = await db.projects.find({
-        "$or": [
-            {"name": regex}, {"locality": regex}, {"city": regex}, {"builder_name": regex},
-        ],
-        "status": "approved",
-    }, {"_id": 0}).limit(8).to_list(8)
-    localities = await db.localities.find({"name": regex, "status": "approved"}, {"_id": 0}).limit(6).to_list(6)
-    return {"listings": listings, "projects": projects, "localities": localities}
-
-
-# ---------------------------------------------------------------------------
-# CONTENT (Homepage / Interiors / About / Contact)
-# Defaults live in defaults.py for portability.
-# ---------------------------------------------------------------------------
-def deep_merge(default: Any, override: Any) -> Any:
-    """Merge `override` over `default`. Dicts are deep-merged, anything else is replaced."""
-    if not isinstance(override, dict):
-        return override if override is not None else default
-    if not isinstance(default, dict):
-        return override
-    result = dict(default)
-    for k, v in override.items():
-        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-            result[k] = deep_merge(result[k], v)
-        else:
-            result[k] = v
-    return result
-
-
-@api.get("/content/{key}")
-async def get_content(key: str):
-    doc = await db.content.find_one({"key": key}, {"_id": 0})
-    stored = doc.get("value", {}) if doc else {}
-    if key == "homepage":
-        return deep_merge(DEFAULT_HOMEPAGE_CONTENT, stored)
-    if key == "interiors":
-        return deep_merge(DEFAULT_INTERIORS_CONTENT, stored)
-    return stored
-
-
-@api.put("/content/{key}")
-async def set_content(key: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    await db.content.update_one(
-        {"key": key},
-        {"$set": {"key": key, "value": payload, "updated_at": iso(now_utc())}},
-        upsert=True,
+@api.put("/admin/discovery-calls/{call_id}/status")
+async def admin_update_call_status(call_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+    new_status = payload.get("status")
+    if new_status not in ["pending", "connected", "missed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    await db.discovery_calls.update_one(
+        {"call_id": call_id}, 
+        {"$set": {"status": new_status, "updated_by": user["user_id"], "updated_at": iso(now_utc())}}
     )
-    return payload
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
-# ADMIN
+# HOMESQRE INTERIORS: FLOOR PLAN VERIFICATION QUEUE
 # ---------------------------------------------------------------------------
-@api.get("/admin/users")
-async def admin_list_users(user: dict = Depends(require_role("admin"))):
-    return await db.users.find({}, {"_id": 0, "password_hash": 0}).sort([("created_at", -1)]).to_list(1000)
-
-
-@api.put("/admin/users/{user_id}")
-async def admin_update_user(user_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    allowed = {"role", "is_active", "is_suspended", "is_verified", "name"}
-    upd = {k: payload[k] for k in payload if k in allowed}
-    await db.users.update_one({"user_id": user_id}, {"$set": upd})
-    return await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
-
-
-@api.put("/admin/listings/{listing_id}/status")
-async def admin_listing_status(listing_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    upd = {}
-    if "status" in payload:
-        upd["status"] = payload["status"]
-    if "is_featured" in payload:
-        upd["is_featured"] = bool(payload["is_featured"])
-    if upd:
-        await db.listings.update_one({"listing_id": listing_id}, {"$set": upd})
-    return await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
-
-
-@api.put("/admin/projects/{project_id}/status")
-async def admin_project_status(project_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    upd = {}
-    if "status" in payload:
-        upd["status"] = payload["status"]
-    if "is_featured" in payload:
-        upd["is_featured"] = bool(payload["is_featured"])
-    if upd:
-        await db.projects.update_one({"project_id": project_id}, {"$set": upd})
-    return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
-
-
-# ---------------------------------------------------------------------------
-# Moderation Queue — approve/reject pending user-submitted content
-# ---------------------------------------------------------------------------
-@api.get("/admin/moderation/queue")
-async def admin_moderation_queue(user: dict = Depends(require_role("admin"))):
-    listings = await db.listings.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
-    projects = await db.projects.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
-    localities = await db.localities.find({"status": "pending"}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
-    return {
-        "listings": listings,
-        "projects": projects,
-        "localities": localities,
-        "counts": {
-            "listings": len(listings),
-            "projects": len(projects),
-            "localities": len(localities),
-            "total": len(listings) + len(projects) + len(localities),
-        },
+@api.post("/verifications")
+async def create_verification(payload: VerificationCreate, user: dict = Depends(current_user)):
+    ver_id = f"ver_{uuid.uuid4().hex[:10]}"
+    rec = {
+        "verification_id": ver_id,
+        "user_id": user["user_id"],
+        "property_type": payload.property_type,
+        "bhk_or_units": payload.bhk_or_units,
+        "invoice_paid": payload.invoice_paid,
+        "pdf_url": payload.pdf_url,
+        "room_requirements": payload.room_requirements,
+        "status": "pending",
+        "created_at": iso(now_utc()),
     }
+    await db.verifications.insert_one(rec)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"project_phase": "verification"}})
+    return clean_doc(rec)
 
+@api.get("/admin/verifications")
+async def admin_list_verifications(user: dict = Depends(require_role("admin", "designer"))):
+    return await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
 
-def _moderation_action(payload: dict) -> dict:
-    """Validate {action: 'approve'|'reject', reason?: str} → mongo update dict."""
-    action = (payload or {}).get("action")
+@api.put("/admin/verifications/{ver_id}")
+async def admin_moderate_verification(ver_id: str, payload: dict, user: dict = Depends(require_role("admin", "designer"))):
+    action = payload.get("action")
+    deficit_amount = payload.get("deficit_amount", 0)
+    ver = await db.verifications.find_one({"verification_id": ver_id})
+    
+    if not ver:
+        raise HTTPException(status_code=404, detail="Not found")
+
     if action == "approve":
-        upd = {"status": "approved", "moderated_at": iso(now_utc())}
-        upd["rejection_reason"] = None
-        return upd
-    if action == "reject":
-        upd = {"status": "rejected", "moderated_at": iso(now_utc())}
-        upd["rejection_reason"] = (payload.get("reason") or "").strip() or "No reason provided"
-        return upd
-    raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+        await db.verifications.update_one({"verification_id": ver_id}, {"$set": {"status": "approved"}})
+        await db.users.update_one({"user_id": ver["user_id"]}, {"$set": {"project_phase": "scheduling"}})
+    elif action == "reject":
+        await db.verifications.update_one({"verification_id": ver_id}, {"$set": {"status": "rejected", "deficit_amount": deficit_amount}})
+        await db.users.update_one({"user_id": ver["user_id"]}, {"$set": {"project_phase": "unpaid", "deficit_due": deficit_amount}})
+    
+    return {"ok": True}
 
 
-@api.put("/admin/listings/{listing_id}/moderation")
-async def admin_moderate_listing(listing_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    upd = _moderation_action(payload)
-    upd["moderated_by"] = user["user_id"]
-    result = await db.listings.update_one({"listing_id": listing_id}, {"$set": upd})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    return await db.listings.find_one({"listing_id": listing_id}, {"_id": 0})
+# ---------------------------------------------------------------------------
+# BACKGROUND WORKER: 15-MINUTE AUTO-ASSIGN ROUTER
+# ---------------------------------------------------------------------------
+async def discovery_call_auto_router():
+    """Runs continuously in the background. Rotates leads every 15 mins."""
+    SALES_TEAM = ["Girish", "Rajendra", "Karunakar"]
+    
+    while True:
+        try:
+            timeout_threshold = now_utc() - timedelta(minutes=15)
+            stale_calls = await db.discovery_calls.find({
+                "status": "pending",
+                "assigned_at": {"$lt": iso(timeout_threshold)}
+            }).to_list(None)
 
+            for call in stale_calls:
+                current_assignee = call.get("assigned_to", "Girish")
+                try:
+                    current_index = SALES_TEAM.index(current_assignee)
+                    next_index = (current_index + 1) % len(SALES_TEAM)
+                except ValueError:
+                    next_index = 0
+                
+                next_assignee = SALES_TEAM[next_index]
+                await db.discovery_calls.update_one(
+                    {"_id": call["_id"]},
+                    {"$set": {
+                        "assigned_to": next_assignee,
+                        "assigned_at": iso(now_utc())
+                    }}
+                )
+                log.info(f"[AUTO-ROUTER] Reassigned lead {call['name']} from {current_assignee} to {next_assignee}")
+        except Exception as e:
+            log.error(f"[AUTO-ROUTER] Error: {e}")
+        
+        await asyncio.sleep(60)
 
-@api.put("/admin/projects/{project_id}/moderation")
-async def admin_moderate_project(project_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    upd = _moderation_action(payload)
-    upd["moderated_by"] = user["user_id"]
-    result = await db.projects.update_one({"project_id": project_id}, {"$set": upd})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return await db.projects.find_one({"project_id": project_id}, {"_id": 0})
+# ---------------------------------------------------------------------------
+# TEAM MANAGEMENT
+# ---------------------------------------------------------------------------
+@api.get("/admin/employees")
+async def list_employees(user: dict = Depends(require_role("admin"))):
+    """Fetches the list of all staff members for the admin table."""
+    return await db.users.find(
+        {"role": {"$in": ["sales", "designer", "admin"]}}, 
+        {"_id": 0, "password_hash": 0}
+    ).to_list(100)
 
+@api.post("/admin/employees")
+async def create_team_member(payload: dict, user: dict = Depends(require_role("admin"))):
+    """Creates a brand new staff account from the admin dashboard."""
+    email = payload.get("email", "").lower()
+    phone = payload.get("phone", "")
+    new_role = payload.get("role")
+    temp_password = payload.get("password")
 
-@api.put("/admin/localities/{locality_id}/moderation")
-async def admin_moderate_locality(locality_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    upd = _moderation_action(payload)
-    upd["moderated_by"] = user["user_id"]
-    result = await db.localities.update_one({"locality_id": locality_id}, {"$set": upd})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Locality not found")
-    return await db.localities.find_one({"locality_id": locality_id}, {"_id": 0})
+    if not email or not new_role or not temp_password:
+        raise HTTPException(status_code=400, detail="Email, role, and temporary password are required")
 
+    # 1. Check if they already exist
+    existing_user = await db.users.find_one({"email": email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
-@api.get("/admin/analytics")
-async def admin_analytics(user: dict = Depends(require_role("admin"))):
-    return {
-        "total_users": await db.users.count_documents({}),
-        "total_listings": await db.listings.count_documents({}),
-        "live_listings": await db.listings.count_documents({"status": "approved"}),
-        "pending_listings": await db.listings.count_documents({"status": "pending"}),
-        "pending_projects": await db.projects.count_documents({"status": "pending"}),
-        "pending_localities": await db.localities.count_documents({"status": "pending"}),
-        "total_projects": await db.projects.count_documents({}),
-        "total_inquiries": await db.inquiries.count_documents({}),
-        "new_inquiries": await db.inquiries.count_documents({"status": "new"}),
-        "interior_leads": await db.interior_leads.count_documents({}),
-        "loan_leads": await db.loan_leads.count_documents({}),
-        "by_role": {
-            "agent": await db.users.count_documents({"role": "agent"}),
-            "builder": await db.users.count_documents({"role": "builder"}),
-            "customer": await db.users.count_documents({"role": "customer"}),
-        },
+    # 2. Create the new staff account directly
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    new_user = {
+        "user_id": user_id,
+        "email": email,
+        "name": "Team Member", # They can update their name later in their profile
+        "mobile": phone,
+        "role": new_role,
+        "is_verified": True, # Pre-verified since the Admin created it
+        "profile_completed": True,
+        "password_hash": hash_password(temp_password),
+        "created_at": iso(now_utc()),
+        "project_phase": "unpaid"
     }
+    
+    await db.users.insert_one(new_user)
+    return {"ok": True, "message": f"Successfully created {new_role} account for {email}!"}
 
+@api.delete("/admin/employees/{email}")
+async def delete_team_member(email: str, user: dict = Depends(require_role("admin"))):
+    """Deletes a staff account."""
+    # Safety check: prevent the main admin from accidentally deleting themselves
+    if email == user.get("email"):
+        raise HTTPException(status_code=400, detail="You cannot delete your own admin account.")
 
-@api.put("/me/profile")
-async def update_my_profile(payload: dict, user: dict = Depends(current_user)):
-    allowed = {"name", "mobile", "role", "picture"}
-    upd = {k: payload[k] for k in payload if k in allowed and payload[k] not in (None, "")}
-    if upd.get("role") and upd["role"] not in {"customer", "agent", "builder"}:
-        upd.pop("role")
-    upd["profile_completed"] = True
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
-    return await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 0})
+    result = await db.users.delete_one({"email": email})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"ok": True, "message": f"Successfully deleted {email}"}
 
+@api.put("/admin/employees/{email}")
+async def update_team_member(email: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    """Updates a staff account's role."""
+    new_role = payload.get("role")
+    if not new_role:
+        raise HTTPException(status_code=400, detail="Role is required")
 
-# ---------------------------------------------------------------------------
-# CUSTOMER: favourites, recent searches
-# ---------------------------------------------------------------------------
-@api.post("/me/favourites")
-async def add_favourite(payload: dict, user: dict = Depends(current_user)):
-    await db.favourites.update_one(
-        {"user_id": user["user_id"], "kind": payload["kind"], "ref_id": payload["ref_id"]},
-        {"$set": {"user_id": user["user_id"], "kind": payload["kind"], "ref_id": payload["ref_id"], "at": iso(now_utc())}},
-        upsert=True,
-    )
-    return {"ok": True}
-
-
-@api.delete("/me/favourites/{kind}/{ref_id}")
-async def remove_favourite(kind: str, ref_id: str, user: dict = Depends(current_user)):
-    await db.favourites.delete_one({"user_id": user["user_id"], "kind": kind, "ref_id": ref_id})
-    return {"ok": True}
-
-
-@api.get("/me/favourites")
-async def list_favourites(user: dict = Depends(current_user)):
-    favs = await db.favourites.find({"user_id": user["user_id"]}, {"_id": 0}).to_list(500)
-    listing_ids = [f["ref_id"] for f in favs if f["kind"] == "listing"]
-    project_ids = [f["ref_id"] for f in favs if f["kind"] == "project"]
-    listings = await db.listings.find({"listing_id": {"$in": listing_ids}}, {"_id": 0}).to_list(500)
-    projects = await db.projects.find({"project_id": {"$in": project_ids}}, {"_id": 0}).to_list(500)
-    return {"listings": listings, "projects": projects}
-
+    result = await db.users.update_one({"email": email}, {"$set": {"role": new_role}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {"ok": True, "message": f"Successfully updated {email} to {new_role}"}
 
 # ---------------------------------------------------------------------------
 # Health + startup
@@ -1424,9 +710,7 @@ async def list_favourites(user: dict = Depends(current_user)):
 async def root():
     return {"ok": True, "service": "homesqre"}
 
-
 app.include_router(api)
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -1440,7 +724,8 @@ async def startup_event():
         log.info("Seeds ensured")
     except Exception as e:
         log.error(f"seed failed: {e}")
-
+        
+    asyncio.create_task(discovery_call_auto_router())
 
 @app.on_event("shutdown")
 async def shutdown_event():

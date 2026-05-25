@@ -17,11 +17,11 @@ export default function DashShell({ links = [], title, children }) {
         </div>
         <nav className="space-y-1 mb-8">
           {links.map((l) => (
-            <Link
+          <Link
               key={l.to}
               to={l.to}
               className={`block px-3 py-2 text-sm border-l-2 ${
-                loc.pathname === l.to
+                (l.to.startsWith('#') ? loc.hash === l.to : loc.pathname === l.to)
                   ? "border-[#06402B] bg-[#F3F0E9] text-[#06402B] font-semibold"
                   : "border-transparent text-[#1A2421] hover:bg-[#F3F0E9]"
               }`}

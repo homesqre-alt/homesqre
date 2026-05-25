@@ -1,0 +1,40 @@
+name: Auto Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Hostinger VPS via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 15m
+          script: |
+            set -e
+
+            # ── Clone repo if first run ───────────────────────────────────
+            if [ ! -d "/root/homesqre-app/.git" ]; then
+              git clone https://github.com/homesqre-alt/homesqre.git /root/homesqre-app
+            fi
+
+            # ── Pull latest code ──────────────────────────────────────────
+            cd /root/homesqre-app
+            git fetch origin main
+            git reset --hard origin/main
+
+            # ── Rebuild & restart containers ──────────────────────────────
+            docker compose up -d --build --remove-orphans
+
+            # ── Clean up dangling images to save disk space ───────────────
+            docker image prune -f
+
+            echo "✅ Deployment complete."

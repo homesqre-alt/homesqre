@@ -7,11 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading, null = guest
 
   const refresh = useCallback(async () => {
-    // If returning from Google OAuth, AuthCallback handles it
-    if (window.location.hash?.includes("session_id=")) {
-      setUser(null);
-      return;
-    }
+    // 🛑 Emergent AI session_id logic removed completely.
     try {
       const { data } = await api.get("/auth/me");
       setUser(data);
@@ -26,6 +22,14 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
+    setUser(data.user);
+    return data.user;
+  };
+
+  // 🚀 NEW: Custom Google Login Handler
+  const googleLogin = async (googleToken) => {
+    // Takes the secure token from Google and hands it directly to your Python backend
+    const { data } = await api.post("/auth/google", { token: googleToken });
     setUser(data.user);
     return data.user;
   };
@@ -48,7 +52,7 @@ export function AuthProvider({ children }) {
   const setUserData = (u) => setUser(u);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, refresh, setUserData }}>
+    <AuthContext.Provider value={{ user, login, googleLogin, register, logout, refresh, setUserData }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,9 +8,9 @@ export default function Footer() {
         <div className="md:col-span-4">
           <div className="font-display text-4xl text-[#FAF9F6]">Homesqre</div>
           <div className="hs-divider-gold mt-3 mb-5" />
+          {/* Updated description to focus strictly on Boutique Interiors */}
           <p className="text-sm text-[#FAF9F6]/70 leading-relaxed max-w-xs">
-            India's curated real estate marketplace. Verified listings, transparent pricing, and end-to-end
-            interior design — all in one place.
+            Premium turnkey interior design and 3D architectural rendering. From initial vision to flawless installation, we bring your exact space to life.
           </p>
           <div className="flex gap-3 mt-6">
             {[Instagram, Facebook, Twitter, Linkedin].map((Icon, i) => (
@@ -29,35 +29,40 @@ export default function Footer() {
         <div className="md:col-span-2">
           <div className="label-eyebrow text-[#B68D40] mb-4">Explore</div>
           <ul className="space-y-2 text-sm text-[#FAF9F6]/80">
-            <li><Link to="/properties" className="hover:text-[#B68D40]">Buy</Link></li>
-            <li><Link to="/properties?kind=rent" className="hover:text-[#B68D40]">Rent</Link></li>
-            <li><Link to="/projects" className="hover:text-[#B68D40]">Projects</Link></li>
+            {/* 🛑 HIDDEN REAL ESTATE LINKS */}
+            {/* <li><Link to="/properties" className="hover:text-[#B68D40]">Buy</Link></li> */}
+            {/* <li><Link to="/properties?kind=rent" className="hover:text-[#B68D40]">Rent</Link></li> */}
+            {/* <li><Link to="/projects" className="hover:text-[#B68D40]">Projects</Link></li> */}
             <li><Link to="/interiors" className="hover:text-[#B68D40]">Interiors</Link></li>
           </ul>
         </div>
 
-        <div className="md:col-span-2">
+        {/* 🛑 HIDDEN TOOLS COLUMN (Saved for next year) */}
+        {/* <div className="md:col-span-2">
           <div className="label-eyebrow text-[#B68D40] mb-4">Tools</div>
           <ul className="space-y-2 text-sm text-[#FAF9F6]/80">
             <li><Link to="/emi-calculator" className="hover:text-[#B68D40]">EMI Calculator</Link></li>
             <li><Link to="/compare" className="hover:text-[#B68D40]">Compare</Link></li>
             <li><Link to="/favourites" className="hover:text-[#B68D40]">Saved</Link></li>
           </ul>
-        </div>
+        </div> 
+        */}
 
-        <div className="md:col-span-4">
+        {/* Expanded col-span to 6 to perfectly fill the layout gap */}
+        <div className="md:col-span-6">
           <div className="label-eyebrow text-[#B68D40] mb-4">Get in touch</div>
           <p className="text-sm text-[#FAF9F6]/70 leading-relaxed">
-            Homesqre Pvt Ltd<br />
-            Indiranagar, Bangalore 560038<br />
-            hello@homesqre.com · +91 80 1234 5678
+            Homesqre Technologies Pvt Ltd<br />
+            Property No. 224, 3rd Floor, #803, Vijinapura Village
+            Old Madras Road, K.R. Puram, Bengaluru-560016<br />
+            hello@homesqre.com · +91 97316 55775
           </p>
         </div>
       </div>
       <div className="border-t border-[#FAF9F6]/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-6 flex flex-col md:flex-row justify-between text-xs text-[#FAF9F6]/50 pb-24 md:pb-6">
-          <span>© {new Date().getFullYear()} Homesqre. All rights reserved.</span>
-          <span>Made in Bangalore.</span>
+          <span>© {new Date().getFullYear()} Homesqre Technologies Pvt Ltd. All rights reserved.</span>
+          <span>Made in Bengaluru.</span>
         </div>
       </div>
     </footer>

@@ -4,11 +4,12 @@ import { Menu, X, User, LogOut, Heart, GitCompare } from "lucide-react";
 import { useState } from "react";
 
 const NAV = [
-  { to: "/properties", label: "Buy" },
-  { to: "/properties?kind=rent", label: "Rent" },
-  { to: "/projects", label: "Projects" },
+  // 🛑 HIDDEN REAL ESTATE LINKS (Saved for next year)
+  // { to: "/properties", label: "Buy" },
+  // { to: "/properties?kind=rent", label: "Rent" },
+  // { to: "/projects", label: "Projects" },
   { to: "/interiors", label: "Interiors" },
-  { to: "/emi-calculator", label: "EMI" },
+  // { to: "/emi-calculator", label: "EMI" },
 ];
 
 export default function Header() {
@@ -51,7 +52,8 @@ export default function Header() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
-          <Link
+          {/* 🛑 HIDDEN REAL ESTATE ICONS (Compare & Favourites) */}
+          {/* <Link
             to="/favourites"
             data-testid="nav-favourites"
             className="p-2 hover:text-[#B68D40] transition-colors"
@@ -67,6 +69,8 @@ export default function Header() {
           >
             <GitCompare size={18} strokeWidth={1.5} />
           </Link>
+          */}
+          
           {user ? (
             <div className="flex items-center gap-3 ml-2">
               <Link
@@ -94,8 +98,9 @@ export default function Header() {
               <Link to="/login" data-testid="nav-login" className="btn-secondary" style={{ padding: "10px 18px" }}>
                 Login
               </Link>
+              {/* Changed text from "List Property" to "Sign Up" to capture interior design leads */}
               <Link to="/register" data-testid="nav-register" className="btn-primary" style={{ padding: "11px 20px" }}>
-                List Property
+                Sign Up
               </Link>
             </>
           )}

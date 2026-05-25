@@ -1,406 +1,445 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Navigate } from "react-router-dom";
-import api, { formatApiError } from "@/lib/api";
+import { Navigate, useLocation } from "react-router-dom";
 import DashShell from "@/components/layout/DashShell";
+import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
-import HomepageEditor from "@/components/admin/HomepageEditor";
-import InteriorsEditor from "@/components/admin/InteriorsEditor";
-import ModerationQueue from "@/components/admin/ModerationQueue";
-import { AdminListingDialog, AdminProjectDialog } from "@/components/admin/AdminListingProjectDialogs";
-import { Plus, Edit } from "lucide-react";
 
+// Custom Tabs based on Homesqre Architecture
 const LINKS = [
-  { to: "/dashboard/admin", label: "Overview" },
-  { to: "/dashboard/admin/moderation", label: "Moderation Queue" },
-  { to: "/dashboard/admin/users", label: "Users" },
-  { to: "/dashboard/admin/listings", label: "Listings" },
-  { to: "/dashboard/admin/projects", label: "Projects" },
-  { to: "/dashboard/admin/inquiries", label: "Property Inquiries" },
-  { to: "/dashboard/admin/interior-leads", label: "Interior Leads" },
-  { to: "/dashboard/admin/loan-leads", label: "Loan Leads" },
-  { to: "/dashboard/admin/banks", label: "Banks" },
-  { to: "/dashboard/admin/amenities", label: "Amenities" },
-  { to: "/dashboard/admin/cms/homepage", label: "CMS · Homepage" },
-  { to: "/dashboard/admin/cms/interiors", label: "CMS · Interiors" },
+  { to: "#overview", label: "Overview & Planner" },
+  { to: "#discovery", label: "Discovery Calls (CRM)" },
+  { to: "#measurements", label: "Verification & Site Visits" },
+  { to: "#users", label: "Team Management" },
+  { to: "#intent", label: "Intent Tracking (Drop-offs)" },
+  { to: "#pipeline", label: "Master Pipeline" },
 ];
 
-export default function AdminDashboard({ tab = "overview" }) {
+export default function AdminDashboard() {
   const { user } = useAuth();
-  if (user === undefined) return null;
-  if (user === null) return <Navigate to="/login" />;
-  if (user.role !== "admin") return <Navigate to="/" />;
+  const location = useLocation();
 
-  const titleMap = {
-    overview: "Platform Overview",
-    moderation: "Moderation Queue",
-    users: "Users",
-    listings: "All Listings",
-    projects: "All Projects",
-    inquiries: "Property Inquiries",
-    "interior-leads": "Interior Leads",
-    "loan-leads": "Loan Leads",
-    banks: "Banks Management",
-    amenities: "Amenities Management",
-    "cms-homepage": "Homepage Content",
-    "cms-interiors": "Interiors Page Content",
+  // Derive active tab directly from React Router's location.hash
+  // useLocation updates whenever a <Link> changes the hash —
+  // unlike window.hashchange which React Router does NOT fire.
+  const activeTab = (location.hash.replace('#', '') || 'overview');
+
+  // Request Chrome Notification Permissions on Load
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const triggerNotification = (title, body) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/favicon.ico" });
+    }
   };
 
+  if (user === undefined) return null;
+  if (user === null) return <Navigate to="/login" />;
+  if (user.role !== "admin" && user.role !== "sales" && user.role !== "designer") {
+    return <Navigate to="/" />;
+  }
+
   return (
-    <DashShell links={LINKS} title={titleMap[tab]}>
-      {tab === "overview" && <Overview />}
-      {tab === "moderation" && <ModerationQueue />}
-      {tab === "users" && <Users />}
-      {tab === "listings" && <ListingsAdmin />}
-      {tab === "projects" && <ProjectsAdmin />}
-      {tab === "inquiries" && <AllInquiries />}
-      {tab === "interior-leads" && <InteriorLeads />}
-      {tab === "loan-leads" && <LoanLeads />}
-      {tab === "banks" && <BanksMgmt />}
-      {tab === "amenities" && <AmenitiesMgmt />}
-      {tab === "cms-homepage" && <HomepageEditor />}
-      {tab === "cms-interiors" && <InteriorsEditor />}
+    <DashShell links={LINKS} title="Homesqre Command Center">
+      <div className="flex gap-4 border-b border-[#E8E4D9] mb-8 pb-2 overflow-x-auto">
+        {LINKS.map(link => (
+          <button 
+            key={link.to} 
+            onClick={() => {
+              window.location.hash = link.to;
+            }}
+            className={`text-sm font-medium pb-2 whitespace-nowrap ${activeTab === link.to.replace('#', '') ? 'text-[#06402B] border-b-2 border-[#06402B]' : 'text-gray-400'}`}
+          >
+            {link.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "overview" && <TabOverview />}
+      {activeTab === "discovery" && <TabDiscoveryCalls triggerNotification={triggerNotification} currentUser={user} />}
+      {activeTab === "measurements" && <TabSiteVisits />}
+      {activeTab === "users" && <TabUsers />}
+      {activeTab === "intent" && <TabIntentTracking />}
+      {activeTab === "pipeline" && <TabMasterPipeline />}
+      
     </DashShell>
   );
 }
 
-function Overview() {
-  const [a, setA] = useState(null);
-  useEffect(() => { api.get("/admin/analytics").then(({ data }) => setA(data)); }, []);
-  if (!a) return <div>Loading…</div>;
-
-  const blocks = [
-    ["Total Users", a.total_users],
-    ["Listings (Approved)", `${a.live_listings} / ${a.total_listings}`],
-    ["Pending Review", (a.pending_listings || 0) + (a.pending_projects || 0) + (a.pending_localities || 0)],
-    ["Projects", a.total_projects],
-    ["Inquiries", a.total_inquiries],
-    ["New Inquiries", a.new_inquiries],
-    ["Interior Leads", a.interior_leads],
-    ["Loan Leads", a.loan_leads],
-    ["Agents", a.by_role.agent],
-    ["Builders", a.by_role.builder],
-    ["Customers", a.by_role.customer],
-  ];
-
+// ==========================================
+// TAB 1: OVERVIEW & PLANNER
+// ==========================================
+function TabOverview() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      {blocks.map(([label, v]) => (
-        <div key={label} className="bg-white border border-[#E8E4D9] p-6">
-          <div className="label-eyebrow mb-3">{label}</div>
-          <div className="font-display text-4xl text-[#06402B]">{v}</div>
+    <div className="animate-in fade-in space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Total Retainers</p>
+          <p className="font-display text-4xl text-[#06402B]">₹0</p>
         </div>
-      ))}
+        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Pending Verifications</p>
+          <p className="font-display text-4xl text-[#B68D40]">0</p>
+        </div>
+        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Active Site Visits</p>
+          <p className="font-display text-4xl text-[#06402B]">0</p>
+        </div>
+        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
+          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">In 3D Design</p>
+          <p className="font-display text-4xl text-[#06402B]">0</p>
+        </div>
+      </div>
     </div>
   );
 }
 
-function Users() {
-  const [items, setItems] = useState([]);
-  const reload = useCallback(() => api.get("/admin/users").then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
+// ==========================================
+// TAB 2: DISCOVERY CALLS (CRM)
+// ==========================================
+function TabDiscoveryCalls({ triggerNotification, currentUser }) {
+  const [calls, setCalls] = useState([]);
+  
+  const loadCalls = useCallback(async () => {
+    try {
+      const { data } = await api.get("/admin/discovery-calls");
+      setCalls(data || []);
+    } catch (err) {
+      toast.error("Failed to load discovery calls.");
+    }
+  }, []);
 
-  const updateRole = async (uid, role) => {
-    try { await api.put(`/admin/users/${uid}`, { role }); reload(); toast.success("Role updated"); }
-    catch (e) { toast.error(formatApiError(e)); }
+  useEffect(() => {
+    loadCalls();
+    // Poll every 30 seconds for auto-assign updates
+    const interval = setInterval(loadCalls, 30000);
+    return () => clearInterval(interval);
+  }, [loadCalls]);
+
+  const updateStatus = async (callId, newStatus) => {
+    try {
+      await api.put(`/admin/discovery-calls/${callId}/status`, { status: newStatus });
+      toast.success("Call status updated.");
+      loadCalls();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
   };
-  const toggleSuspend = async (u) => {
-    try { await api.put(`/admin/users/${u.user_id}`, { is_suspended: !u.is_suspended }); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
+
+  const getMinutesPassed = (isoDate) => {
+    const diff = new Date() - new Date(isoDate);
+    return Math.floor(diff / 60000);
   };
 
   return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="animate-in fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-display text-xl text-[#06402B]">Active Call Queue</h3>
+        <button onClick={loadCalls} className="text-sm underline text-[#B68D40]">Refresh Queue</button>
+      </div>
+
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-sm text-blue-800">
+        <strong>Auto-Assign Logic Active:</strong> Leads are routed round-robin. If a lead is not marked 'Connected' or 'Missed' within 15 minutes, it automatically shifts to the next available agent.
+      </div>
+
+      <table className="w-full text-sm bg-white border border-[#E8E4D9]">
         <thead className="bg-[#F3F0E9]">
-          <tr>{["Name", "Email", "Role", "Verified", "Status", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr>
+          <tr>
+            <th className="text-left p-4 font-bold">Lead Contact</th>
+            <th className="text-left p-4 font-bold">Assigned To</th>
+            <th className="text-left p-4 font-bold text-red-600">Reassigns In (15m limit)</th>
+            <th className="text-left p-4 font-bold">Action</th>
+          </tr>
         </thead>
         <tbody>
-          {items.map(u => (
-            <tr key={u.user_id} className="border-t border-[#E8E4D9]" data-testid={`user-row-${u.user_id}`}>
-              <td className="p-4">{u.name}</td>
-              <td className="p-4">{u.email}</td>
-              <td className="p-4">
-                <select value={u.role} onChange={e => updateRole(u.user_id, e.target.value)} className="hs-input text-xs py-1">
-                  <option>customer</option><option>agent</option><option>builder</option><option>admin</option>
-                </select>
-              </td>
-              <td className="p-4 text-xs">{u.is_verified ? "Yes" : "No"}</td>
-              <td className="p-4 text-xs">{u.is_suspended ? "Suspended" : "Active"}</td>
-              <td className="p-4">
-                <button onClick={() => toggleSuspend(u)} className="text-xs underline text-[#9B4A3A]">
-                  {u.is_suspended ? "Unsuspend" : "Suspend"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ListingsAdmin() {
-  const [items, setItems] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const reload = useCallback(() => api.get("/listings", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
-
-  const setStatus = async (id, status, is_featured) => {
-    try { await api.put(`/admin/listings/${id}/status`, { status, is_featured }); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          onClick={() => { setEditing(null); setOpen(true); }}
-          className="btn-primary inline-flex items-center gap-2"
-          data-testid="admin-listing-create"
-        >
-          <Plus size={16} /> Create Listing
-        </button>
-      </div>
-      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F3F0E9]"><tr>{["Title", "Locality", "Kind", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-          <tbody>
-            {items.map(l => (
-              <tr key={l.listing_id} className="border-t border-[#E8E4D9]">
-                <td className="p-4">{l.title}</td>
-                <td className="p-4">{l.locality}</td>
-                <td className="p-4">{l.kind}</td>
+          {calls.length === 0 && (
+            <tr><td colSpan="4" className="p-4 text-center text-gray-500">No active discovery calls.</td></tr>
+          )}
+          {calls.map(c => {
+            const minsPassed = getMinutesPassed(c.assigned_at);
+            const minsLeft = Math.max(0, 15 - minsPassed);
+            const isMine = c.assigned_to === currentUser.name;
+            
+            return (
+              <tr key={c.call_id} className="border-t border-[#E8E4D9]">
+                <td className="p-4">{c.name} <br/><span className="text-gray-500">{c.phone}</span></td>
+                <td className={`p-4 font-bold ${isMine ? 'text-green-600' : 'text-[#06402B]'}`}>
+                  {c.assigned_to} {isMine && "(You)"}
+                </td>
+                <td className="p-4 font-bold text-red-600">
+                  {c.status === "pending" ? `${minsLeft} mins` : "Resolved"}
+                </td>
                 <td className="p-4">
-                  <select value={l.status} onChange={e => setStatus(l.listing_id, e.target.value, l.is_featured)} className="hs-input text-xs py-1">
-                    <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
+                  <select 
+                    className="border border-[#E8E4D9] p-1 text-xs"
+                    value={c.status}
+                    onChange={(e) => updateStatus(c.call_id, e.target.value)}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="missed">Did Not Answer (Missed)</option>
+                    <option value="connected">Connected / Resolved</option>
                   </select>
                 </td>
-                <td className="p-4">
-                  <input type="checkbox" checked={!!l.is_featured} onChange={e => setStatus(l.listing_id, l.status, e.target.checked)} />
-                </td>
-                <td className="p-4 flex items-center gap-3">
-                  <button
-                    onClick={() => { setEditing(l); setOpen(true); }}
-                    className="inline-flex items-center gap-1 text-xs text-[#06402B] hover:text-[#053220]"
-                    data-testid={`admin-listing-edit-${l.listing_id}`}
-                  >
-                    <Edit size={13} /> Edit
-                  </button>
-                  <a href={`/properties/${l.listing_id}`} className="text-xs underline">View</a>
-                </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <AdminListingDialog open={open} setOpen={setOpen} editing={editing} onSaved={reload} />
-    </div>
-  );
-}
-
-function ProjectsAdmin() {
-  const [items, setItems] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const reload = useCallback(() => api.get("/projects", { params: { status: "" } }).then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
-
-  const setStatus = async (id, status, is_featured) => {
-    try { await api.put(`/admin/projects/${id}/status`, { status, is_featured }); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          onClick={() => { setEditing(null); setOpen(true); }}
-          className="btn-primary inline-flex items-center gap-2"
-          data-testid="admin-project-create"
-        >
-          <Plus size={16} /> Create Project
-        </button>
-      </div>
-      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[#F3F0E9]"><tr>{["Project", "Locality", "Builder", "Status", "Featured", ""].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-          <tbody>
-            {items.map(p => (
-              <tr key={p.project_id} className="border-t border-[#E8E4D9]">
-                <td className="p-4">{p.name}</td>
-                <td className="p-4">{p.locality}</td>
-                <td className="p-4">{p.builder_name}</td>
-                <td className="p-4">
-                  <select value={p.status} onChange={e => setStatus(p.project_id, e.target.value, p.is_featured)} className="hs-input text-xs py-1">
-                    <option value="draft">draft</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option>
-                  </select>
-                </td>
-                <td className="p-4">
-                  <input type="checkbox" checked={!!p.is_featured} onChange={e => setStatus(p.project_id, p.status, e.target.checked)} />
-                </td>
-                <td className="p-4 flex items-center gap-3">
-                  <button
-                    onClick={() => { setEditing(p); setOpen(true); }}
-                    className="inline-flex items-center gap-1 text-xs text-[#06402B] hover:text-[#053220]"
-                    data-testid={`admin-project-edit-${p.project_id}`}
-                  >
-                    <Edit size={13} /> Edit
-                  </button>
-                  <a href={`/projects/${p.city_slug}/${p.locality_slug}/${p.slug}`} className="text-xs underline">View</a>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <AdminProjectDialog open={open} setOpen={setOpen} editing={editing} onSaved={reload} />
-    </div>
-  );
-}
-
-function AllInquiries() {
-  const [items, setItems] = useState([]);
-  useEffect(() => { api.get("/inquiries", { params: { all_inquiries: true } }).then(({ data }) => setItems(data || [])); }, []);
-  return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Name", "Mobile", "For", "Status", "Date"].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(i => (
-            <tr key={i.inquiry_id} className="border-t border-[#E8E4D9]">
-              <td className="p-4">{i.name}</td><td className="p-4">{i.mobile}</td>
-              <td className="p-4">{i.target_title}</td><td className="p-4 capitalize">{i.status}</td>
-              <td className="p-4 text-xs">{new Date(i.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-function InteriorLeads() {
-  const [items, setItems] = useState([]);
-  const reload = useCallback(() => api.get("/interior-leads").then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
+// ==========================================
+// TAB 3: VERIFICATION & SITE VISITS
+// ==========================================
+function TabSiteVisits() {
+  const [verifications, setVerifications] = useState([]);
 
-  const setStatus = async (id, status) => {
-    try { await api.put(`/interior-leads/${id}`, { status }); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
+  const loadVerifications = useCallback(async () => {
+    try {
+      const { data } = await api.get("/admin/verifications");
+      setVerifications(data || []);
+    } catch (err) {
+      toast.error("Failed to load verifications.");
+    }
+  }, []);
+
+  useEffect(() => { loadVerifications(); }, [loadVerifications]);
+
+  const handleModeration = async (verId, action) => {
+    try {
+      await api.put(`/admin/verifications/${verId}`, { action });
+      toast.success(`Verification ${action}d successfully.`);
+      loadVerifications();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    }
   };
 
   return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Name", "Phone", "Locality", "Flat", "Budget", "Status", "Date"].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(l => (
-            <tr key={l.lead_id} className="border-t border-[#E8E4D9]" data-testid={`interior-lead-${l.lead_id}`}>
-              <td className="p-4">{l.name}</td><td className="p-4">{l.phone}</td>
-              <td className="p-4">{l.locality}</td><td className="p-4">{l.flat_size}</td>
-              <td className="p-4">{l.budget}</td>
-              <td className="p-4">
-                <select className="hs-input text-xs py-1" value={l.status} onChange={e => setStatus(l.lead_id, e.target.value)}>
-                  {["new","interested","follow-up","converted","not-interested","no-response"].map(s => <option key={s}>{s}</option>)}
-                </select>
-              </td>
-              <td className="p-4 text-xs">{new Date(l.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function LoanLeads() {
-  const [items, setItems] = useState([]);
-  useEffect(() => { api.get("/loan-leads").then(({ data }) => setItems(data || [])); }, []);
-  return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Name", "Phone", "Bank", "Loan", "Rate", "Tenure", "EMI", "Date"].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(l => (
-            <tr key={l.lead_id} className="border-t border-[#E8E4D9]">
-              <td className="p-4">{l.name || "—"}</td><td className="p-4">{l.phone || "—"}</td>
-              <td className="p-4">{l.bank}</td><td className="p-4">₹{(l.loan_amount/100000).toFixed(1)}L</td>
-              <td className="p-4">{l.interest_rate}%</td><td className="p-4">{l.tenure}y</td>
-              <td className="p-4 font-semibold">₹{Math.round(l.emi).toLocaleString("en-IN")}</td>
-              <td className="p-4 text-xs">{new Date(l.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function BanksMgmt() {
-  const [items, setItems] = useState([]);
-  const reload = useCallback(() => api.get("/banks", { params: { active_only: false } }).then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
-
-  const update = async (id, patch) => {
-    try { await api.put(`/banks/${id}`, patch); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
-  };
-
-  return (
-    <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9]"><tr>{["Name", "Rate Min", "Rate Max", "Active"].map(h => <th key={h} className="text-left p-4 label-eyebrow">{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(b => (
-            <tr key={b.bank_id} className="border-t border-[#E8E4D9]">
-              <td className="p-4 font-semibold">{b.name}</td>
-              <td className="p-4">
-                <input type="number" step="0.05" defaultValue={b.rate_min} onBlur={e => update(b.bank_id, { rate_min: parseFloat(e.target.value) })} className="hs-input w-24 text-xs" />
-              </td>
-              <td className="p-4">
-                <input type="number" step="0.05" defaultValue={b.rate_max} onBlur={e => update(b.bank_id, { rate_max: parseFloat(e.target.value) })} className="hs-input w-24 text-xs" />
-              </td>
-              <td className="p-4">
-                <input type="checkbox" checked={!!b.is_active} onChange={e => update(b.bank_id, { is_active: e.target.checked })} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function AmenitiesMgmt() {
-  const [items, setItems] = useState([]);
-  const reload = useCallback(() => api.get("/amenities", { params: { active_only: false } }).then(({ data }) => setItems(data || [])), []);
-  useEffect(() => { reload(); }, [reload]);
-
-  const update = async (id, patch) => {
-    try { await api.put(`/amenities/${id}`, patch); reload(); }
-    catch (e) { toast.error(formatApiError(e)); }
-  };
-
-  const byCat = items.reduce((a, x) => { (a[x.category] = a[x.category] || []).push(x); return a; }, {});
-
-  return (
-    <div className="space-y-6">
-      {Object.entries(byCat).map(([cat, list]) => (
-        <div key={cat} className="bg-white border border-[#E8E4D9] p-6">
-          <div className="font-display text-2xl text-[#06402B] mb-4">{cat}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {list.map(a => (
-              <label key={a.amenity_id} className="flex items-center gap-2 text-sm border border-[#E8E4D9] px-3 py-2">
-                <input type="checkbox" checked={!!a.is_active} onChange={e => update(a.amenity_id, { is_active: e.target.checked })} />
-                <span className="flex-1">{a.name}</span>
-                {a.pending_approval && <span className="text-[10px] text-[#B68D40]">PENDING</span>}
-              </label>
-            ))}
+    <div className="animate-in fade-in">
+      <h3 className="font-display text-xl text-[#06402B] mb-4">Floor Plan Verification Queue</h3>
+      
+      {verifications.filter(v => v.status === "pending").length === 0 ? (
+        <p className="text-gray-500 bg-white border border-[#E8E4D9] p-6 mb-8 text-center">No pending floor plans to verify.</p>
+      ) : (
+        verifications.filter(v => v.status === "pending").map(v => (
+          <div key={v.verification_id} className="bg-white border border-[#E8E4D9] p-6 mb-4">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h4 className="font-bold text-[#06402B] capitalize">{v.bhk_or_units} {v.property_type}</h4>
+                <p className="text-sm text-gray-500">Invoice Paid: ₹{v.invoice_paid.toLocaleString('en-IN')}</p>
+                <p className="text-sm text-gray-500 mt-2"><strong>Client Notes:</strong> {v.room_requirements}</p>
+              </div>
+              <button className="text-[#B68D40] underline text-sm border p-2">View Uploaded PDF</button>
+            </div>
+            <div className="flex gap-4 border-t pt-4">
+              <button onClick={() => handleModeration(v.verification_id, 'approve')} className="bg-[#06402B] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold">Approve (Push to Scheduling)</button>
+              <button onClick={() => handleModeration(v.verification_id, 'reject')} className="border border-red-600 text-red-600 px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-red-50">Reject (Mismatch)</button>
+            </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
+}
+
+// ==========================================
+// TAB 4: TEAM MANAGEMENT
+// ==========================================
+function TabUsers() {
+  const [employees, setEmployees] = useState([]);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState("sales");
+
+  // State for inline editing
+  const [editingEmail, setEditingEmail] = useState(null);
+  const [editRole, setEditRole] = useState("");
+
+  const loadEmployees = useCallback(async () => {
+    try {
+      const { data } = await api.get("/admin/employees");
+      setEmployees(data || []);
+    } catch (err) {
+      toast.error("Failed to load employee list.");
+    }
+  }, []);
+
+  useEffect(() => { loadEmployees(); }, [loadEmployees]);
+
+  const handleAddMember = async (e) => {
+    e.preventDefault();
+    if (!newEmail || !newPassword) {
+      toast.error("Email and Temporary Password are required.");
+      return;
+    }
+    try {
+      const response = await api.post("/admin/employees", {
+        email: newEmail,
+        phone: newPhone,
+        password: newPassword,
+        role: newRole
+      });
+      toast.success(response.data?.message || "Account created successfully!");
+      setNewEmail("");
+      setNewPhone("");
+      setNewPassword("");
+      loadEmployees(); 
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to create account.");
+    }
+  };
+
+  // --- NEW: Delete Handler ---
+  const handleDelete = async (email) => {
+    if (!window.confirm(`Are you sure you want to permanently remove ${email}?`)) return;
+    try {
+      await api.delete(`/admin/employees/${email}`);
+      toast.success("Team member deleted.");
+      loadEmployees();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to delete member.");
+    }
+  };
+
+  // --- NEW: Save Edit Handler ---
+  const handleSaveEdit = async (email) => {
+    try {
+      await api.put(`/admin/employees/${email}`, { role: editRole });
+      toast.success("Role updated successfully.");
+      setEditingEmail(null); // Close the edit box
+      loadEmployees();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to update role.");
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in space-y-8">
+      {/* ADD EMPLOYEE FORM */}
+      <div className="bg-white p-6 border border-[#E8E4D9]">
+        <h3 className="font-display text-lg mb-4 text-[#06402B]">Add New Team Member</h3>
+        <form onSubmit={handleAddMember} className="flex flex-col gap-4 max-w-md mt-4">
+          <div className="grid grid-cols-2 gap-4">
+            <input 
+              type="email" 
+              placeholder="Employee Email Address *"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
+            />
+            <input 
+              type="text" 
+              placeholder="Phone Number"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <input 
+              type="text" 
+              placeholder="Temporary Password *"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
+            />
+            <select 
+              value={newRole} 
+              onChange={(e) => setNewRole(e.target.value)}
+              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
+            >
+              <option value="sales">Sales Representative</option>
+              <option value="designer">Interior Designer</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+          
+          <button type="submit" className="bg-[#0B4A3F] text-white px-4 py-2 rounded hover:bg-[#08362e] transition-colors w-full">
+            Create Team Member Account
+          </button>
+        </form>
+      </div>
+
+      {/* EMPLOYEE TABLE */}
+      <div className="overflow-x-auto border border-[#E8E4D9]">
+        <table className="w-full text-sm bg-white">
+          <thead className="bg-[#F3F0E9]">
+            <tr>
+              <th className="text-left p-4">Email</th>
+              <th className="text-left p-4">Role</th>
+              <th className="text-left p-4">Status</th>
+              <th className="text-left p-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map(e => (
+              <tr key={e.email} className="border-t">
+                <td className="p-4">{e.email}</td>
+                
+                {/* ROLE COLUMN (Transforms into a dropdown if editing) */}
+                <td className="p-4 uppercase text-xs">
+                  {editingEmail === e.email ? (
+                    <select 
+                      value={editRole} 
+                      onChange={(evt) => setEditRole(evt.target.value)}
+                      className="border border-[#0B4A3F] p-1 rounded"
+                    >
+                      <option value="sales">Sales</option>
+                      <option value="designer">Designer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  ) : (
+                    e.role
+                  )}
+                </td>
+                
+                <td className="p-4 text-green-600 font-bold">ACTIVE</td>
+                
+                {/* ACTIONS COLUMN */}
+                <td className="p-4 flex gap-4">
+                  {editingEmail === e.email ? (
+                    <>
+                      <button onClick={() => handleSaveEdit(e.email)} className="text-[#0B4A3F] font-bold hover:underline">Save</button>
+                      <button onClick={() => setEditingEmail(null)} className="text-gray-500 hover:underline">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => { setEditingEmail(e.email); setEditRole(e.role); }} 
+                        className="text-[#B68D40] hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(e.email)} className="text-red-600 hover:underline">
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </td>
+
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// TAB 5 & 6: PLACEHOLDERS
+// ==========================================
+function TabIntentTracking() {
+  return <div className="p-8 text-center text-gray-400 border bg-white">Tracking pipeline initialized. Waiting for cart abandonment data.</div>;
+}
+function TabMasterPipeline() {
+  return <div className="p-8 text-center text-gray-400 border bg-white">Global phase overrides locked.</div>;
 }

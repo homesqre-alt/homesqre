@@ -6,7 +6,7 @@ import uuid
 import requests
 import pytest
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://homesqre-preview.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://india-homes-4.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 

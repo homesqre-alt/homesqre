@@ -1,25 +1,16 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "sonner";
 import "@/App.css";
 
-import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
-import Properties from "@/pages/Properties";
-import PropertyDetail from "@/pages/PropertyDetail";
-import ProjectsList from "@/pages/ProjectsList";
-import ProjectMicrosite from "@/pages/ProjectMicrosite";
 import Interiors from "@/pages/Interiors";
 import EmiCalculatorPage from "@/pages/EmiCalculatorPage";
-import Compare from "@/pages/Compare";
-import Favourites from "@/pages/Favourites";
 import ProfileComplete from "@/pages/ProfileComplete";
 
 import AdminDashboard from "@/pages/dashboards/AdminDashboard";
-import AgentDashboard from "@/pages/dashboards/AgentDashboard";
-import BuilderDashboard from "@/pages/dashboards/BuilderDashboard";
 import CustomerDashboard from "@/pages/dashboards/CustomerDashboard";
 import AuthCallback from "@/components/layout/AuthCallback";
 import AdminLogin from "@/pages/AdminLogin";
@@ -36,30 +27,23 @@ function AppRouter() {
 
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      {/* 🚀 REDIRECT: Instantly forwards homesqre.com to homesqre.com/interiors */}
+      <Route path="/" element={<Navigate to="/interiors" replace />} />
+      <Route path="/interiors" element={<Interiors />} />
+
+      {/* CORE AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-
-      <Route path="/properties" element={<Properties />} />
-      <Route path="/properties/:id" element={<PropertyDetail />} />
-
-      <Route path="/projects" element={<ProjectsList />} />
-      <Route path="/projects/:city/:locality/:slug" element={<ProjectMicrosite />} />
-
-      <Route path="/interiors" element={<Interiors />} />
-      <Route path="/emi-calculator" element={<EmiCalculatorPage />} />
-      <Route path="/compare" element={<Compare />} />
-      <Route path="/favourites" element={<Favourites />} />
       <Route path="/profile/complete" element={<ProfileComplete />} />
+      <Route path="/emi-calculator" element={<EmiCalculatorPage />} />
 
       {/* Admin Console (quick add) */}
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<RequireAdmin><Admin /></RequireAdmin>} />
 
-      {/* Admin */}
+      {/* Admin Dashboard */}
       <Route path="/dashboard/admin" element={<AdminDashboard tab="overview" />} />
-      <Route path="/dashboard/admin/moderation" element={<AdminDashboard tab="moderation" />} />
       <Route path="/dashboard/admin/users" element={<AdminDashboard tab="users" />} />
       <Route path="/dashboard/admin/listings" element={<AdminDashboard tab="listings" />} />
       <Route path="/dashboard/admin/projects" element={<AdminDashboard tab="projects" />} />
@@ -71,17 +55,7 @@ function AppRouter() {
       <Route path="/dashboard/admin/cms/homepage" element={<AdminDashboard tab="cms-homepage" />} />
       <Route path="/dashboard/admin/cms/interiors" element={<AdminDashboard tab="cms-interiors" />} />
 
-      {/* Agent */}
-      <Route path="/dashboard/agent" element={<AgentDashboard tab="listings" />} />
-      <Route path="/dashboard/agent/leads" element={<AgentDashboard tab="leads" />} />
-      <Route path="/dashboard/agent/subscription" element={<AgentDashboard tab="subscription" />} />
-
-      {/* Builder */}
-      <Route path="/dashboard/builder" element={<BuilderDashboard tab="projects" />} />
-      <Route path="/dashboard/builder/inquiries" element={<BuilderDashboard tab="inquiries" />} />
-      <Route path="/dashboard/builder/subscription" element={<BuilderDashboard tab="subscription" />} />
-
-      {/* Customer */}
+      {/* Customer Dashboard */}
       <Route path="/dashboard/customer" element={<CustomerDashboard />} />
     </Routes>
   );
