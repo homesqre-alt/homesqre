@@ -19,6 +19,8 @@ COPY . .
 # Set environment variables for the API
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+ARG REACT_APP_GOOGLE_CLIENT_ID
+ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
 
 # Force Node 18 to use legacy OpenSSL so Webpack doesn't crash, plus memory limits
 ENV NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=2048"

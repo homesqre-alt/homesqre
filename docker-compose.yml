@@ -30,14 +30,15 @@ services:
     volumes:
       - uploads:/app/backend/uploads
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_BACKEND_URL=http://72.61.233.193:8001
+        - REACT_APP_BACKEND_URL=https://homesqre.com
+        - REACT_APP_GOOGLE_CLIENT_ID=792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com
     restart: unless-stopped
     ports:
       - "80:80"
