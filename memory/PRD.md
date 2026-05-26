@@ -38,6 +38,16 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (third update) — Designer ↔ Lead linkage (Phase D).**
+  - **Designer Dashboard** gains a top-level **"My Leads"** tab (new default landing) reusing `MasterLeadPipeline` in `mode=sales` — designer can change status, post comments, set follow-ups exactly like sales. Tab order: My Leads → Verification & Site Visits → Approved Floor Plans → Active Projects (3D).
+  - **Inline LeadInlinePanel** on each Active Project (3D) — status dropdown + follow-up datetime + comment input bound to `design_project.lead_id`. Renders "no linked lead yet" fallback for legacy projects.
+  - **Auto-link on approval** — `_find_or_create_lead_for_user()` matches the customer's email/phone to the most-recent lead; if none, creates one with status="Designing"; persists `users.lead_id` and `design_projects.lead_id`.
+  - **Auto-promote to Quotation** — when the customer approves the final render, `_maybe_promote_to_quotation()` now flips the linked lead's status → `"Ready for Quotation"` AND reassigns to the admin pool (via `assign_to_role=admin`). Audit trail records `by='system:design-approved'`.
+  - **New CRM statuses** seeded: `Designing` (assign→designer), `Ready for Quotation` (assign→admin). `_seed_crm_defaults()` is now idempotent (only inserts missing statuses, not all-or-nothing).
+  - **API permissions** — `/api/leads/{id}/status` and `/api/leads/{id}/followup` now accept the `designer` role (assignee-or-admin check unchanged).
+  - **Tests** — `test_lead_design_linkage.py` (NEW: 3 tests). Marketplace-era suites moved to `_archive/` + new `pytest.ini` excludes them. 53/53 active pytest pass.
+
+## Changelog (prior)
 - **2026-02-26 (later) — Approved-floor-plans wiring fix.**
   - **Approval is now transactional.** `PUT /api/admin/verifications/{id} {action:"approve"}` simultaneously: (a) sets verification.status="approved", (b) auto-creates the 3D design project via `_ensure_design_project()`, (c) advances customer.project_phase straight to "designing" (previously stopped at "scheduling"), (d) clears user.site_visit_at so the customer is prompted to book. Response now returns `design_project_id`.
   - **Designer Dashboard — new 3rd tab "Approved Floor Plans"** (`ApprovedFloorPlans.jsx`) between Verification and Active Projects. Each card shows customer name + project name (privacy-safe), all uploaded floor-plan files (view/download), site-visit status pill (confirmed slot OR "Awaiting customer to schedule"), and an "Open Design Project →" button that deep-links to `#projects?focus=<project_id>`. `DesignerProjects` now syncs to the `?focus=` query in the URL hash.
