@@ -201,11 +201,15 @@ def test_pay_without_adjustment_400(customer_token):
     assert r.status_code == 400
 
 
-def test_approve_still_pushes_scheduling(customer_token, designer_token):
+def test_approve_auto_creates_design_project_and_advances_to_designing(customer_token, designer_token):
+    """Approval now triggers the design project + moves phase straight to 'designing'.
+    The site visit picker is shown in parallel inside the customer dashboard."""
     ver_id = _create_verification(customer_token, property_type="apartment", bhk="3", paid=12000)
     r = httpx.put(f"{API}/admin/verifications/{ver_id}", headers=auth(designer_token), json={
         "action": "approve",
     }, timeout=10)
     assert r.status_code == 200
+    body = r.json()
+    assert body.get("design_project_id"), "approve must return design_project_id"
     me = httpx.get(f"{API}/auth/me", headers=auth(customer_token), timeout=10).json()
-    assert me["project_phase"] == "scheduling"
+    assert me["project_phase"] == "designing"

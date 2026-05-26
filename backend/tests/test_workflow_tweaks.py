@@ -215,3 +215,68 @@ def test_leads_followup_today_filter(admin_token):
     body = r.json()
     assert "items" in body
     assert "total" in body
+
+
+# ---------------------------------------------------------------------------
+# Approved-floor-plans wiring: approval auto-creates design project, advances
+# phase to 'designing', and exposes design_project_id on /admin/verifications.
+# Site-visit endpoint lets the customer pick date/time.
+# ---------------------------------------------------------------------------
+def test_approve_floor_plan_wires_design_and_site_visit(customer_token, designer_token, admin_token):
+    # Fresh verification for this scenario (legacy single-file path is fine).
+    r = httpx.post(f"{API}/verifications", headers=auth(customer_token), json={
+        "project_name": "Wiring Test Project",
+        "property_type": "apartment", "bhk_or_units": "3",
+        "invoice_paid": 12000, "pdf_urls": ["/api/files/floor_wiring.pdf"],
+        "room_requirements": "Wiring regression",
+    }, timeout=10)
+    assert r.status_code == 200, r.text
+    ver_id = r.json()["verification_id"]
+
+    # Designer approves → backend must return design_project_id, phase=designing
+    a = httpx.put(f"{API}/admin/verifications/{ver_id}", headers=auth(designer_token), json={
+        "action": "approve",
+    }, timeout=10)
+    assert a.status_code == 200, a.text
+    proj_id = a.json().get("design_project_id")
+    assert proj_id, "approve response missing design_project_id"
+
+    me = httpx.get(f"{API}/auth/me", headers=auth(customer_token), timeout=10).json()
+    assert me["project_phase"] == "designing"
+    assert me.get("site_visit_at") in (None, ""), "site_visit_at must be cleared so the banner shows"
+
+    # Admin sees the approved verification with design_project_id + site_visit_at attached
+    admin_items = httpx.get(f"{API}/admin/verifications", headers=auth(admin_token), timeout=10).json()
+    found = next(v for v in admin_items if v["verification_id"] == ver_id)
+    assert found["design_project_id"] == proj_id
+    assert "site_visit_at" in found
+
+    # Designer also sees the same shape via the same endpoint (privacy still applies)
+    des_items = httpx.get(f"{API}/admin/verifications", headers=auth(designer_token), timeout=10).json()
+    des_found = next(v for v in des_items if v["verification_id"] == ver_id)
+    assert des_found["design_project_id"] == proj_id
+    assert "email" not in (des_found.get("customer") or {})
+
+    # Customer books site visit
+    when = "2026-06-15T10:30:00"
+    sv = httpx.put(f"{API}/me/site-visit", headers=auth(customer_token), json={
+        "site_visit_at": when,
+    }, timeout=10)
+    assert sv.status_code == 200
+    assert sv.json()["site_visit_at"] == when
+
+    me2 = httpx.get(f"{API}/auth/me", headers=auth(customer_token), timeout=10).json()
+    assert me2["site_visit_at"] == when
+
+    # Admin now sees the confirmed slot on the verification
+    after = httpx.get(f"{API}/admin/verifications", headers=auth(admin_token), timeout=10).json()
+    after_v = next(v for v in after if v["verification_id"] == ver_id)
+    assert after_v["site_visit_at"] == when
+
+
+def test_site_visit_endpoint_rejects_empty():
+    cust_token = login(*CUSTOMER)
+    r = httpx.put(f"{API}/me/site-visit", headers=auth(cust_token), json={
+        "site_visit_at": "",
+    }, timeout=10)
+    assert r.status_code == 400

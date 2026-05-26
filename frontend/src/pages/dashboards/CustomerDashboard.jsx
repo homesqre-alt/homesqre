@@ -30,6 +30,7 @@ export default function CustomerDashboard() {
   const [floorPlans, setFloorPlans] = useState([]);
   const [isUploadingPlan, setIsUploadingPlan] = useState(false);
   const [projectName, setProjectName] = useState(user?.project_name || "");
+  const [siteVisitInput, setSiteVisitInput] = useState("");
 
   // Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -203,6 +204,18 @@ export default function CustomerDashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ----- Site visit scheduling (post-approval) -----
+  const handleSubmitSiteVisit = async () => {
+    if (!siteVisitInput) return toast.error("Pick a date & time first.");
+    setIsLoading(true);
+    try {
+      await api.put("/me/site-visit", { site_visit_at: siteVisitInput });
+      toast.success("Site visit scheduled. Our team will confirm shortly.");
+      await refresh();
+    } catch (err) { toast.error(formatApiError(err)); }
+    finally { setIsLoading(false); }
   };
 
   // ----- Package adjustment payment (designer flagged a mismatch) -----
@@ -473,7 +486,56 @@ export default function CustomerDashboard() {
 
         {/* PHASE 4: DESIGNING */}
         {(currentPhase === "designing" || currentPhase === "ready_for_quotation") && (
-          <div className="animate-in fade-in">
+          <div className="animate-in fade-in space-y-6">
+            {/* Design started banner */}
+            <div className="bg-[#F3F0E9] border-l-4 border-[#06402B] p-4" data-testid="design-started-banner">
+              <h4 className="text-[#06402B] font-bold text-sm uppercase tracking-widest">Design has started</h4>
+              <p className="text-[#4A5D54] text-sm mt-1">
+                Your floor plan is approved. Your designer is crafting your 3D renders right now — they&apos;ll appear below the moment they&apos;re uploaded for your review.
+              </p>
+            </div>
+
+            {/* Site visit scheduler */}
+            {user?.site_visit_at ? (
+              <div className="bg-white border border-[#E8E4D9] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" data-testid="site-visit-confirmed">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[#06402B] font-bold">Site Visit Scheduled</p>
+                  <p className="font-display text-lg text-[#06402B]">{new Date(user.site_visit_at).toLocaleString()}</p>
+                  <p className="text-xs text-[#4A5D54]">Our lead engineer will visit your property for precise measurements.</p>
+                </div>
+                <button
+                  onClick={() => { setSiteVisitInput(""); /* allow reschedule */ }}
+                  data-testid="reschedule-site-visit-btn"
+                  className="text-xs underline text-[#B68D40]"
+                >Reschedule</button>
+              </div>
+            ) : (
+              <div className="bg-white border border-[#B68D40] p-5" data-testid="site-visit-picker">
+                <p className="text-[10px] uppercase tracking-widest text-[#B68D40] font-bold mb-2">Schedule your site visit</p>
+                <p className="text-sm text-[#4A5D54] mb-3">
+                  We&apos;ll send a lead engineer to take exact measurements at your property — this happens in parallel with the design work.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="datetime-local"
+                    value={siteVisitInput}
+                    onChange={(e) => setSiteVisitInput(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                    data-testid="site-visit-input"
+                    className="flex-1 p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm"
+                  />
+                  <button
+                    onClick={handleSubmitSiteVisit}
+                    disabled={isLoading || !siteVisitInput}
+                    data-testid="site-visit-submit-btn"
+                    className="bg-[#06402B] text-white px-6 py-3 uppercase tracking-widest text-xs font-bold hover:bg-[#042c1e] disabled:opacity-50"
+                  >
+                    {isLoading ? "Saving…" : "Confirm Site Visit"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <CustomerDesignReview phase={currentPhase} onProjectAdvance={refresh} />
           </div>
         )}

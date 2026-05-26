@@ -13,6 +13,18 @@ export default function DesignerProjects({ currentUser }) {
   const [activeId, setActiveId] = useState(null);
   const [active, setActive] = useState(null);
 
+  // Honor ?focus=<project_id> from the URL hash so the Approved tab can
+  // deep-link straight to a specific project.
+  useEffect(() => {
+    const sync = () => {
+      const m = window.location.hash.match(/[?&]focus=([^&]+)/);
+      if (m) setActiveId(decodeURIComponent(m[1]));
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
   const load = useCallback(async () => {
     try {
       const { data } = await api.get("/admin/design/projects");
@@ -110,6 +122,11 @@ function ProjectDetail({ project, onReload, currentUser }) {
           <p className="text-xs text-[#4A5D54]">
             {project.customer?.project_name && <span className="italic">{project.customer.project_name} • </span>}
             {project.customer?.email} • {project.customer?.mobile}
+          </p>
+        )}
+        {project.site_visit_at && (
+          <p className="text-[11px] text-[#06402B] mt-1" data-testid="project-site-visit">
+            <strong>Site Visit:</strong> {new Date(project.site_visit_at).toLocaleString()}
           </p>
         )}
         <div className="mt-2 flex flex-wrap gap-3 text-xs">

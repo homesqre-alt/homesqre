@@ -393,13 +393,18 @@ export function TabSiteVisits() {
             {recentlyResolved.map(v => (
               <div key={v.verification_id} className="bg-[#F3F0E9] border border-[#E8E4D9] p-3 text-xs flex justify-between items-center">
                 <span className="capitalize">
+                  {v.customer?.name && <strong className="not-italic">{v.customer.name}</strong>}
+                  {v.customer?.project_name && <> — <em className="text-[#4A5D54]">{v.customer.project_name}</em></>}
+                  {" • "}
                   {v.bhk_or_units} {v.property_type}
                   {v.corrected_property_type && (
                     <> → <strong>{v.corrected_bhk_or_units} {v.corrected_property_type}</strong></>
                   )}
                 </span>
                 <span className="text-[#4A5D54]">
-                  {v.status === "approved" && "Approved — Scheduling"}
+                  {v.status === "approved" && (v.site_visit_at
+                    ? `Approved — Site visit: ${new Date(v.site_visit_at).toLocaleString()}`
+                    : "Approved — Awaiting site visit booking")}
                   {v.status === "package_mismatch" && `Awaiting customer payment ₹${(v.differential_amount || 0).toLocaleString("en-IN")}`}
                   {v.status === "package_adjusted_paid" && `Paid — Designing (final ₹${(v.final_invoice || 0).toLocaleString("en-IN")})`}
                 </span>

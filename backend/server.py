@@ -1161,16 +1161,25 @@ async def create_verification(payload: VerificationCreate, user: dict = Depends(
 async def admin_list_verifications(user: dict = Depends(require_role("admin", "designer"))):
     items = await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
     is_designer = user.get("role") == "designer"
+    # Pre-index design projects by user_id (one query) so we can attach
+    # design_project_id without N+1 round-trips.
+    project_by_user: Dict[str, str] = {}
+    async for p in db.design_projects.find({}, {"_id": 0, "user_id": 1, "project_id": 1, "status": 1}):
+        # Prefer in_progress over ready_for_quotation when both exist for one user.
+        if p["user_id"] not in project_by_user or p.get("status") == "in_progress":
+            project_by_user[p["user_id"]] = p["project_id"]
     # Attach minimal customer label for the UI (designers must NOT see email/phone).
     for v in items:
         u = await db.users.find_one(
             {"user_id": v.get("user_id")},
-            {"_id": 0, "name": 1, "email": 1, "mobile": 1, "project_name": 1},
+            {"_id": 0, "name": 1, "email": 1, "mobile": 1, "project_name": 1, "site_visit_at": 1},
         ) or {}
         if is_designer:
             v["customer"] = {"name": u.get("name"), "project_name": v.get("project_name") or u.get("project_name")}
         else:
             v["customer"] = {**u, "project_name": v.get("project_name") or u.get("project_name")}
+        v["site_visit_at"] = u.get("site_visit_at")
+        v["design_project_id"] = project_by_user.get(v.get("user_id"))
     return items
 
 
@@ -1195,11 +1204,17 @@ async def admin_moderate_verification(
             {"$set": {"status": "approved", "moderated_by": _user_identifier(user),
                       "moderated_at": iso(now_utc())}}
         )
+        # Approval triggers two parallel tracks:
+        # 1. Design — auto-spin up the 3D project so the designer can immediately
+        #    upload renders without an admin handoff. Customer moves to 'designing'.
+        # 2. Site visit — the customer is prompted in their dashboard to pick a
+        #    measurement-visit date/time (cleared here so the banner shows).
+        design = await _ensure_design_project(ver["user_id"], verification_id=ver_id)
         await db.users.update_one(
             {"user_id": ver["user_id"]},
-            {"$set": {"project_phase": "scheduling"}}
+            {"$set": {"project_phase": "designing", "site_visit_at": None}}
         )
-        return {"ok": True}
+        return {"ok": True, "design_project_id": design["project_id"]}
 
     if action == "reject_package":
         corrected_pt = (payload.get("corrected_property_type") or "").strip()
@@ -1297,6 +1312,22 @@ async def pay_package_adjustment(user: dict = Depends(current_user)):
     )
     await _ensure_design_project(user["user_id"], verification_id=ver_id)
     return {"ok": True, "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)}
+
+
+@api.put("/me/site-visit")
+async def schedule_site_visit(payload: dict, user: dict = Depends(current_user)):
+    """Customer confirms the site-visit date/time after their floor plan is
+    approved. Stored on the user record; admin sees it on the design project /
+    verifications view."""
+    when = (payload.get("site_visit_at") or "").strip() or None
+    if when is None:
+        raise HTTPException(status_code=400, detail="site_visit_at is required")
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"site_visit_at": when, "site_visit_booked_at": iso(now_utc())}}
+    )
+    return {"ok": True, "site_visit_at": when}
+
 
 
 # ---------------------------------------------------------------------------
@@ -1410,12 +1441,13 @@ async def list_design_projects(
     for p in projects:
         u = await db.users.find_one(
             {"user_id": p["user_id"]},
-            {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1},
+            {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1, "site_visit_at": 1},
         ) or {}
         if is_designer:
             p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
         else:
             p["customer"] = u
+        p["site_visit_at"] = u.get("site_visit_at")
         out.append(p)
     return out
 
@@ -1427,12 +1459,13 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
         raise HTTPException(status_code=404, detail="Project not found")
     u = await db.users.find_one(
         {"user_id": p["user_id"]},
-        {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1},
+        {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1, "site_visit_at": 1},
     ) or {}
     if user.get("role") == "designer":
         p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
     else:
         p["customer"] = u
+    p["site_visit_at"] = u.get("site_visit_at")
     return p
 
 
