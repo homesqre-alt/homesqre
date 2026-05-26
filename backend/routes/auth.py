@@ -4,7 +4,6 @@ import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import Depends, HTTPException, Response
-from pydantic import BaseModel, EmailStr
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -13,40 +12,14 @@ from core import (
     make_access_token, clean_doc, current_user, _set_auth_cookie,
     GOOGLE_CLIENT_ID,
 )
+from schemas import (
+    RegisterRequest, LoginRequest, OtpVerifyRequest, ForgotRequest, ResetRequest,
+    GoogleAuthRequest, UserOut, AuthResponse, OkResponse,
+)
 
 
 # ---------------------------------------------------------------------------
-# Pydantic request models (auth-specific)
-# ---------------------------------------------------------------------------
-class RegisterRequest(BaseModel):
-    name: str
-    email: EmailStr
-    mobile: str
-    password: str
-    role: str = "customer"
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class OtpVerifyRequest(BaseModel):
-    email: EmailStr
-    otp: str
-
-
-class ForgotRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetRequest(BaseModel):
-    token: str
-    new_password: str
-
-
-# ---------------------------------------------------------------------------
-@api.post("/auth/register")
+@api.post("/auth/register", response_model=AuthResponse)
 async def auth_register(body: RegisterRequest, response: Response):
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
@@ -80,7 +53,7 @@ async def auth_register(body: RegisterRequest, response: Response):
     }
 
 
-@api.post("/auth/verify-otp")
+@api.post("/auth/verify-otp", response_model=OkResponse)
 async def auth_verify_otp(body: OtpVerifyRequest):
     email = body.email.lower()
     user = await db.users.find_one({"email": email})
@@ -102,7 +75,7 @@ async def auth_verify_otp(body: OtpVerifyRequest):
     return {"ok": True}
 
 
-@api.post("/auth/login")
+@api.post("/auth/login", response_model=AuthResponse)
 async def auth_login(body: LoginRequest, response: Response):
     email = body.email.lower()
     user = await db.users.find_one({"email": email})
@@ -113,19 +86,19 @@ async def auth_login(body: LoginRequest, response: Response):
     return {"user": clean_doc(user), "token": token}
 
 
-@api.post("/auth/logout")
+@api.post("/auth/logout", response_model=OkResponse)
 async def auth_logout(response: Response):
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("session_token", path="/")
     return {"ok": True}
 
 
-@api.get("/auth/me")
+@api.get("/auth/me", response_model=UserOut)
 async def auth_me(user: dict = Depends(current_user)):
     return user
 
 
-@api.post("/auth/forgot-password")
+@api.post("/auth/forgot-password", response_model=OkResponse)
 async def auth_forgot(body: ForgotRequest):
     user = await db.users.find_one({"email": body.email.lower()})
     if not user:
@@ -141,7 +114,7 @@ async def auth_forgot(body: ForgotRequest):
     return {"ok": True}
 
 
-@api.post("/auth/reset-password")
+@api.post("/auth/reset-password", response_model=OkResponse)
 async def auth_reset(body: ResetRequest):
     rec = await db.password_reset_tokens.find_one({"token": body.token, "used": False})
     if not rec:
@@ -161,13 +134,12 @@ async def auth_reset(body: ResetRequest):
     return {"ok": True}
 
 
-@api.post("/auth/google")
-async def auth_google(body: dict, response: Response):
-    token = body.get("token")
-    if not token:
+@api.post("/auth/google", response_model=AuthResponse)
+async def auth_google(body: GoogleAuthRequest, response: Response):
+    if not body.token:
         raise HTTPException(status_code=400, detail="No token provided")
     try:
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        idinfo = id_token.verify_oauth2_token(body.token, google_requests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo['email'].lower()
     except Exception as e:
         log.error(f"Google token verification failed: {e}")
@@ -192,3 +164,4 @@ async def auth_google(body: dict, response: Response):
     token = make_access_token(user["user_id"], email, user["role"])
     _set_auth_cookie(response, "access_token", token)
     return {"user": clean_doc(user), "token": token}
+

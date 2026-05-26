@@ -8,7 +8,7 @@ Owns:
   paying customer gets linked into the CRM pipeline).
 """
 import uuid
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from fastapi import HTTPException
 

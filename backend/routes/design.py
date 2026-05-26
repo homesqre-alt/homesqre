@@ -1,7 +1,7 @@
 """3D Design Iteration loop — customer review + designer/admin uploads + admin
 quotation pipeline."""
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import Depends, File, Form, HTTPException, UploadFile
 
@@ -15,10 +15,15 @@ from storage_helpers import (
     FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS,
 )
 from design_helpers import ensure_design_project, maybe_promote_to_quotation
+from schemas import (
+    DesignProjectOut, DesignImageOut,
+    ImageReviewRequest, ImageReviewOut,
+    DesignProjectStartOut, QuotationStatusRequest, OkResponse,
+)
 
 
 # ----- Customer view -----
-@api.get("/design/my-project")
+@api.get("/design/my-project", response_model=Optional[DesignProjectOut])
 async def design_my_project(user: dict = Depends(current_user)):
     project = await db.design_projects.find_one(
         {"user_id": user["user_id"]}, {"_id": 0}, sort=[("created_at", -1)]
@@ -28,10 +33,10 @@ async def design_my_project(user: dict = Depends(current_user)):
     return project
 
 
-@api.put("/design/my-project/images/{image_id}/review")
-async def review_image(image_id: str, payload: dict, user: dict = Depends(current_user)):
-    decision = (payload.get("decision") or "").strip()  # 'approved' | 'needs_improvement'
-    comment = (payload.get("comment") or "").strip()
+@api.put("/design/my-project/images/{image_id}/review", response_model=ImageReviewOut)
+async def review_image(image_id: str, body: ImageReviewRequest, user: dict = Depends(current_user)):
+    decision = (body.decision or "").strip()  # 'approved' | 'needs_improvement'
+    comment = (body.comment or "").strip()
     if decision not in ("approved", "needs_improvement"):
         raise HTTPException(status_code=400, detail="decision must be 'approved' or 'needs_improvement'")
     if decision == "needs_improvement" and not comment:
@@ -55,7 +60,7 @@ async def review_image(image_id: str, payload: dict, user: dict = Depends(curren
 
 
 # ----- Designer + Admin views -----
-@api.get("/admin/design/projects")
+@api.get("/admin/design/projects", response_model=List[DesignProjectOut])
 async def list_design_projects(
     status_filter: Optional[str] = None,
     user: dict = Depends(require_role("admin", "designer")),
@@ -88,7 +93,7 @@ async def list_design_projects(
     return out
 
 
-@api.get("/admin/design/projects/{project_id}")
+@api.get("/admin/design/projects/{project_id}", response_model=DesignProjectOut)
 async def get_design_project(project_id: str, user: dict = Depends(require_role("admin", "designer"))):
     p = await db.design_projects.find_one({"project_id": project_id}, {"_id": 0})
     if not p:
@@ -111,7 +116,7 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
     return p
 
 
-@api.post("/admin/design/projects/{project_id}/images")
+@api.post("/admin/design/projects/{project_id}/images", response_model=DesignImageOut)
 async def upload_design_image(
     project_id: str,
     file: UploadFile = File(...),
@@ -151,7 +156,7 @@ async def upload_design_image(
     return image
 
 
-@api.post("/admin/design/projects/start/{user_id}")
+@api.post("/admin/design/projects/start/{user_id}", response_model=DesignProjectStartOut)
 async def admin_start_designing(user_id: str, user: dict = Depends(require_role("admin", "designer"))):
     target = await db.users.find_one({"user_id": user_id})
     if not target:
@@ -161,13 +166,13 @@ async def admin_start_designing(user_id: str, user: dict = Depends(require_role(
     return {"ok": True, "project_id": project["project_id"]}
 
 
-@api.put("/admin/design/projects/{project_id}/quotation-status")
+@api.put("/admin/design/projects/{project_id}/quotation-status", response_model=OkResponse)
 async def update_quotation_status(
     project_id: str,
-    payload: dict,
+    body: QuotationStatusRequest,
     user: dict = Depends(require_role("admin")),
 ):
-    new_status = (payload.get("quotation_status") or "").strip()
+    new_status = (body.quotation_status or "").strip()
     if not new_status:
         raise HTTPException(status_code=400, detail="quotation_status is required")
     if not await db.crm_statuses.find_one({"name": new_status}):
@@ -179,3 +184,4 @@ async def update_quotation_status(
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Project not in ready_for_quotation state")
     return {"ok": True}
+

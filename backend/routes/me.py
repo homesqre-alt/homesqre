@@ -4,6 +4,11 @@ from fastapi import Depends, HTTPException
 
 from core import api, db, iso, now_utc, current_user
 from design_helpers import ensure_design_project
+from schemas import (
+    PhaseUpdateRequest, PhaseUpdateOut,
+    SiteVisitRequest, SiteVisitOut,
+    PackageAdjustmentOut,
+)
 
 
 # Client-initiated phase transitions (e.g. "unpaid" → "briefing" after payment).
@@ -14,9 +19,9 @@ ALLOWED_PHASE_TRANSITIONS = {
 }
 
 
-@api.put("/me/phase")
-async def update_my_phase(payload: dict, user: dict = Depends(current_user)):
-    target = (payload.get("phase") or "").strip()
+@api.put("/me/phase", response_model=PhaseUpdateOut)
+async def update_my_phase(body: PhaseUpdateRequest, user: dict = Depends(current_user)):
+    target = (body.phase or "").strip()
     current = (user.get("project_phase") or "unpaid")
     allowed_next = ALLOWED_PHASE_TRANSITIONS.get(current, set())
     if target not in allowed_next:
@@ -31,12 +36,12 @@ async def update_my_phase(payload: dict, user: dict = Depends(current_user)):
     return {"ok": True, "project_phase": target}
 
 
-@api.put("/me/site-visit")
-async def schedule_site_visit(payload: dict, user: dict = Depends(current_user)):
+@api.put("/me/site-visit", response_model=SiteVisitOut)
+async def schedule_site_visit(body: SiteVisitRequest, user: dict = Depends(current_user)):
     """Customer confirms the site-visit date/time after their floor plan is
     approved. Stored on the user record; admin sees it on the design project /
     verifications view."""
-    when = (payload.get("site_visit_at") or "").strip() or None
+    when = (body.site_visit_at or "").strip() or None
     if when is None:
         raise HTTPException(status_code=400, detail="site_visit_at is required")
     await db.users.update_one(
@@ -46,7 +51,7 @@ async def schedule_site_visit(payload: dict, user: dict = Depends(current_user))
     return {"ok": True, "site_visit_at": when}
 
 
-@api.post("/me/pay-package-adjustment")
+@api.post("/me/pay-package-adjustment", response_model=PackageAdjustmentOut)
 async def pay_package_adjustment(user: dict = Depends(current_user)):
     """Customer-facing payment endpoint for the package-mismatch differential.
     On success: marks the verification as paid and advances phase to 'designing'.
@@ -61,12 +66,13 @@ async def pay_package_adjustment(user: dict = Depends(current_user)):
     ver = await db.verifications.find_one({"verification_id": ver_id})
     if not ver or ver.get("status") != "package_mismatch":
         raise HTTPException(status_code=400, detail="Verification is not in package_mismatch state")
+    final_invoice = int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)
     await db.verifications.update_one(
         {"verification_id": ver_id},
         {"$set": {
             "status": "package_adjusted_paid",
             "differential_paid_at": iso(now_utc()),
-            "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0),
+            "final_invoice": final_invoice,
         }}
     )
     await db.users.update_one(
@@ -75,4 +81,5 @@ async def pay_package_adjustment(user: dict = Depends(current_user)):
          "$unset": {"package_adjustment": ""}}
     )
     await ensure_design_project(user["user_id"], verification_id=ver_id)
-    return {"ok": True, "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)}
+    return {"ok": True, "final_invoice": final_invoice}
+

@@ -1,6 +1,7 @@
 """Admin-only routes: analytics overview + employee/department management."""
 import uuid
 from datetime import timedelta
+from typing import List
 
 from fastapi import Depends, HTTPException
 
@@ -8,12 +9,16 @@ from core import (
     api, db, iso, now_utc, hash_password,
     require_role,
 )
+from schemas import (
+    AnalyticsOverviewOut, EmployeeOut, MessageResponse,
+    EmployeeCreateRequest, EmployeeUpdateRequest,
+)
 
 
 # ---------------------------------------------------------------------------
 # Analytics — Overview tab cards + charts
 # ---------------------------------------------------------------------------
-@api.get("/admin/analytics/overview")
+@api.get("/admin/analytics/overview", response_model=AnalyticsOverviewOut)
 async def admin_analytics_overview(user: dict = Depends(require_role("admin"))):
     """Top-line metrics + chart-friendly aggregations for the admin Overview tab."""
     leads_by_status_cursor = db.leads.aggregate([
@@ -82,7 +87,7 @@ async def admin_analytics_overview(user: dict = Depends(require_role("admin"))):
 # ---------------------------------------------------------------------------
 # Departments (legacy "Team Management")
 # ---------------------------------------------------------------------------
-@api.get("/admin/employees")
+@api.get("/admin/employees", response_model=List[EmployeeOut])
 async def list_employees(user: dict = Depends(require_role("admin"))):
     """Lists all staff members for the admin table."""
     return await db.users.find(
@@ -91,13 +96,10 @@ async def list_employees(user: dict = Depends(require_role("admin"))):
     ).to_list(100)
 
 
-@api.post("/admin/employees")
-async def create_team_member(payload: dict, user: dict = Depends(require_role("admin"))):
-    email = payload.get("email", "").lower()
-    phone = payload.get("phone", "")
-    new_role = payload.get("role")
-    temp_password = payload.get("password")
-    if not email or not new_role or not temp_password:
+@api.post("/admin/employees", response_model=MessageResponse)
+async def create_team_member(body: EmployeeCreateRequest, user: dict = Depends(require_role("admin"))):
+    email = body.email.lower()
+    if not email or not body.role or not body.password:
         raise HTTPException(status_code=400, detail="Email, role, and temporary password are required")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
@@ -106,21 +108,20 @@ async def create_team_member(payload: dict, user: dict = Depends(require_role("a
         "user_id": user_id,
         "email": email,
         "name": "Department Member",
-        "mobile": phone,
-        "role": new_role,
+        "mobile": body.phone or "",
+        "role": body.role,
         "is_verified": True,
         "profile_completed": True,
-        "password_hash": hash_password(temp_password),
+        "password_hash": hash_password(body.password),
         "created_at": iso(now_utc()),
         "project_phase": "unpaid"
     }
     await db.users.insert_one(new_user)
-    return {"ok": True, "message": f"Successfully created {new_role} account for {email}!"}
+    return {"ok": True, "message": f"Successfully created {body.role} account for {email}!"}
 
 
-@api.delete("/admin/employees/{email}")
+@api.delete("/admin/employees/{email}", response_model=MessageResponse)
 async def delete_team_member(email: str, user: dict = Depends(require_role("admin"))):
-    # Safety: prevent the calling admin from deleting their own account.
     if email == user.get("email"):
         raise HTTPException(status_code=400, detail="You cannot delete your own admin account.")
     result = await db.users.delete_one({"email": email})
@@ -129,12 +130,12 @@ async def delete_team_member(email: str, user: dict = Depends(require_role("admi
     return {"ok": True, "message": f"Successfully deleted {email}"}
 
 
-@api.put("/admin/employees/{email}")
-async def update_team_member(email: str, payload: dict, user: dict = Depends(require_role("admin"))):
-    new_role = payload.get("role")
-    if not new_role:
+@api.put("/admin/employees/{email}", response_model=MessageResponse)
+async def update_team_member(email: str, body: EmployeeUpdateRequest, user: dict = Depends(require_role("admin"))):
+    if not body.role:
         raise HTTPException(status_code=400, detail="Role is required")
-    result = await db.users.update_one({"email": email}, {"$set": {"role": new_role}})
+    result = await db.users.update_one({"email": email}, {"$set": {"role": body.role}})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"ok": True, "message": f"Successfully updated {email} to {new_role}"}
+    return {"ok": True, "message": f"Successfully updated {email} to {body.role}"}
+

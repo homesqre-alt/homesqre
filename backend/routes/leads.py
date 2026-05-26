@@ -7,25 +7,25 @@ from typing import Optional, Any, Dict
 
 from fastapi import Depends, HTTPException
 from fastapi.responses import Response as RawResponse
-from pydantic import BaseModel
 
 from core import (
     api, db, log, iso, now_utc, clean_doc,
-    current_user, current_user_optional, require_role,
+    current_user_optional, require_role,
 )
 from crm_helpers import (
     _build_lead, _user_identifier, _auto_assign_for_status,
     _validate_status_source,
 )
+from schemas import (
+    OkResponse, LeadOut, LeadListOut,
+    LeadCreateRequest, LeadUpdateRequest,
+    LeadStatusUpdateRequest, LeadCommentCreateRequest, LeadFollowupRequest,
+    LeadCommentOut, LeadStatusUpdateOut, DiscoveryCallCreate,
+)
 
 
-class DiscoveryCallCreate(BaseModel):
-    name: str
-    phone: str
-
-
-# ----- Public lead capture (homepage form + Customer dashboard CTAs) -----
-@api.post("/leads/public")
+# ----- Public lead capture -----
+@api.post("/leads/public", response_model=OkResponse)
 async def create_public_lead(payload: dict):
     """Anonymous lead capture. Source defaults to 'Website'. Auto-assigns based
     on the default status rule (Sales)."""
@@ -40,10 +40,9 @@ async def create_public_lead(payload: dict):
 
 
 # ----- Backward-compat shims -----
-@api.post("/interior-leads")
+@api.post("/interior-leads", response_model=OkResponse)
 async def create_interior_lead_shim(payload: Dict[str, Any]):
-    """Compat shim — homepage interior-lead form. Maps richer fields into the
-    unified `leads` collection and stores the original blob under `extra`."""
+    """Compat shim — homepage interior-lead form."""
     if not (payload.get("name") and payload.get("phone")):
         raise HTTPException(status_code=400, detail="Name and phone are required")
     lead = _build_lead({
@@ -67,12 +66,12 @@ async def create_interior_lead_shim(payload: Dict[str, Any]):
 
 
 @api.post("/discovery-calls")
-async def create_discovery_call_shim(payload: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
+async def create_discovery_call_shim(body: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
     """Compat shim — customer-dashboard discovery-call CTA. Writes to unified
     `leads` collection. Kept so existing frontend keeps working unchanged."""
     lead = _build_lead({
-        "name": payload.name,
-        "phone": payload.phone,
+        "name": body.name,
+        "phone": body.phone,
         "source": "Website",
     }, created_by=(user["email"].lower() if user else "public"), default_status="New")
     lead["extra"] = {"discovery_cta": True, "user_id": user["user_id"] if user else None}
@@ -90,7 +89,7 @@ def _lead_scope_filter(u: dict) -> dict:
     return {"assigned_to": _user_identifier(u)}
 
 
-@api.get("/leads")
+@api.get("/leads", response_model=LeadListOut)
 async def list_leads(
     user: dict = Depends(require_role("admin", "sales", "designer")),
     status: Optional[str] = None,
@@ -152,7 +151,7 @@ async def export_leads_csv(user: dict = Depends(require_role("admin"))):
     )
 
 
-@api.get("/leads/{lead_id}")
+@api.get("/leads/{lead_id}", response_model=LeadOut)
 async def get_lead(lead_id: str, user: dict = Depends(require_role("admin", "sales", "designer"))):
     lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
     if not lead:
@@ -162,16 +161,15 @@ async def get_lead(lead_id: str, user: dict = Depends(require_role("admin", "sal
     return lead
 
 
-@api.post("/leads")
-async def create_lead(payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+@api.post("/leads", response_model=LeadOut)
+async def create_lead(body: LeadCreateRequest, user: dict = Depends(require_role("admin", "sales"))):
+    payload = body.model_dump(exclude_unset=False)
     if not payload.get("name") or not payload.get("phone"):
         raise HTTPException(status_code=400, detail="Name and phone are required")
     statuses = [s["name"] for s in await db.crm_statuses.find({}, {"name": 1}).to_list(None)]
     sources = [s["name"] for s in await db.crm_sources.find({}, {"name": 1}).to_list(None)]
     _validate_status_source(payload.get("status"), payload.get("source"), statuses, sources)
     lead = _build_lead(payload, created_by=_user_identifier(user))
-    # Sales auto-assigns to themselves; admin may pass assigned_to explicitly,
-    # otherwise we apply the status' default-role rule.
     if user.get("role") == "sales":
         lead["assigned_to"] = _user_identifier(user)
     elif not lead["assigned_to"]:
@@ -180,15 +178,16 @@ async def create_lead(payload: dict, user: dict = Depends(require_role("admin", 
     return clean_doc(lead)
 
 
-@api.put("/leads/{lead_id}")
-async def update_lead(lead_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+@api.put("/leads/{lead_id}", response_model=OkResponse)
+async def update_lead(lead_id: str, body: LeadUpdateRequest, user: dict = Depends(require_role("admin"))):
     """Admin-only full update. Sales uses the focused endpoints below."""
     lead = await db.leads.find_one({"lead_id": lead_id})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+    payload = body.model_dump(exclude_unset=True)
     allowed = {"name", "phone", "email", "budget_range", "message", "source", "next_followup_at", "assigned_to"}
     update = {k: payload[k] for k in payload if k in allowed}
-    if "email" in update:
+    if "email" in update and update["email"] is not None:
         update["email"] = (update["email"] or "").strip().lower()
     if "assigned_to" in update:
         update["assigned_to"] = (update["assigned_to"] or "").lower() or None
@@ -199,7 +198,7 @@ async def update_lead(lead_id: str, payload: dict, user: dict = Depends(require_
     return {"ok": True}
 
 
-@api.delete("/leads/{lead_id}")
+@api.delete("/leads/{lead_id}", response_model=OkResponse)
 async def delete_lead(lead_id: str, user: dict = Depends(require_role("admin"))):
     res = await db.leads.delete_one({"lead_id": lead_id})
     if res.deleted_count == 0:
@@ -207,9 +206,9 @@ async def delete_lead(lead_id: str, user: dict = Depends(require_role("admin")))
     return {"ok": True}
 
 
-@api.put("/leads/{lead_id}/status")
-async def update_lead_status(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
-    new_status = (payload.get("status") or "").strip()
+@api.put("/leads/{lead_id}/status", response_model=LeadStatusUpdateOut)
+async def update_lead_status(lead_id: str, body: LeadStatusUpdateRequest, user: dict = Depends(require_role("admin", "sales", "designer"))):
+    new_status = (body.status or "").strip()
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
     lead = await db.leads.find_one({"lead_id": lead_id})
@@ -235,9 +234,9 @@ async def update_lead_status(lead_id: str, payload: dict, user: dict = Depends(r
     return {"ok": True, "assigned_to": next_assignee}
 
 
-@api.post("/leads/{lead_id}/comments")
-async def add_lead_comment(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
-    text = (payload.get("text") or "").strip()
+@api.post("/leads/{lead_id}/comments", response_model=LeadCommentOut)
+async def add_lead_comment(lead_id: str, body: LeadCommentCreateRequest, user: dict = Depends(require_role("admin", "sales", "designer"))):
+    text = (body.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="Comment text is required")
     lead = await db.leads.find_one({"lead_id": lead_id})
@@ -259,9 +258,9 @@ async def add_lead_comment(lead_id: str, payload: dict, user: dict = Depends(req
     return comment
 
 
-@api.put("/leads/{lead_id}/followup")
-async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
-    when = payload.get("next_followup_at")  # ISO string or null
+@api.put("/leads/{lead_id}/followup", response_model=OkResponse)
+async def set_lead_followup(lead_id: str, body: LeadFollowupRequest, user: dict = Depends(require_role("admin", "sales", "designer"))):
+    when = body.next_followup_at  # ISO string or null
     lead = await db.leads.find_one({"lead_id": lead_id})
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -272,3 +271,4 @@ async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(re
         {"$set": {"next_followup_at": when, "updated_at": iso(now_utc())}}
     )
     return {"ok": True}
+

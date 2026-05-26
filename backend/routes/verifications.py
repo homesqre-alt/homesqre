@@ -1,9 +1,8 @@
 """Floor-plan verifications + package pricing + admin moderation."""
 import uuid
-from typing import Optional, List, Dict
+from typing import List, Dict
 
 from fastapi import Depends, HTTPException
-from pydantic import BaseModel
 
 from core import (
     api, db, iso, now_utc, clean_doc,
@@ -12,16 +11,10 @@ from core import (
 from packages import PACKAGE_OPTIONS, calculate_package_price
 from crm_helpers import _user_identifier
 from design_helpers import ensure_design_project
-
-
-class VerificationCreate(BaseModel):
-    property_type: str
-    bhk_or_units: str
-    invoice_paid: float
-    pdf_url: Optional[str] = None          # legacy single-file fallback
-    pdf_urls: Optional[List[str]] = None   # preferred: multiple floor-plan files
-    room_requirements: str
-    project_name: Optional[str] = None
+from schemas import (
+    VerificationCreateRequest, VerificationOut,
+    VerificationModerateRequest, VerificationModerateOut,
+)
 
 
 @api.get("/packages")
@@ -30,26 +23,26 @@ async def list_packages():
     return PACKAGE_OPTIONS
 
 
-@api.post("/verifications")
-async def create_verification(payload: VerificationCreate, user: dict = Depends(current_user)):
+@api.post("/verifications", response_model=VerificationOut)
+async def create_verification(body: VerificationCreateRequest, user: dict = Depends(current_user)):
     # Coalesce pdf_urls: prefer the explicit list, fall back to single pdf_url
-    pdf_urls = [u for u in (payload.pdf_urls or []) if u]
-    if not pdf_urls and payload.pdf_url:
-        pdf_urls = [payload.pdf_url]
+    pdf_urls = [u for u in (body.pdf_urls or []) if u]
+    if not pdf_urls and body.pdf_url:
+        pdf_urls = [body.pdf_url]
     if not pdf_urls:
         raise HTTPException(status_code=400, detail="At least one floor plan file is required")
-    project_name = (payload.project_name or "").strip() or None
+    project_name = (body.project_name or "").strip() or None
     ver_id = f"ver_{uuid.uuid4().hex[:10]}"
     rec = {
         "verification_id": ver_id,
         "user_id": user["user_id"],
         "project_name": project_name,
-        "property_type": payload.property_type,
-        "bhk_or_units": payload.bhk_or_units,
-        "invoice_paid": payload.invoice_paid,
+        "property_type": body.property_type,
+        "bhk_or_units": body.bhk_or_units,
+        "invoice_paid": body.invoice_paid,
         "pdf_url": pdf_urls[0],            # keep for legacy admin UI compatibility
         "pdf_urls": pdf_urls,
-        "room_requirements": payload.room_requirements,
+        "room_requirements": body.room_requirements,
         "status": "pending",
         "created_at": iso(now_utc()),
     }
@@ -61,17 +54,14 @@ async def create_verification(payload: VerificationCreate, user: dict = Depends(
     return clean_doc(rec)
 
 
-@api.get("/admin/verifications")
+@api.get("/admin/verifications", response_model=List[VerificationOut])
 async def admin_list_verifications(user: dict = Depends(require_role("admin", "designer"))):
     items = await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
     is_designer = user.get("role") == "designer"
-    # Pre-index design projects by user_id (one query) so we can attach
-    # design_project_id without N+1 round-trips.
     project_by_user: Dict[str, str] = {}
     async for p in db.design_projects.find({}, {"_id": 0, "user_id": 1, "project_id": 1, "status": 1}):
         if p["user_id"] not in project_by_user or p.get("status") == "in_progress":
             project_by_user[p["user_id"]] = p["project_id"]
-    # Attach minimal customer label (designers must NOT see email/phone).
     for v in items:
         u = await db.users.find_one(
             {"user_id": v.get("user_id")},
@@ -86,17 +76,17 @@ async def admin_list_verifications(user: dict = Depends(require_role("admin", "d
     return items
 
 
-@api.put("/admin/verifications/{ver_id}")
+@api.put("/admin/verifications/{ver_id}", response_model=VerificationModerateOut)
 async def admin_moderate_verification(
     ver_id: str,
-    payload: dict,
+    body: VerificationModerateRequest,
     user: dict = Depends(require_role("admin", "designer")),
 ):
     """Approve → auto-create design project + advance customer to 'designing'.
     reject_package → designer selects corrected package; backend auto-calculates
     the differential customer must pay. No manual amount input from designer.
     """
-    action = payload.get("action")
+    action = body.action
     ver = await db.verifications.find_one({"verification_id": ver_id})
     if not ver:
         raise HTTPException(status_code=404, detail="Verification not found")
@@ -107,11 +97,6 @@ async def admin_moderate_verification(
             {"$set": {"status": "approved", "moderated_by": _user_identifier(user),
                       "moderated_at": iso(now_utc())}}
         )
-        # Two parallel tracks:
-        # 1. Design — auto-spin up the 3D project so the designer can immediately
-        #    upload renders without an admin handoff. Customer moves to 'designing'.
-        # 2. Site visit — the customer is prompted in their dashboard to pick a
-        #    measurement-visit date/time (cleared here so the banner shows).
         design = await ensure_design_project(ver["user_id"], verification_id=ver_id)
         await db.users.update_one(
             {"user_id": ver["user_id"]},
@@ -120,8 +105,8 @@ async def admin_moderate_verification(
         return {"ok": True, "design_project_id": design["project_id"]}
 
     if action == "reject_package":
-        corrected_pt = (payload.get("corrected_property_type") or "").strip()
-        corrected_spec = payload.get("corrected_bhk_or_units")
+        corrected_pt = (body.corrected_property_type or "").strip()
+        corrected_spec = body.corrected_bhk_or_units
         if not corrected_pt or corrected_spec in (None, ""):
             raise HTTPException(status_code=400, detail="corrected_property_type and corrected_bhk_or_units are required")
         new_price = calculate_package_price(corrected_pt, corrected_spec)
@@ -135,12 +120,11 @@ async def admin_moderate_verification(
             "corrected_bhk_or_units": str(corrected_spec),
             "corrected_price": new_price,
             "differential_amount": differential,
-            "rejection_reason": payload.get("reason") or "Floor plan did not match selected package",
+            "rejection_reason": body.reason or "Floor plan did not match selected package",
             "moderated_by": _user_identifier(user),
             "moderated_at": iso(now_utc()),
         }
         await db.verifications.update_one({"verification_id": ver_id}, {"$set": update})
-        # If price already covered, treat as accepted — bypass payment, push to designing.
         if differential == 0:
             await db.verifications.update_one(
                 {"verification_id": ver_id},
@@ -151,7 +135,6 @@ async def admin_moderate_verification(
                 {"$set": {"project_phase": "designing"}}
             )
             return {"ok": True, "differential_amount": 0, "auto_approved": True}
-        # Otherwise: customer must pay the differential before designing begins.
         await db.users.update_one(
             {"user_id": ver["user_id"]},
             {"$set": {
@@ -169,9 +152,8 @@ async def admin_moderate_verification(
         )
         return {"ok": True, "differential_amount": differential, "auto_approved": False}
 
-    # Legacy "reject" with explicit deficit_amount — preserved for back-compat
     if action == "reject":
-        deficit_amount = payload.get("deficit_amount", 0)
+        deficit_amount = body.deficit_amount or 0
         await db.verifications.update_one(
             {"verification_id": ver_id},
             {"$set": {"status": "rejected", "deficit_amount": deficit_amount}}
@@ -183,3 +165,4 @@ async def admin_moderate_verification(
         return {"ok": True}
 
     raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+

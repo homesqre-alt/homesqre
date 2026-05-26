@@ -38,6 +38,14 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (fifth update) — Pydantic typing pass for OpenAPI.**
+  - New `schemas/` package — Pydantic v2 models for every request/response shape (53 distinct schemas surfaced in OpenAPI). Files: `common.py`, `auth.py`, `crm.py`, `leads.py`, `verifications.py`, `design.py`, `admin.py`, `me.py`.
+  - Every route now declares `response_model=…` so `/docs` Swagger shows accurate shapes (43 typed paths). Routes that previously took `payload: dict` now take a typed request model — `LeadCreateRequest`, `LeadStatusUpdateRequest`, `LeadCommentCreateRequest`, `LeadFollowupRequest`, `LeadUpdateRequest`, `VerificationModerateRequest`, `ImageReviewRequest`, `QuotationStatusRequest`, `EmployeeCreateRequest`, `EmployeeUpdateRequest`, `StatusCreateRequest`, `StatusUpdateRequest`, `SourceCreateRequest`, `SourceUpdateRequest`, `PhaseUpdateRequest`, `SiteVisitRequest`, `GoogleAuthRequest`.
+  - `OkResponse` and other enriched response models use `model_config = ConfigDict(extra="allow")` so admin-enrichment fields (`customer`, `lead`, `site_visit_at`, `design_project_id`, `lead_id`, …) flow through untouched.
+  - Required-field validation kept inside handlers (custom 400) instead of Pydantic 422, preserving existing test contracts.
+  - Behavior unchanged — all 53 pytest pass, all 43 routes still respond, `/docs` returns 200 with full schemas.
+
+## Changelog (prior)
 - **2026-02-26 (fourth update) — Server refactor + Customer Dashboard cleanup.**
   - **`server.py` reduced from 1857 → 38 lines.** Split into focused modules:
     - `core.py` (204) — env config, app/api router, MongoDB client, all shared helpers + auth deps (`current_user`, `require_role`, `_set_auth_cookie`).
