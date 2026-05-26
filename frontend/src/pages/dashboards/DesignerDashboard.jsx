@@ -23,7 +23,7 @@ export default function DesignerDashboard() {
   }
 
   return (
-    <DashShell links={LINKS} title="Designer Studio">
+    <DashShell links={LINKS} title="Designer Studio Dashboard">
       {/* Visible top tab bar — same pattern as admin command center */}
       <div className="flex gap-4 border-b border-[#E8E4D9] mb-6 pb-2 overflow-x-auto" data-testid="designer-tabs">
         {LINKS.map(link => (
