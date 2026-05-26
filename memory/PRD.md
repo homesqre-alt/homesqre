@@ -38,6 +38,13 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (seventh update) — Customer Dashboard package picker + Lead Drawer batch submit.**
+  - **CustomerDashboard.jsx — inline package picker restored.** Removed the old "Generate Design Invoice" modal in favor of an inline catalogue (`unpaid` phase). Customer sees all 8 packages from `packages.py` rendered as selectable cards across 3 property groups (Apartment 1–2 BHK / 3 BHK / 4+ BHK, Villa Duplex / Triplex, Independent 1–5 units) with prices ₹10k – ₹30k. Selected package surfaces in a sticky summary tile with a "Proceed to Payment" CTA. Mocked payment hits `PUT /me/phase {phase:"briefing"}` (Razorpay/Stripe integrates later). Selected `property_type` + `bhk_or_units` are pre-filled into the briefing-phase verification form to avoid double entry.
+  - **MasterLeadPipeline.jsx LeadDetailDrawer — batched submit workflow.** All field changes (status, next follow-up, assigned-to override, source, basic info, plus the new-comment textarea) buffer into local `edits` + `comment` state — nothing hits the API on `onChange`. A sticky footer shows live "N pending change(s) — nothing is saved yet" with `Discard` + `Submit Changes` buttons. On submit the handler fires the right endpoint per dirty field (`PUT /leads/{id}/status`, `PUT /leads/{id}/followup`, `PUT /leads/{id}` for admin core fields, `POST /leads/{id}/comments`) then refreshes the drawer and clears buffers.
+  - **Test IDs added** — `unpaid-package-picker`, `pkg-{type}-{value}`, `selected-package-label`, `selected-package-price`, `confirm-payment-btn`, `lead-submit-bar`, `lead-submit-btn`, `lead-discard-btn`, `detail-followup-input`.
+  - **Smoke-tested live** — fresh customer sees the package picker, can pick a 3 BHK ₹12,000 package and proceed to payment. Admin can batch-edit a lead's status + queue a comment, submit once, both persist with a single toast "Changes saved · reassigned to …".
+  - **Regression** — 55/55 pytest pass (no backend changes; all delta is frontend state buffering).
+
 - **2026-02-26 (sixth update) — Designer Dashboard restructure + total PII privacy.**
   - **5 strict tabs:** My Leads → Verify Floor Plan → Active Projects → Awaiting Approvals → Completed. `Approved Floor Plans` tab removed; `LeadInlinePanel` removed (designer takes no manual lead actions).
   - **My Leads** (`DesignerLeadsList.jsx`) — static read-only table (Name / Status / Source / Next Follow-up / Updated). Click does nothing. No phone/email displayed.

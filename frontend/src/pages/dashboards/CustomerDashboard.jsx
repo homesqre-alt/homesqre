@@ -33,11 +33,10 @@ export default function CustomerDashboard() {
   const [siteVisitInput, setSiteVisitInput] = useState("");
 
   // Modal States
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isDiscoveryOpen, setIsDiscoveryOpen] = useState(false); 
   const [isLoading, setIsLoading] = useState(false);
   
-  // Form Details
+  // Form Details (kept for Discovery Call & Briefing forms)
   const [billingDetails, setBillingDetails] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -45,31 +44,48 @@ export default function CustomerDashboard() {
     address: ""
   });
 
-  // Property Configuration
+  // Available packages (kept in sync with backend packages.py)
+  const PACKAGE_CATALOGUE = useMemo(() => ([
+    {
+      group: "Apartment / Flat",
+      property_type: "apartment",
+      options: [
+        { value: "1-2", label: "1–2 BHK", price: 10000, blurb: "Compact apartments up to 2 bedrooms." },
+        { value: "3",   label: "3 BHK",   price: 12000, blurb: "Mid-size families. Most popular package." },
+        { value: "4+",  label: "4+ BHK",  price: 15000, blurb: "Large apartments / penthouse layouts." },
+      ],
+    },
+    {
+      group: "Villa",
+      property_type: "villa",
+      options: [
+        { value: "duplex",  label: "Duplex Villa",   price: 15000, blurb: "Two-storey independent villa." },
+        { value: "triplex", label: "Triplex / Luxury", price: 18000, blurb: "Three-storey or luxury villa." },
+      ],
+    },
+    {
+      group: "Independent / Rental",
+      property_type: "independent",
+      options: [
+        { value: "1", label: "1 unit",  price: 12000, blurb: "Single rental / studio." },
+        { value: "2", label: "2 units", price: 20000, blurb: "Duplex rental." },
+        { value: "3", label: "3 units", price: 20000, blurb: "Triple rental." },
+        { value: "4", label: "4 units", price: 24000, blurb: "Quad rental." },
+        { value: "5", label: "5 units", price: 30000, blurb: "5-unit rental block." },
+      ],
+    },
+  ]), []);
+
+  // Selected package (in unpaid phase)
+  const [selectedPkg, setSelectedPkg] = useState(null); // { property_type, value, label, price, blurb }
+  // Briefing phase still needs property/BHK; default from selected pkg if any.
   const [propertyType, setPropertyType] = useState("apartment");
-  const [sqft, setSqft] = useState("");
   const [bhkType, setBhkType] = useState("1-2");
   const [villaType, setVillaType] = useState("duplex");
   const [unitCount, setUnitCount] = useState(1);
 
-  // Dynamic Price Calculator
-  const calculatedPrice = useMemo(() => {
-    if (propertyType === "apartment") {
-      if (bhkType === "1-2") return 10000;
-      if (bhkType === "3") return 12000;
-      if (bhkType === "4+") return 15000;
-    }
-    if (propertyType === "villa") {
-      if (villaType === "duplex") return 15000;
-      if (villaType === "triplex") return 18000;
-    }
-    if (propertyType === "independent") {
-      const units = parseInt(unitCount) || 1;
-      if (units === 1) return 12000;
-      return Math.max(20000, 6000 * units);
-    }
-    return 10000; 
-  }, [propertyType, bhkType, villaType, unitCount]);
+  // The price the customer is paying (driven by the selected package)
+  const calculatedPrice = selectedPkg?.price || 0;
 
   if (user === undefined) return null;
   if (user === null) return <Navigate to="/login" />;
@@ -191,14 +207,24 @@ export default function CustomerDashboard() {
     setFloorPlans(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // ----- Payment completion -----
+  // ----- Payment completion (MOCKED — real gateway integrates later) -----
   const handleConfirmPayment = async () => {
+    if (!selectedPkg) {
+      toast.error("Please choose a package first.");
+      return;
+    }
     setIsLoading(true);
     try {
+      // Sync briefing-phase property fields to the chosen package so the
+      // verification form below pre-fills correctly.
+      setPropertyType(selectedPkg.property_type);
+      if (selectedPkg.property_type === "apartment") setBhkType(selectedPkg.value);
+      else if (selectedPkg.property_type === "villa") setVillaType(selectedPkg.value);
+      else if (selectedPkg.property_type === "independent") setUnitCount(parseInt(selectedPkg.value) || 1);
+
       await api.put("/me/phase", { phase: "briefing" });
-      toast.success(`Payment of ₹${calculatedPrice.toLocaleString("en-IN")} verified.`);
+      toast.success(`Payment of ₹${selectedPkg.price.toLocaleString("en-IN")} confirmed (mocked).`);
       await refresh();
-      setIsCheckoutOpen(false);
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -296,36 +322,99 @@ export default function CustomerDashboard() {
 
       <div className="bg-white border border-[#E8E4D9] p-8 mb-10 shadow-sm relative">
         
-        {/* PHASE 0: THE PAYWALL */}
+        {/* PHASE 0: THE PAYWALL — package picker + mocked payment */}
         {currentPhase === "unpaid" && (
-          <div className="animate-in fade-in text-center py-6">
-            <span className="inline-block bg-[#F3F0E9] text-[#06402B] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-6">
-              Next Step: Unlock Your Design Journey
-            </span>
-            <h2 className="font-display text-3xl text-[#06402B] mb-4">See your home before you build it.</h2>
-            <p className="text-[#4A5D54] max-w-xl mx-auto mb-10 text-lg">
-              Stop guessing what your home will look like. Secure your design slot today, and our team will craft your exact vision in stunning 3D.
-            </p>
-            
-            <div className="flex flex-col items-center gap-4">
-              <button 
-                onClick={() => setIsCheckoutOpen(true)}
-                className="bg-[#06402B] text-white px-10 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#042c1e] transition w-full max-w-md"
-              >
-                Unlock Your Design Potential (Starts at ₹10,000)
-              </button>
-              <p className="text-xs text-[#B68D40] font-medium tracking-wide mb-6">
-                Fully adjustable against your final execution quote. Zero hidden costs.
+          <div className="animate-in fade-in" data-testid="unpaid-package-picker">
+            <div className="text-center mb-8">
+              <span className="inline-block bg-[#F3F0E9] text-[#06402B] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+                Step 1 of 4 — Choose Your Design Package
+              </span>
+              <h2 className="font-display text-3xl text-[#06402B] mb-3">See your home before you build it.</h2>
+              <p className="text-[#4A5D54] max-w-xl mx-auto text-base">
+                Pick the package that matches your property. The retainer is fully adjustable against your final execution quote.
               </p>
-              
-              <div className="w-full max-w-md border-t border-[#E8E4D9] pt-6 mt-2">
-                <button 
-                  onClick={() => setIsDiscoveryOpen(true)}
-                  className="text-sm text-[#4A5D54] hover:text-[#06402B] font-medium underline underline-offset-4"
-                >
-                  Not sure yet? Schedule a Discovery Call with our Expert.
-                </button>
+            </div>
+
+            {/* Package catalogue */}
+            <div className="space-y-8 mb-8">
+              {PACKAGE_CATALOGUE.map(group => (
+                <div key={group.group}>
+                  <h3 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-3 border-b border-[#E8E4D9] pb-2">
+                    {group.group}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {group.options.map(opt => {
+                      const isSelected = selectedPkg?.property_type === group.property_type && selectedPkg?.value === opt.value;
+                      return (
+                        <button
+                          key={`${group.property_type}-${opt.value}`}
+                          type="button"
+                          onClick={() => setSelectedPkg({ ...opt, property_type: group.property_type })}
+                          data-testid={`pkg-${group.property_type}-${opt.value}`}
+                          className={`text-left border p-4 transition ${
+                            isSelected
+                              ? "border-[#06402B] bg-[#F3F0E9] ring-2 ring-[#06402B]"
+                              : "border-[#E8E4D9] bg-white hover:border-[#B68D40]"
+                          }`}
+                        >
+                          <div className="flex items-baseline justify-between mb-1">
+                            <h4 className="font-display text-lg text-[#06402B]">{opt.label}</h4>
+                            <span className="font-display text-xl text-[#B68D40]">₹{opt.price.toLocaleString("en-IN")}</span>
+                          </div>
+                          <p className="text-xs text-[#4A5D54]">{opt.blurb}</p>
+                          {isSelected && (
+                            <p className="mt-2 text-[10px] uppercase tracking-widest font-bold text-[#06402B]">✓ Selected</p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Selected package summary + Pay CTA */}
+            <div className="bg-[#F3F0E9] border border-[#E8E4D9] p-6" data-testid="unpaid-payment-summary">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[#4A5D54] font-bold">Selected Package</p>
+                  {selectedPkg ? (
+                    <p className="font-display text-xl text-[#06402B]" data-testid="selected-package-label">
+                      {selectedPkg.label}{" "}
+                      <span className="text-sm text-[#4A5D54] capitalize">({selectedPkg.property_type})</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#4A5D54] italic">No package chosen yet.</p>
+                  )}
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="text-[10px] uppercase tracking-widest text-[#4A5D54] font-bold">Design Retainer</p>
+                  <p className="font-display text-3xl text-[#06402B]" data-testid="selected-package-price">
+                    ₹{calculatedPrice.toLocaleString("en-IN")}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={handleConfirmPayment}
+                disabled={!selectedPkg || isLoading}
+                data-testid="confirm-payment-btn"
+                className="bg-[#B68D40] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#9d7936] transition w-full shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Processing…" : selectedPkg ? `Proceed to Payment — ₹${calculatedPrice.toLocaleString("en-IN")}` : "Select a package to continue"}
+              </button>
+              <p className="text-[10px] text-gray-500 mt-3 text-center uppercase tracking-wide">
+                Mocked payment — Razorpay/Stripe integrates later. Phase advances on click.
+              </p>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-[#E8E4D9] text-center">
+              <button
+                onClick={() => setIsDiscoveryOpen(true)}
+                data-testid="discovery-cta-btn"
+                className="text-sm text-[#4A5D54] hover:text-[#06402B] font-medium underline underline-offset-4"
+              >
+                Not sure yet? Schedule a Discovery Call with our Expert.
+              </button>
             </div>
           </div>
         )}
@@ -555,78 +644,7 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      {/* CHECKOUT MODAL OVERLAY */}
-      {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-            
-            <div className="bg-[#06402B] text-white p-6 flex justify-between items-center">
-              <div>
-                <h3 className="font-display text-xl">Generate Design Invoice</h3>
-                <p className="text-xs opacity-80 mt-1">Configure your property for accurate pricing.</p>
-              </div>
-              <button onClick={() => setIsCheckoutOpen(false)} className="text-white hover:text-gray-300 text-2xl">&times;</button>
-            </div>
-
-            <div className="p-8">
-              <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-4 border-b border-[#E8E4D9] pb-2">1. Billing Details</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                <input type="text" placeholder="Full Name" value={billingDetails.name} className="p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm" onChange={(e) => setBillingDetails({...billingDetails, name: e.target.value})} />
-                <input type="email" placeholder="Email Address" value={billingDetails.email} className="p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm" onChange={(e) => setBillingDetails({...billingDetails, email: e.target.value})} />
-                <input type="tel" placeholder="Phone Number" value={billingDetails.phone} className="p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm" onChange={(e) => setBillingDetails({...billingDetails, phone: e.target.value})} />
-                <input type="text" placeholder="Billing Address" className="p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm" />
-              </div>
-
-              <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-4 border-b border-[#E8E4D9] pb-2">2. Property Configuration</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                
-                <div className="col-span-1 md:col-span-3 grid grid-cols-3 gap-2 mb-2">
-                  <button onClick={() => setPropertyType('apartment')} className={`p-3 text-sm border ${propertyType === 'apartment' ? 'bg-[#F3F0E9] border-[#06402B] text-[#06402B] font-medium' : 'border-[#E8E4D9] text-[#4A5D54]'}`}>Apartment / Flat</button>
-                  <button onClick={() => setPropertyType('villa')} className={`p-3 text-sm border ${propertyType === 'villa' ? 'bg-[#F3F0E9] border-[#06402B] text-[#06402B] font-medium' : 'border-[#E8E4D9] text-[#4A5D54]'}`}>Villa</button>
-                  <button onClick={() => setPropertyType('independent')} className={`p-3 text-sm border ${propertyType === 'independent' ? 'bg-[#F3F0E9] border-[#06402B] text-[#06402B] font-medium' : 'border-[#E8E4D9] text-[#4A5D54]'}`}>Independent / Rental</button>
-                </div>
-
-                <input type="number" placeholder="Total Sqft" value={sqft} onChange={(e) => setSqft(e.target.value)} className="p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm col-span-1" />
-
-                <div className="col-span-1 md:col-span-2">
-                  {propertyType === "apartment" && (
-                    <select value={bhkType} onChange={(e) => setBhkType(e.target.value)} className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm bg-white">
-                      <option value="1-2">1 BHK / 2 BHK</option>
-                      <option value="3">3 BHK</option>
-                      <option value="4+">4 BHK +</option>
-                    </select>
-                  )}
-                  {propertyType === "villa" && (
-                    <select value={villaType} onChange={(e) => setVillaType(e.target.value)} className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm bg-white">
-                      <option value="duplex">Duplex</option>
-                      <option value="triplex">Triplex / Luxury</option>
-                    </select>
-                  )}
-                  {propertyType === "independent" && (
-                    <input type="number" min="1" placeholder="Number of Units" value={unitCount} onChange={(e) => setUnitCount(e.target.value)} className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm" />
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-[#F3F0E9] border border-[#E8E4D9] p-6 text-center">
-                <p className="text-sm text-[#4A5D54] mb-2 uppercase tracking-widest font-bold">Total Design Retainer</p>
-                <p className="font-display text-4xl text-[#06402B] mb-6">₹{calculatedPrice.toLocaleString('en-IN')}</p>
-                
-                <button 
-                  onClick={handleConfirmPayment}
-                  disabled={isLoading}
-                  data-testid="confirm-payment-btn"
-                  className="bg-[#B68D40] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#9d7936] transition w-full shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? "Confirming…" : "Proceed to Secure Payment"}
-                </button>
-                <p className="text-[10px] text-gray-500 mt-3 uppercase tracking-wide">100% Secure Payment • Instant Invoice Generation</p>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
+      {/* CHECKOUT MODAL removed — package selection is now inline in the unpaid phase. */}
 
       {/* LOWER DASHBOARD: JOURNEY MAP & VAULT */}
       {currentPhase !== "unpaid" && (

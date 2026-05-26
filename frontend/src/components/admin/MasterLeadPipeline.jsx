@@ -301,9 +301,9 @@ function LeadAddModal({ mode, statuses, sources, budgets, employees, onClose, on
 // ---------- Detail drawer ----------
 function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, currentUser, onClose, onChanged }) {
   const [data, setData] = useState(lead);
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState("");      // buffered new comment
   const [busy, setBusy] = useState(false);
-  const [edits, setEdits] = useState({});  // admin-only basic-field edits
+  const [edits, setEdits] = useState({});          // buffered field edits (status / followup / core)
   const isAdmin = mode === "admin";
   const isAssignee = (data.assigned_to || "") === (currentUser?.email || "").toLowerCase();
   const canEditCore = isAdmin;
@@ -317,54 +317,59 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
     })();
   }, [lead.lead_id]);
 
-  const changeStatus = async (newStatus) => {
+  const dirtyCount = Object.keys(edits).length + (comment.trim() ? 1 : 0);
+
+  // Single batched submit — fires the right endpoint for each changed field.
+  // Nothing hits the API until the user clicks "Submit Changes".
+  const submitChanges = async () => {
     if (!canEditWorkflow) return;
+    if (dirtyCount === 0) return;
     setBusy(true);
+    let reassignedTo = null;
     try {
-      const { data: r } = await api.put(`/leads/${data.lead_id}/status`, { status: newStatus });
-      toast.success(r.assigned_to !== data.assigned_to
-        ? `Status changed → reassigned to ${r.assigned_to}`
-        : "Status updated");
+      // 1) Workflow: status
+      if (typeof edits.status === "string" && edits.status !== data.status) {
+        const { data: r } = await api.put(`/leads/${data.lead_id}/status`, { status: edits.status });
+        reassignedTo = r?.assigned_to ?? null;
+      }
+      // 2) Workflow: next follow-up
+      if ("next_followup_at" in edits) {
+        await api.put(`/leads/${data.lead_id}/followup`, {
+          next_followup_at: edits.next_followup_at || null,
+        });
+      }
+      // 3) Admin-only core fields (name/phone/email/budget/message/source/assigned_to)
+      const coreKeys = ["name", "phone", "email", "budget_range", "message", "source", "assigned_to"];
+      const corePayload = {};
+      coreKeys.forEach(k => { if (k in edits) corePayload[k] = edits[k]; });
+      if (isAdmin && Object.keys(corePayload).length > 0) {
+        await api.put(`/leads/${data.lead_id}`, corePayload);
+      }
+      // 4) New comment (any role with workflow access)
+      if (comment.trim()) {
+        await api.post(`/leads/${data.lead_id}/comments`, { text: comment.trim() });
+      }
+      // Refresh and clear buffers
       const { data: fresh } = await api.get(`/leads/${data.lead_id}`);
-      setData(fresh); onChanged(fresh);
-    } catch (err) { toast.error(formatApiError(err)); }
-    finally { setBusy(false); }
-  };
-
-  const setFollowup = async (when) => {
-    if (!canEditWorkflow) return;
-    setBusy(true);
-    try {
-      await api.put(`/leads/${data.lead_id}/followup`, { next_followup_at: when || null });
-      setData({ ...data, next_followup_at: when || null });
-      onChanged({ ...data, next_followup_at: when || null });
-      toast.success("Follow-up updated");
-    } catch (err) { toast.error(formatApiError(err)); }
-    finally { setBusy(false); }
-  };
-
-  const addComment = async () => {
-    if (!comment.trim()) return;
-    setBusy(true);
-    try {
-      const { data: c } = await api.post(`/leads/${data.lead_id}/comments`, { text: comment });
-      setData({ ...data, comments: [...(data.comments || []), c] });
+      setData(fresh);
+      setEdits({});
       setComment("");
-      toast.success("Comment added");
-    } catch (err) { toast.error(formatApiError(err)); }
-    finally { setBusy(false); }
+      onChanged(fresh);
+      toast.success(
+        reassignedTo && reassignedTo !== data.assigned_to
+          ? `Changes saved · reassigned to ${reassignedTo}`
+          : "Changes saved"
+      );
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const saveCoreEdits = async () => {
-    if (!isAdmin || Object.keys(edits).length === 0) return;
-    setBusy(true);
-    try {
-      await api.put(`/leads/${data.lead_id}`, edits);
-      const { data: fresh } = await api.get(`/leads/${data.lead_id}`);
-      setData(fresh); setEdits({}); onChanged(fresh);
-      toast.success("Lead updated");
-    } catch (err) { toast.error(formatApiError(err)); }
-    finally { setBusy(false); }
+  const discardChanges = () => {
+    setEdits({});
+    setComment("");
   };
 
   const deleteLead = async () => {
@@ -400,8 +405,8 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
               <select
                 data-testid="detail-status-select"
                 disabled={!canEditWorkflow || busy}
-                value={data.status}
-                onChange={e => changeStatus(e.target.value)}
+                value={edits.status ?? data.status}
+                onChange={e => setEdits({ ...edits, status: e.target.value })}
                 className={inputCls}>
                 {statuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
               </select>
@@ -409,9 +414,10 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
             <Field label="Next Follow-up">
               <input
                 type="datetime-local"
+                data-testid="detail-followup-input"
                 disabled={!canEditWorkflow || busy}
-                value={data.next_followup_at ? data.next_followup_at.slice(0, 16) : ""}
-                onChange={e => setFollowup(e.target.value)}
+                value={(edits.next_followup_at ?? data.next_followup_at ?? "").slice(0, 16)}
+                onChange={e => setEdits({ ...edits, next_followup_at: e.target.value })}
                 className={inputCls} />
             </Field>
             <Field label="Assigned to">
@@ -438,7 +444,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
           </div>
         </section>
 
-        {/* Core fields (admin editable) */}
+        {/* Core fields (admin editable, buffered) */}
         {isAdmin && (
           <section className="space-y-3">
             <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Basic Info (admin)</h4>
@@ -452,11 +458,8 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
               <Field label="Message" full><textarea rows="2" value={edits.message ?? data.message ?? ""} onChange={e => setEdits({ ...edits, message: e.target.value })} className={inputCls} /></Field>
             </div>
             <div className="flex gap-2">
-              <button onClick={saveCoreEdits} disabled={Object.keys(edits).length === 0 || busy}
-                      data-testid="save-core-btn"
-                      className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white disabled:opacity-40">Save changes</button>
               <button onClick={deleteLead} disabled={busy} data-testid="delete-lead-btn"
-                      className="px-4 py-2 text-xs uppercase tracking-widest border border-red-700 text-red-700 hover:bg-red-50">Delete</button>
+                      className="px-4 py-2 text-xs uppercase tracking-widest border border-red-700 text-red-700 hover:bg-red-50">Delete Lead</button>
             </div>
           </section>
         )}
@@ -470,7 +473,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
           </section>
         )}
 
-        {/* Comments */}
+        {/* Comments & history */}
         <section className="space-y-3">
           <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Comments &amp; History</h4>
           <div className="space-y-2 max-h-72 overflow-y-auto border border-[#E8E4D9] p-3 bg-[#F3F0E9]">
@@ -489,19 +492,46 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
             ))}
           </div>
           {canEditWorkflow && (
-            <div className="flex gap-2">
-              <input
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">New comment (queued)</label>
+              <textarea
                 data-testid="add-comment-input"
                 value={comment}
                 onChange={e => setComment(e.target.value)}
-                placeholder="Add a comment…"
+                rows={2}
+                placeholder="Add a comment… it will be posted when you click Submit Changes."
                 className={inputCls} />
-              <button onClick={addComment} disabled={!comment.trim() || busy}
-                      data-testid="add-comment-btn"
-                      className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white disabled:opacity-40">Post</button>
             </div>
           )}
         </section>
+
+        {/* Sticky batch-submit footer */}
+        {canEditWorkflow && (
+          <section
+            data-testid="lead-submit-bar"
+            className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-white border-t border-[#E8E4D9] flex flex-col sm:flex-row sm:items-center gap-3"
+          >
+            <p className="text-xs text-[#4A5D54] flex-1">
+              {dirtyCount === 0
+                ? "No pending changes."
+                : <><strong>{dirtyCount}</strong> pending change{dirtyCount === 1 ? "" : "s"} — nothing is saved yet.</>}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={discardChanges}
+                disabled={busy || dirtyCount === 0}
+                data-testid="lead-discard-btn"
+                className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9] text-[#4A5D54] disabled:opacity-40"
+              >Discard</button>
+              <button
+                onClick={submitChanges}
+                disabled={busy || dirtyCount === 0}
+                data-testid="lead-submit-btn"
+                className="px-5 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white hover:bg-[#0a5839] disabled:opacity-40"
+              >{busy ? "Submitting…" : "Submit Changes"}</button>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
