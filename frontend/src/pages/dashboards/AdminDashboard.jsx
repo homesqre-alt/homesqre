@@ -4,15 +4,16 @@ import { Navigate, useLocation } from "react-router-dom";
 import DashShell from "@/components/layout/DashShell";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import MasterLeadPipeline from "@/components/admin/MasterLeadPipeline";
+import CrmSettings from "@/components/admin/CrmSettings";
 
 // Custom Tabs based on Homesqre Architecture
 const LINKS = [
   { to: "#overview", label: "Overview & Planner" },
-  { to: "#discovery", label: "Discovery Calls (CRM)" },
+  { to: "#pipeline", label: "Master Lead Pipeline" },
   { to: "#measurements", label: "Verification & Site Visits" },
   { to: "#users", label: "Team Management" },
-  { to: "#intent", label: "Intent Tracking (Drop-offs)" },
-  { to: "#pipeline", label: "Master Pipeline" },
+  { to: "#crm-settings", label: "CRM Settings" },
 ];
 
 export default function AdminDashboard() {
@@ -63,11 +64,10 @@ export default function AdminDashboard() {
       </div>
 
       {activeTab === "overview" && <TabOverview />}
-      {activeTab === "discovery" && <TabDiscoveryCalls triggerNotification={triggerNotification} currentUser={user} />}
+      {activeTab === "pipeline" && <MasterLeadPipeline mode="admin" currentUser={user} />}
       {activeTab === "measurements" && <TabSiteVisits />}
       {activeTab === "users" && <TabUsers />}
-      {activeTab === "intent" && <TabIntentTracking />}
-      {activeTab === "pipeline" && <TabMasterPipeline />}
+      {activeTab === "crm-settings" && <CrmSettings />}
       
     </DashShell>
   );

@@ -1,85 +1,79 @@
 # Homesqre — Product Requirements (PRD)
 
 ## Original Problem Statement
-Build **Homesqre Interiors** — a paywalled multi-phase interior design service for the Indian market. Customers go through a guided journey (unpaid → briefing → verification → scheduling → confirmed → designing) and pay a design retainer up-front. Admins manage discovery calls, verifications, and an internal employees roster. The product is "design first" — accurate quotation only happens after design approval.
+Build **Homesqre Interiors** — a paywalled multi-phase interior design service for the Indian market. Customers go through a guided journey (unpaid → briefing → verification → scheduling → confirmed → designing → quotation) and pay a design retainer up-front. Admins manage a Master Lead Pipeline (CRM), discovery calls, floor-plan verifications, design iterations, and an internal employees roster. The product is "design first" — accurate quotation only happens after design approval.
 
-> **Note (2026-05-25):** The product pivoted **from a real-estate marketplace** (listings/projects/agents/builders/EMI/microsites) → to an **Interiors-only service**. The marketplace backend & most frontend files are now orphaned dead code (kept in repo per user request for future reuse).
+> **Pivot history (2026-05-25):** Product pivoted from a real-estate marketplace → to an Interiors-only service. Marketplace backend + frontend orphan files kept in repo as dead code per user request.
 
 ## Tech Stack
-- **Backend:** FastAPI + MongoDB (PyMongo). Standard `google-auth` for Google OIDC. Emergent Object Storage for uploads.
+- **Backend:** FastAPI + MongoDB (Motor). `google-auth` for Google OIDC. Emergent Object Storage.
 - **Frontend:** React (CRA + craco) + Tailwind + Shadcn UI + sonner toasts + `@react-oauth/google`.
-- **Infra (locked, user-managed):** Hostinger VPS / docker-compose / Dockerfiles — **read-only for the agent.**
+- **Infra (user-managed):** Hostinger VPS + Docker Compose + Nginx in frontend container reverse-proxies `/api/*` to backend.
 
 ## User Roles
-- **Customer** — books a discovery call, pays design retainer, fills brief, gets site visit + 3D designs.
-- **Admin / Founder / Lead Engineer** — reviews discovery calls, verifies floor plans, manages employees.
+- **Customer** — books discovery call → pays retainer → fills brief → uploads floor plan → reviews 3D designs → approves → receives quotation.
+- **Sales** — sees only own leads (My Leads); adds leads + status changes + comments + follow-ups. Cannot edit basic info or delete.
+- **Designer** — sees assigned leads + floor-plan verification queue.
+- **Admin / Founder** — sees Master Lead Pipeline, all verifications, designs, Team Management, CRM Settings.
 
 ## Core Features (Active)
-- `/` → redirects to `/interiors` (public landing — **currently broken**, see Issues).
-- `/login`, `/register`, `/forgot-password`, `/profile/complete` — email/password + Google OAuth.
-- `/dashboard/customer` — **multi-phase journey UI** (unpaid → briefing → verification → scheduling → confirmed → designing) with **dynamic pricing calculator**:
-  - Apartment: 1-2 BHK ₹10,000 · 3 BHK ₹12,000 · 4+ BHK ₹15,000
-  - Villa: Duplex ₹15,000 · Triplex ₹18,000
-  - Independent / Rental: 1 unit ₹12,000 · else `max(₹20,000, 6,000 × units)`
-- `/dashboard/admin/*` — Discovery Calls, Verifications, Employees CRUD tabs.
+- `/` → redirects to `/interiors`.
+- `/interiors` — public landing page (hero, gallery, cost estimator, FAQ, booking form). Hits `/api/content/interiors` + `/api/leads/public`.
+- `/login`, `/register`, `/forgot-password`, `/profile/complete` — email/password + Google OAuth (one-tap).
+- `/dashboard/customer` — multi-phase journey UI + dynamic pricing calculator + persisted `project_phase` + floor-plan upload (PDF/PNG/JPG/JPEG/WEBP, 15 MB max).
+- `/dashboard/sales` — **My Leads** (filtered to assigned; add + workflow only).
+- `/dashboard/designer` — Verification & Site Visits queue (will get design iteration UI in Phase C).
+- `/dashboard/admin` — 5 tabs: Overview, **Master Lead Pipeline**, Verification & Site Visits, Team Management, **CRM Settings**.
 - `/admin/login` — separate admin auth.
-- `/emi-calculator` — preserved, standalone.
+- `/emi-calculator` — preserved standalone.
 
 ## Backend Endpoints (live)
-- Auth: `POST /api/auth/register`, `/auth/verify-otp`, `/auth/login`, `/auth/logout`, `/auth/me`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/google`
-- Files: `POST /api/upload`, `GET /api/files/{path}`
-- Discovery calls: `POST /api/discovery-calls`, `GET /api/admin/discovery-calls`, `PUT /api/admin/discovery-calls/{id}/status`
-- Verifications: `POST /api/verifications`, `GET /api/admin/verifications`, `PUT /api/admin/verifications/{id}`
-- Employees: `GET / POST / PUT / DELETE /api/admin/employees[/{email}]`
+**Auth:** `POST /api/auth/{register,verify-otp,login,logout,google,forgot-password,reset-password}`, `GET /api/auth/me`, `PUT /api/me/phase`
+**Files:** `POST /api/upload` (PDF/PNG/JPG/JPEG/WEBP, 15 MB cap), `GET /api/files/{path}`
+**CRM (Phase A):**
+- Leads: `GET/POST /api/leads`, `GET/PUT/DELETE /api/leads/{id}`, `PUT /api/leads/{id}/status`, `POST /api/leads/{id}/comments`, `PUT /api/leads/{id}/followup`, `POST /api/leads/public`, `GET /api/leads/export.csv`
+- Settings: `GET/POST /api/crm/statuses`, `PUT/DELETE /api/crm/statuses/{name}`, `GET/POST /api/crm/sources`, `PUT/DELETE /api/crm/sources/{name}`, `GET /api/crm/budget-options`
+- Shims: `POST /api/interior-leads`, `POST /api/discovery-calls` (write to unified `leads` collection)
+**Verifications:** `POST /api/verifications`, `GET/PUT /api/admin/verifications[/{id}]`
+**Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
-- **2026-05-25 (later)** — **Homepage Restored.** Re-added two endpoints to `server.py` to bring `/interiors` back online:
-  - `GET /api/content/{key}` — returns CMS content blob (auto-seeds `interiors` and `homepage` from `defaults.py` on startup; falls back to defaults if doc missing).
-  - `POST /api/interior-leads` — captures booking form (8 fields: name, phone, email, whatsapp, property_type, flat_size, budget, style, move_in, locality). Validates name+phone required.
-  - Cleared 2 stale legacy `content` docs that had an empty `value` field from the old marketplace server.
-  - Verified `/interiors` page renders end-to-end (hero, offer banner, form, cost estimator, gallery, etc.).
-- **2026-05-25** — **Major Pivot Adoption.** User uploaded GitHub zip of new "Homesqre Interiors" product. Adopted in full:
-  - Replaced backend `server.py` (1447 → 732 lines). All marketplace endpoints removed; discovery-calls / verifications / employees endpoints added.
-  - `requirements.txt`: switched Google auth from `emergentintegrations` to `google-auth>=2.29.0`.
-  - Replaced `CustomerDashboard.jsx` (64 → 460 lines) — full multi-phase journey + dynamic pricing calculator.
-  - Replaced `AdminDashboard.jsx` (406 → 445 lines) — discovery calls / verifications / employees tabs.
-  - Replaced `App.js`, `Header.jsx`, `Footer.jsx`, `DashShell.jsx`, `AuthContext.jsx`, `Login.jsx`, `package.json`, `public/index.html`.
-  - Installed `@react-oauth/google@^0.12.1` (new frontend dep).
-  - Configured `GOOGLE_CLIENT_ID` in backend & `REACT_APP_GOOGLE_CLIENT_ID` in frontend `.env` files (user provided ID).
-  - Removed unused imports from `App.js` (Home, Properties, PropertyDetail, ProjectsList, ProjectMicrosite, Compare, Favourites, AgentDashboard, BuilderDashboard).
-  - Deleted `/admin` route from `App.js` and removed `frontend/src/pages/Admin.jsx` (per user direction).
-  - Preserved `.env` files, `docker-compose.yml`, Dockerfiles (locked infra).
-  - Smoke-tested: `/api/` 200, `/api/discovery-calls` POST 200, `/login` renders, `/admin` correctly empty.
+- **2026-05-26 — Phase A: Master CRM shipped.** Unified `leads` collection replaces `interior_leads` + `discovery_calls` (one-time idempotent migration). 15 endpoints (CRUD + role-scoped list + CSV export + admin-customizable statuses/sources + auto-assign rules). Round-robin auto-assignment on lead create AND status change. New components: `MasterLeadPipeline` (shared admin/sales), `CrmSettings` (admin only). 19/19 pytest pass. Old 15-min discovery-call rotation worker removed.
+- **2026-05-26 — CustomerDashboard:** persisted `project_phase` via `PUT /me/phase` (whitelisted transitions); floor-plan upload restricted to PDF/PNG/JPG/JPEG/WEBP with 15 MB cap; client-side + server-side validation.
+- **2026-05-25 — Discovery call assignment fixed.** Hard-coded names replaced with dynamic round-robin from `users` collection (`role=sales`). Legacy doc auto-migration on startup. (Superseded by Phase A.)
+- **2026-05-25 — Role-based staff dashboards.** `/dashboard/sales`, `/dashboard/designer` created. AdminDashboard locked to `admin` only.
+- **2026-05-25 — Production deployment fixes.** Nginx reverse-proxy via `frontend/default.conf` + `frontend/Dockerfile` COPY; `docker-compose.yml` build-args fixed (HTTPS URL + Google client ID); backend port hardened to 127.0.0.1.
+- **2026-05-25 — `/interiors` restored.** Re-added `/api/content/{key}` and `/api/interior-leads` (now `POST /api/leads/public`); seeded from `defaults.py`.
+- **2026-05-25 — Major Pivot Adoption.** Full GitHub-zip adoption: marketplace stripped → Interiors product (discovery-calls, verifications, employees). `@react-oauth/google` swapped in.
 
 ## Known Issues / Tech Debt
 | # | Issue | Status |
 |---|---|---|
-| 1 | ~~`/interiors` page crashes~~ | **✅ FIXED 2026-05-25** — Re-added `/api/content/{key}` + `/api/interior-leads` endpoints. |
-| 2 | Old pytest suites (`test_admin_overrides.py`, `test_moderation_pipeline.py`, `test_refactor_full_regression.py`, `test_refactor_regression.py`) reference removed endpoints — will fail if run. | Open |
-| 3 | "Proceed to Secure Payment" button in CustomerDashboard checkout modal is a placeholder (just toast). Razorpay/Stripe not wired. | Open |
-| 4 | Floor plan upload field in Briefing phase is a plain `<input type="file">` — not yet wired to `/api/upload`. | Open |
-| 5 | CustomerDashboard `currentPhase` is in-memory state — not persisted to backend user record. Refreshing resets to `unpaid`. | Open |
-| 6 | Orphan marketplace files (~25 .jsx files) kept in repo as dead code per user request — slated for future reuse. | Deferred |
-| 7 | SMS OTP & email notifications mocked. | Open |
+| 1 | "Proceed to Secure Payment" is a placeholder (calls `PUT /me/phase` directly, no real payment). | Open — needs Razorpay |
+| 2 | SMS OTP + email notifications mocked. | Open — Twilio + Resend |
+| 3 | Designer can't reject floor plan with package adjustment yet. | **Phase B (next session)** |
+| 4 | 3D-design iteration loop (designer upload-per-image + customer approve/need-improvement) not built. | **Phase C (next session)** |
+| 5 | Orphan marketplace `.jsx` files kept in repo as dead code per user request. | Deferred |
+| 6 | Old `interior_leads` + `discovery_calls` collections kept post-migration as safety net. | Cleanup after one prod release |
+| 7 | Old archived pytest suites (`backend/tests/_archive/`) reference removed marketplace endpoints. | Won't fix; in archive |
 
 ## Roadmap (P-ordered)
-- **P0 (next):** User to share next feature priority. Likely candidates: Razorpay integration, persist `currentPhase` to DB, wire floor plan upload to `/api/upload`, decide homepage strategy for `/interiors`.
-- **P1:** Real SMS OTP (Twilio) + email (Resend).
-- **P2:** Document Vault build-out, Admin Verifications screen polish, CSV export of leads.
-- **P3:** Blog / About / Contact CMS pages, analytics dashboard.
+- **P0 (next):** Phase B — Designer rejects with package re-selection + differential payment.
+- **P1:** Phase C — 3D design iteration loop.
+- **P1:** Razorpay integration (replace placeholder payment).
+- **P2:** Real SMS OTP (Twilio) + email notifications (Resend).
+- **P2:** Notify assigned staff via email/WhatsApp on lead assignment.
+- **P3:** Customer-facing project status timeline, push notifications.
 
 ## Files of Reference
-- `backend/server.py` — all 17 active API routes.
-- `backend/defaults.py` — seeds.
+- `backend/server.py` — auth, CRM, verifications, files, team mgmt.
+- `backend/defaults.py` — homepage/interiors CMS seeds + bank/amenity seeds.
 - `backend/storage.py` — Emergent object storage adapter.
-- `backend/scripts/create_admin.py` — master admin CLI.
+- `backend/tests/test_crm_phase_a.py` — 19 regression tests.
 - `frontend/src/App.js` — active routes.
-- `frontend/src/pages/dashboards/CustomerDashboard.jsx` — multi-phase journey + pricing calculator (do NOT modify — finalized business logic).
-- `frontend/src/pages/dashboards/AdminDashboard.jsx` — admin tabs.
-- `/app/memory/test_credentials.md` — admin & OAuth credentials.
-
-## Infrastructure Lockdown (STRICT)
-The following are **read-only forever**:
-- `/app/docker-compose.yml`
-- `/app/backend/Dockerfile`
-- `/app/frontend/Dockerfile`
+- `frontend/src/components/admin/MasterLeadPipeline.jsx` — shared CRM grid.
+- `frontend/src/components/admin/CrmSettings.jsx` — admin CRM customization.
+- `frontend/src/pages/dashboards/{Admin,Sales,Designer,Customer}Dashboard.jsx` — role views.
+- `frontend/default.conf` — Nginx config baked into frontend container.
+- `docker-compose.yml` — service definitions + frontend build args.
+- `/app/memory/test_credentials.md` — admin + staff + Google OAuth credentials.

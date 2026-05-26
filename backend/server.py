@@ -24,6 +24,8 @@ import random
 import re
 import secrets
 import asyncio
+import csv
+import io
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -278,29 +280,6 @@ async def _migrate_status_fields():
     await db.localities.update_many(
         {"status": {"$exists": False}}, {"$set": {"status": "approved"}}
     )
-
-async def _migrate_stale_discovery_assignees():
-    """One-time cleanup: rewrite leads still assigned to legacy hard-coded names
-    (Girish/Rajendra/Karunakar) onto a real sales rep from the users collection."""
-    legacy_names = ["Girish", "Rajendra", "Karunakar"]
-    # Skip migration if any of those names actually belong to a real user — that
-    # means the hard-coded name happens to match a real rep and we shouldn't touch it.
-    real_sales_names = set()
-    async for u in db.users.find({"role": {"$in": ["sales", "admin"]}}, {"_id": 0, "name": 1, "email": 1}):
-        real_sales_names.add(u.get("name") or u.get("email", "").split("@")[0])
-    targets = [n for n in legacy_names if n not in real_sales_names]
-    if not targets:
-        return
-    stale = await db.discovery_calls.find({"assigned_to": {"$in": targets}}).to_list(None)
-    if not stale:
-        return
-    for call in stale:
-        next_assignee = await _pick_next_assignee(call.get("assigned_to"))
-        await db.discovery_calls.update_one(
-            {"_id": call["_id"]},
-            {"$set": {"assigned_to": next_assignee}}
-        )
-    log.info(f"[MIGRATE] Reassigned {len(stale)} legacy-named discovery calls to real sales reps")
 
 async def seed_data():
     await db.users.create_index("email", unique=True)
@@ -600,72 +579,496 @@ async def serve_file(path: str):
 
 
 # ---------------------------------------------------------------------------
-# HOMESQRE INTERIORS: DISCOVERY CALLS & AUTO-ROUTING
+# HOMESQRE CRM: UNIFIED LEADS + ADMIN-CUSTOMIZABLE STATUSES/SOURCES
 # ---------------------------------------------------------------------------
-async def _get_sales_team() -> List[str]:
-    """Return list of sales-rep display names from the users collection, sorted
-    by created_at so round-robin order is stable. Falls back to admin if empty."""
-    reps = await db.users.find(
-        {"role": "sales"},
-        {"_id": 0, "name": 1, "email": 1, "created_at": 1}
+# Default CRM settings seeded on first startup. Admin can extend/edit later.
+DEFAULT_CRM_STATUSES = [
+    {"name": "New",                          "sort_order": 0, "assign_to_role": "sales"},
+    {"name": "No Answer / Not Reachable",    "sort_order": 1, "assign_to_role": "sales"},
+    {"name": "Not Interested",               "sort_order": 2, "assign_to_role": None},
+    {"name": "Send to Design",               "sort_order": 3, "assign_to_role": "designer"},
+    {"name": "Awaiting Customer Approval",   "sort_order": 4, "assign_to_role": None},
+]
+DEFAULT_CRM_SOURCES = [
+    {"name": "Website",   "sort_order": 0},
+    {"name": "Reference", "sort_order": 1},
+]
+BUDGET_OPTIONS = [
+    "Under ₹3L", "₹3L – ₹5L", "₹5L – ₹8L", "₹8L – ₹12L",
+    "₹12L – ₹18L", "₹18L – ₹25L", "₹25L+", "Not Sure",
+]
+
+
+def _user_identifier(u: dict) -> str:
+    """Stable identifier for assigned_to. Email is unique-by-construction."""
+    return (u.get("email") or "").lower()
+
+
+async def _round_robin_assignee(role: str) -> Optional[str]:
+    """Pick next staff identifier (email) for a given role using round-robin."""
+    users = await db.users.find(
+        {"role": role},
+        {"_id": 0, "email": 1, "created_at": 1}
     ).sort("created_at", 1).to_list(None)
-    names = [(r.get("name") or r["email"].split("@")[0]) for r in reps if r.get("email")]
-    if names:
-        return names
-    # Fallback so leads aren't lost when no sales rep exists yet
-    admin = await db.users.find_one({"role": "admin"}, {"_id": 0, "name": 1, "email": 1})
-    if admin:
-        return [admin.get("name") or admin["email"].split("@")[0]]
-    return ["Unassigned"]
-
-
-async def _pick_next_assignee(current: Optional[str]) -> str:
-    team = await _get_sales_team()
-    if not team:
-        return "Unassigned"
-    if current and current in team:
-        idx = (team.index(current) + 1) % len(team)
+    emails = [_user_identifier(u) for u in users if u.get("email")]
+    if not emails:
+        return None
+    # Look at the most-recent lead assigned in this role's status pool to find rotation pointer.
+    last = await db.leads.find_one(
+        {"assigned_to": {"$in": emails}},
+        sort=[("updated_at", -1)]
+    )
+    last_email = last.get("assigned_to") if last else None
+    if last_email in emails:
+        idx = (emails.index(last_email) + 1) % len(emails)
     else:
         idx = 0
-    return team[idx]
+    return emails[idx]
+
+
+async def _auto_assign_for_status(status_name: str, current_assignee: Optional[str]) -> Optional[str]:
+    """Return the user identifier to (re)assign this lead to based on its status'
+    `assign_to_role`. Returns None if no rule or no eligible user; preserves
+    current_assignee in that case (caller decides what to do with None)."""
+    status_def = await db.crm_statuses.find_one({"name": status_name}, {"_id": 0})
+    role = (status_def or {}).get("assign_to_role")
+    if not role:
+        return current_assignee  # No rule — keep existing assignee.
+    return await _round_robin_assignee(role) or current_assignee
+
+
+def _build_lead(payload: dict, created_by: str, default_status: str = "New") -> dict:
+    return {
+        "lead_id": f"lead_{uuid.uuid4().hex[:10]}",
+        "name": (payload.get("name") or "").strip(),
+        "phone": (payload.get("phone") or "").strip(),
+        "email": (payload.get("email") or "").strip().lower(),
+        "budget_range": payload.get("budget_range") or "",
+        "message": payload.get("message") or "",
+        "source": payload.get("source") or "Website",
+        "status": payload.get("status") or default_status,
+        "assigned_to": (payload.get("assigned_to") or "").lower() or None,
+        "next_followup_at": payload.get("next_followup_at") or None,
+        "comments": [],
+        "history": [],
+        "created_at": iso(now_utc()),
+        "updated_at": iso(now_utc()),
+        "created_by": created_by,
+    }
+
+
+def _append_history(updates: dict, from_status: str, to_status: str, by: str):
+    updates.setdefault("$push", {})
+    updates["$push"]["history"] = {
+        "from_status": from_status, "to_status": to_status,
+        "at": iso(now_utc()), "by": by,
+    }
+
+
+def _validate_status_source(status: Optional[str], source: Optional[str], known_statuses: List[str], known_sources: List[str]):
+    if status and status not in known_statuses:
+        raise HTTPException(status_code=400, detail=f"Unknown status: {status}")
+    if source and source not in known_sources:
+        raise HTTPException(status_code=400, detail=f"Unknown source: {source}")
+
+
+# ----- CRM Settings: statuses -----
+@api.get("/crm/statuses")
+async def list_crm_statuses(user: dict = Depends(current_user)):
+    docs = await db.crm_statuses.find({}, {"_id": 0}).sort("sort_order", 1).to_list(None)
+    return docs
+
+
+@api.post("/crm/statuses")
+async def create_crm_status(payload: dict, user: dict = Depends(require_role("admin"))):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if await db.crm_statuses.find_one({"name": name}):
+        raise HTTPException(status_code=400, detail="Status already exists")
+    doc = {
+        "name": name,
+        "sort_order": int(payload.get("sort_order", 999)),
+        "assign_to_role": payload.get("assign_to_role") or None,
+    }
+    await db.crm_statuses.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/crm/statuses/{name}")
+async def update_crm_status(name: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    update = {}
+    if "sort_order" in payload:
+        update["sort_order"] = int(payload["sort_order"])
+    if "assign_to_role" in payload:
+        update["assign_to_role"] = payload["assign_to_role"] or None
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    res = await db.crm_statuses.update_one({"name": name}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Status not found")
+    return {"ok": True}
+
+
+@api.delete("/crm/statuses/{name}")
+async def delete_crm_status(name: str, user: dict = Depends(require_role("admin"))):
+    in_use = await db.leads.count_documents({"status": name})
+    if in_use:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {in_use} lead(s) are using this status")
+    await db.crm_statuses.delete_one({"name": name})
+    return {"ok": True}
+
+
+# ----- CRM Settings: sources -----
+@api.get("/crm/sources")
+async def list_crm_sources(user: dict = Depends(current_user)):
+    return await db.crm_sources.find({}, {"_id": 0}).sort("sort_order", 1).to_list(None)
+
+
+@api.post("/crm/sources")
+async def create_crm_source(payload: dict, user: dict = Depends(require_role("admin"))):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if await db.crm_sources.find_one({"name": name}):
+        raise HTTPException(status_code=400, detail="Source already exists")
+    doc = {"name": name, "sort_order": int(payload.get("sort_order", 999))}
+    await db.crm_sources.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/crm/sources/{name}")
+async def update_crm_source(name: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    update = {}
+    if "sort_order" in payload:
+        update["sort_order"] = int(payload["sort_order"])
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    res = await db.crm_sources.update_one({"name": name}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return {"ok": True}
+
+
+@api.delete("/crm/sources/{name}")
+async def delete_crm_source(name: str, user: dict = Depends(require_role("admin"))):
+    in_use = await db.leads.count_documents({"source": name})
+    if in_use:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {in_use} lead(s) are using this source")
+    await db.crm_sources.delete_one({"name": name})
+    return {"ok": True}
+
+
+@api.get("/crm/budget-options")
+async def list_budget_options():
+    return BUDGET_OPTIONS
+
+
+# ----- Public lead capture (from /interiors homepage and Customer dashboard CTAs) -----
+@api.post("/leads/public")
+async def create_public_lead(payload: dict):
+    """Anonymous lead capture. Source defaults to 'Website'. Auto-assigns based
+    on the default status rule (Sales)."""
+    if not payload.get("name") or not payload.get("phone"):
+        raise HTTPException(status_code=400, detail="Name and phone are required")
+    lead = _build_lead(payload, created_by="public", default_status="New")
+    lead["source"] = payload.get("source") or "Website"
+    lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+    await db.leads.insert_one(lead)
+    log.info(f"[CRM] Public lead {lead['name']} created → assigned to {lead['assigned_to']}")
+    return {"ok": True, "lead_id": lead["lead_id"]}
+
+
+# ----- Backward-compat shims (homepage form + customer-dashboard CTA) -----
+@api.post("/interior-leads")
+async def create_interior_lead_shim(payload: Dict[str, Any]):
+    """Compat shim — homepage interior-lead form. Maps richer fields into the
+    unified `leads` collection and stores the original blob under `extra`."""
+    if not (payload.get("name") and payload.get("phone")):
+        raise HTTPException(status_code=400, detail="Name and phone are required")
+    lead = _build_lead({
+        "name": payload.get("name"),
+        "phone": payload.get("phone"),
+        "email": payload.get("email"),
+        "budget_range": payload.get("budget") or "",
+        "message": " | ".join([s for s in [
+            payload.get("property_type"), payload.get("flat_size"),
+            payload.get("style"), payload.get("move_in"),
+            (f"Locality: {payload['locality']}" if payload.get("locality") else None),
+        ] if s]),
+        "source": "Website",
+    }, created_by="public", default_status="New")
+    lead["extra"] = {k: payload.get(k) for k in (
+        "whatsapp", "property_type", "flat_size", "budget", "style", "move_in", "locality"
+    )}
+    lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+    await db.leads.insert_one(lead)
+    return {"ok": True, "lead_id": lead["lead_id"]}
 
 
 @api.post("/discovery-calls")
-async def create_discovery_call(payload: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
-    call_id = f"call_{uuid.uuid4().hex[:10]}"
-    # Round-robin: assign to the rep AFTER the most recently assigned lead so
-    # consecutive calls don't all stack on the first rep.
-    last_call = await db.discovery_calls.find_one({}, sort=[("created_at", -1)])
-    last_assignee = last_call.get("assigned_to") if last_call else None
-    assignee = await _pick_next_assignee(last_assignee)
-    rec = {
-        "call_id": call_id,
-        "user_id": user["user_id"] if user else None,
+async def create_discovery_call_shim(payload: DiscoveryCallCreate, user: Optional[dict] = Depends(current_user_optional)):
+    """Compat shim — customer-dashboard discovery-call CTA. Writes to unified
+    `leads` collection. Kept so existing frontend keeps working unchanged."""
+    lead = _build_lead({
         "name": payload.name,
         "phone": payload.phone,
-        "assigned_to": assignee,
-        "status": "pending",
-        "assigned_at": iso(now_utc()),
-        "created_at": iso(now_utc()),
+        "source": "Website",
+    }, created_by=(user["email"].lower() if user else "public"), default_status="New")
+    lead["extra"] = {"discovery_cta": True, "user_id": user["user_id"] if user else None}
+    lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+    await db.leads.insert_one(lead)
+    lead.pop("_id", None)
+    return {"call_id": lead["lead_id"], **lead}
+
+
+# ----- Authenticated lead CRUD -----
+def _lead_scope_filter(u: dict) -> dict:
+    """Sales sees only own leads; admin sees everything."""
+    if u.get("role") == "admin":
+        return {}
+    return {"assigned_to": _user_identifier(u)}
+
+
+@api.get("/leads")
+async def list_leads(
+    user: dict = Depends(require_role("admin", "sales", "designer")),
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    q: Optional[str] = None,
+    followup: Optional[str] = None,          # "today" | "overdue" | "upcoming"
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    limit: int = 200,
+    offset: int = 0,
+):
+    flt: dict = _lead_scope_filter(user)
+    if status:
+        flt["status"] = status
+    if source:
+        flt["source"] = source
+    if assigned_to and user.get("role") == "admin":
+        flt["assigned_to"] = assigned_to.lower()
+    if q:
+        rx = {"$regex": re.escape(q), "$options": "i"}
+        flt["$or"] = [{"name": rx}, {"phone": rx}, {"email": rx}]
+    if from_date:
+        flt.setdefault("created_at", {})["$gte"] = from_date
+    if to_date:
+        flt.setdefault("created_at", {})["$lte"] = to_date
+    if followup:
+        today = now_utc().date().isoformat()
+        if followup == "today":
+            flt["next_followup_at"] = {"$gte": today, "$lt": today + "T23:59:59"}
+        elif followup == "overdue":
+            flt["next_followup_at"] = {"$lt": today}
+        elif followup == "upcoming":
+            flt["next_followup_at"] = {"$gte": today}
+    docs = await db.leads.find(flt, {"_id": 0}).sort([("updated_at", -1)]).skip(offset).limit(min(limit, 1000)).to_list(None)
+    total = await db.leads.count_documents(flt)
+    return {"items": docs, "total": total}
+
+
+@api.get("/leads/export.csv")
+async def export_leads_csv(user: dict = Depends(require_role("admin"))):
+    docs = await db.leads.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(None)
+    cols = ["lead_id", "name", "phone", "email", "budget_range", "message",
+            "source", "status", "assigned_to", "next_followup_at",
+            "created_at", "updated_at", "created_by"]
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(cols + ["comments"])
+    for d in docs:
+        row = [d.get(c, "") for c in cols]
+        comments = " | ".join(f"[{c.get('at','')}] {c.get('by_name') or c.get('by','')}: {c.get('text','')}"
+                              for c in d.get("comments", []))
+        writer.writerow(row + [comments])
+    out.seek(0)
+    return RawResponse(
+        content=out.getvalue().encode("utf-8"),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="leads.csv"'},
+    )
+
+
+@api.get("/leads/{lead_id}")
+async def get_lead(lead_id: str, user: dict = Depends(require_role("admin", "sales", "designer"))):
+    lead = await db.leads.find_one({"lead_id": lead_id}, {"_id": 0})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
+        raise HTTPException(status_code=403, detail="Not your lead")
+    return lead
+
+
+@api.post("/leads")
+async def create_lead(payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+    if not payload.get("name") or not payload.get("phone"):
+        raise HTTPException(status_code=400, detail="Name and phone are required")
+    statuses = [s["name"] for s in await db.crm_statuses.find({}, {"name": 1}).to_list(None)]
+    sources = [s["name"] for s in await db.crm_sources.find({}, {"name": 1}).to_list(None)]
+    _validate_status_source(payload.get("status"), payload.get("source"), statuses, sources)
+    lead = _build_lead(payload, created_by=_user_identifier(user))
+    # Sales auto-assigns to themselves; admin may pass assigned_to explicitly,
+    # otherwise we apply the status' default-role rule.
+    if user.get("role") == "sales":
+        lead["assigned_to"] = _user_identifier(user)
+    elif not lead["assigned_to"]:
+        lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+    await db.leads.insert_one(lead)
+    return clean_doc(lead)
+
+
+@api.put("/leads/{lead_id}")
+async def update_lead(lead_id: str, payload: dict, user: dict = Depends(require_role("admin"))):
+    """Admin-only full update (basic fields). Sales uses the focused endpoints
+    below (status / comment / followup)."""
+    lead = await db.leads.find_one({"lead_id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    allowed = {"name", "phone", "email", "budget_range", "message", "source", "next_followup_at", "assigned_to"}
+    update = {k: payload[k] for k in payload if k in allowed}
+    if "email" in update:
+        update["email"] = (update["email"] or "").strip().lower()
+    if "assigned_to" in update:
+        update["assigned_to"] = (update["assigned_to"] or "").lower() or None
+    if not update:
+        raise HTTPException(status_code=400, detail="No editable fields supplied")
+    update["updated_at"] = iso(now_utc())
+    await db.leads.update_one({"lead_id": lead_id}, {"$set": update})
+    return {"ok": True}
+
+
+@api.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, user: dict = Depends(require_role("admin"))):
+    res = await db.leads.delete_one({"lead_id": lead_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return {"ok": True}
+
+
+@api.put("/leads/{lead_id}/status")
+async def update_lead_status(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+    new_status = (payload.get("status") or "").strip()
+    if not new_status:
+        raise HTTPException(status_code=400, detail="status is required")
+    lead = await db.leads.find_one({"lead_id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
+        raise HTTPException(status_code=403, detail="Not your lead")
+    if not await db.crm_statuses.find_one({"name": new_status}):
+        raise HTTPException(status_code=400, detail=f"Unknown status: {new_status}")
+    old_status = lead.get("status")
+    next_assignee = await _auto_assign_for_status(new_status, lead.get("assigned_to"))
+    update = {
+        "status": new_status,
+        "assigned_to": next_assignee,
+        "updated_at": iso(now_utc()),
     }
-    await db.discovery_calls.insert_one(rec)
-    return clean_doc(rec)
+    await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$set": update,
+         "$push": {"history": {"from_status": old_status, "to_status": new_status,
+                                "at": iso(now_utc()), "by": _user_identifier(user)}}}
+    )
+    return {"ok": True, "assigned_to": next_assignee}
 
-@api.get("/admin/discovery-calls")
-async def admin_list_discovery_calls(user: dict = Depends(require_role("admin", "sales"))):
-    return await db.discovery_calls.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
 
-@api.put("/admin/discovery-calls/{call_id}/status")
-async def admin_update_call_status(call_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
-    new_status = payload.get("status")
-    if new_status not in ["pending", "connected", "missed"]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    
-    await db.discovery_calls.update_one(
-        {"call_id": call_id}, 
-        {"$set": {"status": new_status, "updated_by": user["user_id"], "updated_at": iso(now_utc())}}
+@api.post("/leads/{lead_id}/comments")
+async def add_lead_comment(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
+    text = (payload.get("text") or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment text is required")
+    lead = await db.leads.find_one({"lead_id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
+        raise HTTPException(status_code=403, detail="Not your lead")
+    comment = {
+        "id": f"c_{uuid.uuid4().hex[:8]}",
+        "by": _user_identifier(user),
+        "by_name": user.get("name") or _user_identifier(user),
+        "text": text,
+        "at": iso(now_utc()),
+    }
+    await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$push": {"comments": comment}, "$set": {"updated_at": iso(now_utc())}}
+    )
+    return comment
+
+
+@api.put("/leads/{lead_id}/followup")
+async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+    when = payload.get("next_followup_at")  # ISO string or null
+    lead = await db.leads.find_one({"lead_id": lead_id})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
+        raise HTTPException(status_code=403, detail="Not your lead")
+    await db.leads.update_one(
+        {"lead_id": lead_id},
+        {"$set": {"next_followup_at": when, "updated_at": iso(now_utc())}}
     )
     return {"ok": True}
+
+
+# ----- CRM seeding + migration -----
+async def _seed_crm_defaults():
+    if await db.crm_statuses.count_documents({}) == 0:
+        await db.crm_statuses.insert_many([dict(s) for s in DEFAULT_CRM_STATUSES])
+        log.info("[CRM] Seeded default statuses")
+    if await db.crm_sources.count_documents({}) == 0:
+        await db.crm_sources.insert_many([dict(s) for s in DEFAULT_CRM_SOURCES])
+        log.info("[CRM] Seeded default sources")
+
+
+async def _migrate_to_unified_leads():
+    """Idempotent: migrate `interior_leads` and `discovery_calls` into `leads`.
+    Marks originals with `migrated=True` so a re-run is a no-op."""
+    migrated_count = 0
+    async for d in db.interior_leads.find({"migrated": {"$ne": True}}):
+        lead = _build_lead({
+            "name": d.get("name"), "phone": d.get("phone"), "email": d.get("email"),
+            "budget_range": d.get("budget") or "",
+            "message": " | ".join(s for s in [d.get("property_type"), d.get("flat_size"),
+                                              d.get("style"), d.get("move_in"),
+                                              (f"Locality: {d['locality']}" if d.get("locality") else None)] if s),
+            "source": "Website",
+        }, created_by="migration", default_status="New")
+        lead["created_at"] = d.get("created_at") or lead["created_at"]
+        lead["extra"] = {"migrated_from": "interior_leads", "original_id": d.get("lead_id")}
+        await db.leads.insert_one(lead)
+        await db.interior_leads.update_one({"_id": d["_id"]}, {"$set": {"migrated": True}})
+        migrated_count += 1
+    async for d in db.discovery_calls.find({"migrated": {"$ne": True}}):
+        lead = _build_lead({
+            "name": d.get("name"), "phone": d.get("phone"),
+            "source": "Website",
+        }, created_by="migration", default_status="New")
+        lead["created_at"] = d.get("created_at") or lead["created_at"]
+        # Carry over the legacy assignee if it matches a real user email; else
+        # let the auto-assign rule fill it.
+        legacy_assignee = d.get("assigned_to")
+        if legacy_assignee:
+            existing = await db.users.find_one(
+                {"$or": [{"email": legacy_assignee.lower()}, {"name": legacy_assignee}]},
+                {"_id": 0, "email": 1}
+            )
+            lead["assigned_to"] = (existing["email"] if existing else
+                                   await _auto_assign_for_status(lead["status"], None))
+        else:
+            lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+        lead["extra"] = {"migrated_from": "discovery_calls", "original_id": d.get("call_id")}
+        await db.leads.insert_one(lead)
+        await db.discovery_calls.update_one({"_id": d["_id"]}, {"$set": {"migrated": True}})
+        migrated_count += 1
+    if migrated_count:
+        log.info(f"[CRM] Migrated {migrated_count} legacy leads into unified `leads` collection")
 
 
 # ---------------------------------------------------------------------------
@@ -711,39 +1114,6 @@ async def admin_moderate_verification(ver_id: str, payload: dict, user: dict = D
     
     return {"ok": True}
 
-
-# ---------------------------------------------------------------------------
-# BACKGROUND WORKER: 15-MINUTE AUTO-ASSIGN ROUTER
-# ---------------------------------------------------------------------------
-async def discovery_call_auto_router():
-    """Runs continuously in the background. Rotates stale pending leads every
-    15 minutes through the active sales team (loaded from the users collection)."""
-    while True:
-        try:
-            timeout_threshold = now_utc() - timedelta(minutes=15)
-            stale_calls = await db.discovery_calls.find({
-                "status": "pending",
-                "assigned_at": {"$lt": iso(timeout_threshold)}
-            }).to_list(None)
-
-            for call in stale_calls:
-                current_assignee = call.get("assigned_to")
-                next_assignee = await _pick_next_assignee(current_assignee)
-                if next_assignee == current_assignee:
-                    # Only one rep on the team — no point reassigning.
-                    continue
-                await db.discovery_calls.update_one(
-                    {"_id": call["_id"]},
-                    {"$set": {
-                        "assigned_to": next_assignee,
-                        "assigned_at": iso(now_utc())
-                    }}
-                )
-                log.info(f"[AUTO-ROUTER] Reassigned lead {call['name']} from {current_assignee} to {next_assignee}")
-        except Exception as e:
-            log.error(f"[AUTO-ROUTER] Error: {e}")
-        
-        await asyncio.sleep(60)
 
 # ---------------------------------------------------------------------------
 # TEAM MANAGEMENT
@@ -834,30 +1204,6 @@ async def get_content(key: str):
     raise HTTPException(status_code=404, detail="Content not found")
 
 
-@api.post("/interior-leads")
-async def create_interior_lead(payload: Dict[str, Any]):
-    lead = {
-        "lead_id": f"lead_{uuid.uuid4().hex[:10]}",
-        "name": (payload.get("name") or "").strip(),
-        "phone": (payload.get("phone") or "").strip(),
-        "email": (payload.get("email") or "").strip(),
-        "whatsapp": bool(payload.get("whatsapp", True)),
-        "property_type": payload.get("property_type") or "Apartment",
-        "flat_size": payload.get("flat_size") or "",
-        "budget": payload.get("budget") or "",
-        "style": payload.get("style") or "",
-        "move_in": payload.get("move_in") or "",
-        "locality": payload.get("locality") or "",
-        "status": "new",
-        "source": "interiors_page",
-        "created_at": iso(now_utc()),
-    }
-    if not lead["name"] or not lead["phone"]:
-        raise HTTPException(status_code=400, detail="Name and phone are required")
-    await db.interior_leads.insert_one(lead)
-    return {"ok": True, "lead_id": lead["lead_id"]}
-
-
 # ---------------------------------------------------------------------------
 # Health + startup
 # ---------------------------------------------------------------------------
@@ -876,12 +1222,11 @@ async def startup_event():
     try:
         await seed_data()
         await _migrate_status_fields()
-        await _migrate_stale_discovery_assignees()
+        await _seed_crm_defaults()
+        await _migrate_to_unified_leads()
         log.info("Seeds ensured")
     except Exception as e:
         log.error(f"seed failed: {e}")
-        
-    asyncio.create_task(discovery_call_auto_router())
 
 @app.on_event("shutdown")
 async def shutdown_event():
