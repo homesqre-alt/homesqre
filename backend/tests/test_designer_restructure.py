@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-BASE_URL = os.environ.get("TEST_BASE_URL", "https://homesqre-preview.preview.emergentagent.com")
+BASE_URL = os.environ.get("TEST_BASE_URL", "https://crm-phase-tracker.preview.emergentagent.com")
 API = f"{BASE_URL}/api"
 
 ADMIN = ("admin@homesqre.com", "Homesqre@2026")
