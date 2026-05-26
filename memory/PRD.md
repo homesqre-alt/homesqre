@@ -38,6 +38,14 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (later) — Approved-floor-plans wiring fix.**
+  - **Approval is now transactional.** `PUT /api/admin/verifications/{id} {action:"approve"}` simultaneously: (a) sets verification.status="approved", (b) auto-creates the 3D design project via `_ensure_design_project()`, (c) advances customer.project_phase straight to "designing" (previously stopped at "scheduling"), (d) clears user.site_visit_at so the customer is prompted to book. Response now returns `design_project_id`.
+  - **Designer Dashboard — new 3rd tab "Approved Floor Plans"** (`ApprovedFloorPlans.jsx`) between Verification and Active Projects. Each card shows customer name + project name (privacy-safe), all uploaded floor-plan files (view/download), site-visit status pill (confirmed slot OR "Awaiting customer to schedule"), and an "Open Design Project →" button that deep-links to `#projects?focus=<project_id>`. `DesignerProjects` now syncs to the `?focus=` query in the URL hash.
+  - **Customer Dashboard "designing" phase** gets: (a) info banner "Design has started — renders will appear here as your designer uploads them", (b) Schedule-Site-Visit datetime picker that POSTs `PUT /api/me/site-visit {site_visit_at}` and locks into a confirmed card once submitted.
+  - **Admin visibility** — `/admin/verifications` and `/admin/design/projects[/:id]` now attach `design_project_id` (verifications only) and `site_visit_at` (both). Admin Active Designs project header shows the confirmed slot; "Recently resolved" list shows the customer name + project name + booked site-visit.
+  - **Tests** — `test_workflow_tweaks.py` +2 (approve wires design+site-visit, site-visit endpoint validation); `test_phase_b_package_adjustment.py` updated for new approve target. 50/50 pytest pass.
+
+## Changelog (prior)
 - **2026-02-26 — Workflow tweaks + Admin Analytics (this session).**
   - **Designer privacy:** `/api/admin/verifications`, `/api/admin/design/projects`, `/api/admin/design/projects/{id}` now scope the embedded `customer` payload by role. Designers see only `{name, project_name}`; admins still see full `{name, email, mobile, project_name}`.
   - **Customer briefing:** `POST /api/verifications` accepts new `project_name` (str) + `pdf_urls` (List[str]); legacy `pdf_url` still accepted (auto-promoted to a 1-element list). Empty list → 400. `users.project_name` is persisted on submit. UI: required Project Name input, multi-file floor-plan upload with per-file remove.
