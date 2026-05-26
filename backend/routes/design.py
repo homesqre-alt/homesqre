@@ -113,6 +113,15 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
             {"_id": 0, "lead_id": 1, "status": 1, "assigned_to": 1, "name": 1, "next_followup_at": 1},
         )
         p["lead"] = ld
+    # Attach the linked verification's floor-plan files so the designer can
+    # download them straight from the project detail view.
+    if p.get("verification_id"):
+        v = await db.verifications.find_one(
+            {"verification_id": p["verification_id"]},
+            {"_id": 0, "pdf_url": 1, "pdf_urls": 1, "room_requirements": 1,
+             "property_type": 1, "bhk_or_units": 1},
+        )
+        p["verification"] = v
     return p
 
 

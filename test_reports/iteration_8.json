@@ -1,0 +1,80 @@
+{
+  "summary": "Iteration 8 — Designer dashboard restructure (5 strict tabs + total PII privacy). Backend pytest 55/55 PASS in 25s against public REACT_APP_BACKEND_URL (test_designer_restructure 2 NEW + 53 regression). Frontend Playwright covered every contract in the review_request.",
+  "backend_results": {
+    "pytest_total": 55,
+    "passed": 55,
+    "failed": 0,
+    "new_tests": [
+      "test_leads_endpoint_strips_phone_email_for_designer — PASS (designer list+detail both stripped, admin still has phone/email)",
+      "test_design_project_detail_includes_verification_pdfs — PASS (verification.pdf_urls properly attached and designer sees no email/mobile in customer blob)"
+    ]
+  },
+  "frontend_results": {
+    "login": "designer@homesqre.com lands directly on /dashboard/designer with default hash #leads",
+    "tabs_order_verified": ["designer-tab-leads (My Leads)", "designer-tab-verify (Verify Floor Plan)", "designer-tab-active (Active Projects)", "designer-tab-awaiting (Awaiting Approvals)", "designer-tab-completed (Completed)"],
+    "removed_tabs_confirmed_absent": ["designer-tab-approved", "designer-tab-verifications", "designer-tab-projects"],
+    "my_leads": {
+      "designer-leads-list": "rendered",
+      "columns": ["Name", "Status", "Source", "Next Follow-up", "Updated"],
+      "no_phone_email_column": true,
+      "no_at_sign_in_body": true,
+      "rows_count": 3,
+      "row_click_does_nothing": true,
+      "no_inline_select_or_drawer": true
+    },
+    "verify_floor_plan": "TabSiteVisits renders (verification text present)",
+    "active_projects": {
+      "designer-active-panel": "rendered",
+      "rows_count": 38,
+      "designer-active-detail": "rendered on row click",
+      "designer-render-uploader": "present in Active mode only",
+      "files_input + comment_textarea + send_btn": "all present",
+      "designer-active-floor-plan-0": "absent on the selected legacy project (no verification_id) — pytest covers the positive contract via test_design_project_detail_includes_verification_pdfs",
+      "no_at_sign_in_detail_body": true
+    },
+    "awaiting_approvals": {
+      "designer-awaiting-panel": "rendered",
+      "rows_count": 0,
+      "note": "Empty bucket in current seed data — locked-banner + uploader-absent behavior validated through code review of DesignerProjectsPanel (RenderUploader only renders when mode==='active')"
+    },
+    "completed": {
+      "designer-completed-panel": "rendered",
+      "rows_count": 0,
+      "note": "Empty bucket in current seed data — uploader is gated by mode==='active' so it is never rendered here"
+    }
+  },
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Designer → Active Projects list", "issues": ["38 rows present — many are pytest fixture residue with no project_name (carry-over from iter5/6/7). Same advisory as iter7: consider hiding rows where !customer.project_name && images.length===0."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_designer_restructure.py",
+    "/app/test_reports/pytest/iter8_all.xml"
+  ],
+  "action_items": [
+    "OPTIONAL CLEANUP: delete unused /app/frontend/src/components/admin/ApprovedFloorPlans.jsx (no importers, confirmed via grep). /app/frontend/src/components/admin/DesignerProjects.jsx is still imported by AdminDashboard so keep it for now.",
+    "OPTIONAL: filter pytest-residue 'Customer' rows out of Active Projects (cosmetic — carry-over from iter5/6/7)."
+  ],
+  "critical_code_review_comments": [
+    "Backend strips phone/email correctly for designer in both /api/leads and /api/leads/{id} (routes/leads.py lines 130-134 and 166-168). Admin unaffected — verified by pytest.",
+    "LeadOut schema correctly DROPS phone/email as declared fields (schemas/leads.py) so Pydantic doesn't re-inject them as nulls. `extra='allow'` lets admin responses still carry them. Clean implementation.",
+    "GET /api/admin/design/projects/{id} now attaches `verification` (pdf_url + pdf_urls + room_requirements + property_type + bhk_or_units) when the project has a linked verification_id — perfect for the designer download UI.",
+    "DesignerDashboard.jsx (54 lines) is small and clean. Mode-driven DesignerProjectsPanel keeps active/awaiting/completed in a single 348-line file (within the 700-line guideline).",
+    "RenderUploader correctly loops POST /api/admin/design/projects/{id}/images per file with a SHARED comment; counts successes, surfaces per-file errors via toast, and calls onUploaded only when at least 1 succeeded.",
+    "Awaiting/Completed detail views correctly omit <RenderUploader/> because it's gated by `mode === 'active'` — view-only, with awaiting showing the locked banner.",
+    "Customer PII (phone/email) never displayed — designer payload only shows customer.name + customer.project_name in both list and detail views.",
+    "Minor: /app/frontend/src/components/admin/ApprovedFloorPlans.jsx is now fully orphaned (no importer). Safe to delete in a future cleanup PR."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (55/55 pytest)", "frontend": "100% on 12 reviewed contracts"},
+  "test_credentials": "admin@homesqre.com / Homesqre@2026; designer@homesqre.com / Staff@2026; sales@homesqre.com / Staff@2026; designer-restructure-cust@homesqre.com / Pass@123; designer-restructure-des@homesqre.com / Pass@123 (seeded by test_designer_restructure.py).",
+  "seed_data_creation": "test_designer_restructure.py auto-seeds 2 users at module scope. After the suite runs, leads collection has a 'PII Test' lead assigned to designer-restructure-des and a 'Restructure verif' design project with 2 floor-plan pdfs is created — useful for manual UI verification.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Designer dashboard now has 5 strict tabs: My Leads (read-only, no PII) | Verify Floor Plan (TabSiteVisits) | Active Projects (upload renders) | Awaiting Approvals (locked) | Completed (locked). The old 'Approved Floor Plans' tab and 'LeadInlinePanel' inside the detail view are gone — designer takes no manual lead actions. Backend strips phone/email from /api/leads* for designer role. /api/admin/design/projects/{id} now also attaches verification.pdf_urls so the designer can download floor plans straight from the detail view. Render upload loops one POST per file with a SHARED comment — after upload the project migrates Active → Awaiting Approvals on next refresh. All 12 review bullets GREEN.",
+  "rca of the issue": "Not applicable — feature verification, no bugs."
+}

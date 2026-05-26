@@ -126,6 +126,11 @@ async def list_leads(
             flt["next_followup_at"] = {"$gte": today}
     docs = await db.leads.find(flt, {"_id": 0}).sort([("updated_at", -1)]).skip(offset).limit(min(limit, 1000)).to_list(None)
     total = await db.leads.count_documents(flt)
+    # Designer must never see customer email or phone — anywhere in the app.
+    if user.get("role") == "designer":
+        for d in docs:
+            d.pop("email", None)
+            d.pop("phone", None)
     return {"items": docs, "total": total}
 
 
@@ -158,6 +163,9 @@ async def get_lead(lead_id: str, user: dict = Depends(require_role("admin", "sal
         raise HTTPException(status_code=404, detail="Lead not found")
     if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
         raise HTTPException(status_code=403, detail="Not your lead")
+    if user.get("role") == "designer":
+        lead.pop("email", None)
+        lead.pop("phone", None)
     return lead
 
 

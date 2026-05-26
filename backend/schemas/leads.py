@@ -23,14 +23,14 @@ class LeadHistoryOut(BaseModel):
 
 # ---- Lead ----------------------------------------------------------------
 class LeadOut(BaseModel):
-    """`extra='allow'` so legacy/migrated fields like `extra`, `auto_created_for_user`,
-    `whatsapp`, `property_type`, etc. still come through."""
+    """`extra='allow'` so phone/email (when present), legacy `extra`,
+    `auto_created_for_user`, `whatsapp`, etc. still come through. Phone/email
+    are NOT declared fields so the backend can strip them for the designer
+    role and they don't get re-injected as nulls by Pydantic serialization."""
     model_config = ConfigDict(extra="allow")
 
     lead_id: str
     name: str
-    phone: str
-    email: Optional[str] = None
     budget_range: Optional[str] = ""
     message: Optional[str] = ""
     source: str
