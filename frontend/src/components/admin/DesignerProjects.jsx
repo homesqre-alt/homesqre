@@ -44,7 +44,9 @@ export default function DesignerProjects({ currentUser }) {
             className={`w-full text-left p-2 border-l-2 ${activeId === p.project_id ? "border-[#B68D40] bg-[#F3F0E9]" : "border-transparent hover:bg-[#F3F0E9]"}`}
           >
             <div className="text-sm font-semibold text-[#06402B]">{p.customer?.name || "Customer"}</div>
-            <div className="text-[10px] text-[#4A5D54]">{p.customer?.email}</div>
+            {p.customer?.project_name && (
+              <div className="text-[10px] text-[#4A5D54] italic">{p.customer.project_name}</div>
+            )}
             <div className="text-[10px] mt-1">
               <span className={`px-2 py-0.5 ${p.status === "ready_for_quotation" ? "bg-green-100 text-green-800" : "bg-[#FFF8EC] text-[#B68D40]"}`}>
                 {p.status === "ready_for_quotation" ? "✓ Approved" : `${(p.images || []).length} render(s)`}
@@ -62,10 +64,11 @@ export default function DesignerProjects({ currentUser }) {
   );
 }
 
-function ProjectDetail({ project, onReload }) {
+function ProjectDetail({ project, onReload, currentUser }) {
   const [file, setFile] = useState(null);
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
+  const isDesigner = currentUser?.role === "designer";
 
   const backend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
   const absUrl = (url) => (url && url.startsWith("http") ? url : `${backend}${url}`);
@@ -99,7 +102,16 @@ function ProjectDetail({ project, onReload }) {
     <div className="space-y-6">
       <header className="border-b border-[#E8E4D9] pb-3">
         <h3 className="font-display text-xl text-[#06402B]">{project.customer?.name || project.user_id}</h3>
-        <p className="text-xs text-[#4A5D54]">{project.customer?.email} • {project.customer?.mobile}</p>
+        {isDesigner ? (
+          project.customer?.project_name && (
+            <p className="text-xs text-[#4A5D54] italic" data-testid="designer-project-name">{project.customer.project_name}</p>
+          )
+        ) : (
+          <p className="text-xs text-[#4A5D54]">
+            {project.customer?.project_name && <span className="italic">{project.customer.project_name} • </span>}
+            {project.customer?.email} • {project.customer?.mobile}
+          </p>
+        )}
         <div className="mt-2 flex flex-wrap gap-3 text-xs">
           <span className="px-3 py-1 bg-[#F3F0E9] border border-[#E8E4D9]">Status: {project.status}</span>
           <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800">Pending: {pending.length}</span>

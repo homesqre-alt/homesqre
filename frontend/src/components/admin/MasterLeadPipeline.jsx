@@ -90,6 +90,15 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
         </div>
         <div className="flex gap-2">
           <button
+            data-testid="followups-today-btn"
+            onClick={() => setFilters(f => ({ ...f, followup: f.followup === "today" ? "" : "today" }))}
+            className={`px-4 py-2 text-xs uppercase tracking-widest font-bold border transition ${
+              filters.followup === "today"
+                ? "bg-[#B68D40] text-white border-[#B68D40]"
+                : "border-[#B68D40] text-[#B68D40] hover:bg-[#FFF8EC]"
+            }`}
+          >Follow-ups Today</button>
+          <button
             data-testid="add-lead-btn"
             onClick={() => setIsAddOpen(true)}
             className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839]"

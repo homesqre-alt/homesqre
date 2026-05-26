@@ -244,8 +244,10 @@ class VerificationCreate(BaseModel):
     property_type: str
     bhk_or_units: str
     invoice_paid: float
-    pdf_url: str
+    pdf_url: Optional[str] = None          # legacy single-file fallback
+    pdf_urls: Optional[List[str]] = None   # preferred: multiple floor-plan files
     room_requirements: str
+    project_name: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1126,26 +1128,50 @@ async def list_packages():
 
 @api.post("/verifications")
 async def create_verification(payload: VerificationCreate, user: dict = Depends(current_user)):
+    # Coalesce pdf_urls: prefer the explicit list, fall back to single pdf_url
+    pdf_urls = [u for u in (payload.pdf_urls or []) if u]
+    if not pdf_urls and payload.pdf_url:
+        pdf_urls = [payload.pdf_url]
+    if not pdf_urls:
+        raise HTTPException(status_code=400, detail="At least one floor plan file is required")
+    project_name = (payload.project_name or "").strip() or None
     ver_id = f"ver_{uuid.uuid4().hex[:10]}"
     rec = {
         "verification_id": ver_id,
         "user_id": user["user_id"],
+        "project_name": project_name,
         "property_type": payload.property_type,
         "bhk_or_units": payload.bhk_or_units,
         "invoice_paid": payload.invoice_paid,
-        "pdf_url": payload.pdf_url,
+        "pdf_url": pdf_urls[0],            # keep for legacy admin UI compatibility
+        "pdf_urls": pdf_urls,
         "room_requirements": payload.room_requirements,
         "status": "pending",
         "created_at": iso(now_utc()),
     }
     await db.verifications.insert_one(rec)
-    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"project_phase": "verification"}})
+    user_update = {"project_phase": "verification"}
+    if project_name:
+        user_update["project_name"] = project_name
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": user_update})
     return clean_doc(rec)
 
 
 @api.get("/admin/verifications")
 async def admin_list_verifications(user: dict = Depends(require_role("admin", "designer"))):
-    return await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    items = await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    is_designer = user.get("role") == "designer"
+    # Attach minimal customer label for the UI (designers must NOT see email/phone).
+    for v in items:
+        u = await db.users.find_one(
+            {"user_id": v.get("user_id")},
+            {"_id": 0, "name": 1, "email": 1, "mobile": 1, "project_name": 1},
+        ) or {}
+        if is_designer:
+            v["customer"] = {"name": u.get("name"), "project_name": v.get("project_name") or u.get("project_name")}
+        else:
+            v["customer"] = {**u, "project_name": v.get("project_name") or u.get("project_name")}
+    return items
 
 
 @api.put("/admin/verifications/{ver_id}")
@@ -1377,11 +1403,19 @@ async def list_design_projects(
         # Designer sees: (a) projects already claimed by them, (b) unclaimed projects
         flt["$or"] = [{"designer_id": _user_identifier(user)}, {"designer_id": None}]
     projects = await db.design_projects.find(flt, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
-    # Attach minimal customer info for the queue UI
+    # Attach minimal customer info for the queue UI.
+    # Designers must NOT see email/phone — only the customer's name + project name.
+    is_designer = user.get("role") == "designer"
     out = []
     for p in projects:
-        u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1, "name": 1, "mobile": 1})
-        p["customer"] = u or {}
+        u = await db.users.find_one(
+            {"user_id": p["user_id"]},
+            {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1},
+        ) or {}
+        if is_designer:
+            p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
+        else:
+            p["customer"] = u
         out.append(p)
     return out
 
@@ -1391,8 +1425,14 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
     p = await db.design_projects.find_one({"project_id": project_id}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Project not found")
-    u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1, "name": 1, "mobile": 1})
-    p["customer"] = u or {}
+    u = await db.users.find_one(
+        {"user_id": p["user_id"]},
+        {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1},
+    ) or {}
+    if user.get("role") == "designer":
+        p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
+    else:
+        p["customer"] = u
     return p
 
 
@@ -1465,6 +1505,83 @@ async def update_quotation_status(
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Project not in ready_for_quotation state")
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# ADMIN ANALYTICS — overview tab cards + charts
+# ---------------------------------------------------------------------------
+@api.get("/admin/analytics/overview")
+async def admin_analytics_overview(user: dict = Depends(require_role("admin"))):
+    """Top-line metrics + chart-friendly aggregations for the admin Overview tab."""
+    # Lead counts by status (drives the pipeline donut)
+    leads_by_status_cursor = db.leads.aggregate([
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$project": {"_id": 0, "name": "$_id", "count": 1}},
+        {"$sort": {"count": -1}},
+    ])
+    leads_by_status = [d async for d in leads_by_status_cursor]
+
+    # Lead counts by source (drives the source bar chart)
+    leads_by_source_cursor = db.leads.aggregate([
+        {"$group": {"_id": "$source", "count": {"$sum": 1}}},
+        {"$project": {"_id": 0, "name": "$_id", "count": 1}},
+        {"$sort": {"count": -1}},
+        {"$limit": 8},
+    ])
+    leads_by_source = [d async for d in leads_by_source_cursor]
+
+    # Daily new leads — last 14 days
+    today = now_utc().date()
+    days = [(today - timedelta(days=i)) for i in range(13, -1, -1)]
+    leads_by_day = []
+    for d in days:
+        start = d.isoformat()
+        end = (d + timedelta(days=1)).isoformat()
+        c = await db.leads.count_documents({"created_at": {"$gte": start, "$lt": end}})
+        leads_by_day.append({"date": start, "count": c})
+
+    # Customer phase distribution (drives funnel)
+    phases_cursor = db.users.aggregate([
+        {"$match": {"role": "customer"}},
+        {"$group": {"_id": "$project_phase", "count": {"$sum": 1}}},
+        {"$project": {"_id": 0, "name": {"$ifNull": ["$_id", "unpaid"]}, "count": 1}},
+    ])
+    customers_by_phase = [d async for d in phases_cursor]
+
+    # Top-line cards
+    total_retainers_cursor = db.verifications.aggregate([
+        {"$group": {"_id": None, "total": {"$sum": "$invoice_paid"}}},
+    ])
+    total_retainers_doc = await total_retainers_cursor.to_list(1)
+    total_retainers = (total_retainers_doc[0]["total"] if total_retainers_doc else 0) or 0
+
+    pending_verifications = await db.verifications.count_documents({"status": "pending"})
+    active_site_visits = await db.users.count_documents({"project_phase": {"$in": ["scheduling", "confirmed"]}})
+    in_3d_design = await db.design_projects.count_documents({"status": "in_progress"})
+    ready_quotation = await db.design_projects.count_documents({"status": "ready_for_quotation"})
+
+    # Follow-ups due today
+    today_iso = today.isoformat()
+    followups_today = await db.leads.count_documents({
+        "next_followup_at": {"$gte": today_iso, "$lt": today_iso + "T23:59:59"}
+    })
+
+    return {
+        "cards": {
+            "total_retainers": total_retainers,
+            "pending_verifications": pending_verifications,
+            "active_site_visits": active_site_visits,
+            "in_3d_design": in_3d_design,
+            "ready_for_quotation": ready_quotation,
+            "followups_today": followups_today,
+        },
+        "leads_by_status": leads_by_status,
+        "leads_by_source": leads_by_source,
+        "leads_by_day": leads_by_day,
+        "customers_by_phase": customers_by_phase,
+    }
+
+
 
 
 # ---------------------------------------------------------------------------

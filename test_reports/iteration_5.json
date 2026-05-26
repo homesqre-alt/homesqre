@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 5 — end-to-end testing of the Jan/Feb 2026 workflow tweaks (designer privacy, customer multi-floor-plan briefing, Master CRM 'Follow-ups Today' toggle, Departments wording, admin analytics overview + Recharts). Re-ran the full backend pytest suite (48 tests across test_workflow_tweaks.py + test_crm_phase_a.py + test_phase_b_package_adjustment.py + test_phase_c_design_iteration.py) against the public REACT_APP_BACKEND_URL — 48/48 PASS in ~16s. Frontend smoke test via Playwright covered admin login, the new Overview tab (all 6 metric cards + 4 Recharts rendered without console errors), the Departments tab (verified 'Add Department Member', 'Sales Department', 'Design Department', 'Administrator' present and the old 'Team Member' label is gone), the Master Lead Pipeline 'Follow-ups Today' toggle button (data-testid=followups-today-btn — toggles active state, CSV export and Add-Lead buttons still present), and the Designer dashboard (data-testid=designer-tabs visible with both 'Verification & Site Visits' and 'Active Projects (3D)' tabs, no email/mobile leaked, project_name 'Lotus Apartment 3BHK' visible on the active-project sidebar). The customer Briefing-phase UI (project-name-input, multi-file floor-plan-upload-input with `multiple` attr, remove-floor-plan-{idx} buttons) was verified via source inspection of CustomerDashboard.jsx (lines 325–395) — the dev-toggle '1. Briefing' link is present in the rendered Customer dashboard. RESULT: All 11 review_request items pass functionally. One regression found on /admin/login redirect (see backend_issues.minor / frontend_issues.ui_bugs).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminLogin.jsx",
+        "issue": "After /admin/login success the page navigates to '/admin' (line 12: `const intended = location.state?.from?.pathname || '/admin'`), but there is no '/admin' route in App.js — only '/admin/login' exists. Result: the React router logs 'No routes matched location /admin' and renders a blank page. Workaround used in testing: log in via /login (which uses role-based redirect correctly). The literal default should be '/dashboard/admin'.",
+        "selector": "AdminLogin.jsx line 12",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_workflow_tweaks.py",
+    "/app/backend/tests/test_crm_phase_a.py",
+    "/app/backend/tests/test_phase_b_package_adjustment.py",
+    "/app/backend/tests/test_phase_c_design_iteration.py",
+    "/app/test_reports/pytest/iter5_workflow.xml"
+  ],
+  "action_items": [
+    "FIX AdminLogin.jsx line 12 — change `|| '/admin'` to `|| '/dashboard/admin'` so a direct /admin/login submission lands on the dashboard. This is a regression from the previously documented role-based redirect behaviour. (/login still works correctly because Login.jsx routes by role.)",
+    "OPTIONAL polish: in CustomerDashboard.jsx the dev-tool quick-jump links ('0. Unpaid / 1. Briefing / 1.5 Verification / 2. Scheduling / 3. Confirmed / 4. Designing / Trigger Missed Call Banner / Clear Banner') are shipped to production unconditionally — they're useful for QA but should be gated behind a NODE_ENV !== 'production' check or an admin-only impersonation flag before launch."
+  ],
+  "critical_code_review_comments": [
+    "Designer privacy implementation is solid — both list and detail endpoints for /admin/verifications and /admin/design/projects strip email/mobile when current_user.role == 'designer'. Admin still receives full payload. Backend test_workflow_tweaks.py asserts this for all 4 endpoints and passes.",
+    "VerificationCreate now accepts both `pdf_url` (legacy single file) and `pdf_urls` (new multi-file). The backend coerces a single pdf_url into [pdf_url] and rejects empty pdf_urls with 400. Customer.project_name is persisted on the user record (verified via /auth/me round-trip). Backwards-compatible — good.",
+    "Admin analytics overview returns the documented shape (cards{6 fields}, leads_by_status[], leads_by_source[], leads_by_day[14], customers_by_phase[]) and correctly 403s designer/sales. 4 Recharts components render with no console errors.",
+    "Master Lead Pipeline followup=today wiring: button exists (data-testid=followups-today-btn), toggles active state visually (px-4 py-2 ... bg-[#B68D40] text-white border-[#B68D40]), and the corresponding /api/leads?followup=today endpoint returns the expected {items, total} shape. Test passes.",
+    "AdminLogin.jsx default redirect target '/admin' is a dangling reference — no Route matches. Fix to '/dashboard/admin'."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (48/48 pytest pass for the workflow_tweaks + phase A/B/C regression suite)",
+    "frontend": "~92% — every reviewed flow renders correctly; the one regression is the /admin/login default-redirect to a non-existent /admin route."
+  },
+  "test_credentials": "Used admin@homesqre.com / Homesqre@2026 and designer@homesqre.com / Staff@2026 from /app/memory/test_credentials.md. Backend test fixtures auto-seed workflow-cust@homesqre.com / Pass@123 and workflow-des@homesqre.com / Pass@123 in mongo for the workflow_tweaks suite.",
+  "seed_data_creation": "test_workflow_tweaks.py module-scoped fixture upserts a customer (workflow-cust@homesqre.com) and a designer (workflow-des@homesqre.com) in mongo on each run. Test then creates 3 verifications (multi-file, empty, legacy) and starts a design project for the seed customer; all rows are left in DB after the run (no teardown — by design, reused across reruns).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 11 items in the review_request work end-to-end. The only remaining bug is AdminLogin.jsx line 12 — change `|| '/admin'` to `|| '/dashboard/admin'`. After that fix, /admin/login -> dashboard flow should be retested by simply submitting the form. To rerun backend: `cd /app && python -m pytest backend/tests/test_workflow_tweaks.py backend/tests/test_crm_phase_a.py backend/tests/test_phase_b_package_adjustment.py backend/tests/test_phase_c_design_iteration.py -v` (~16s, 48 tests). Customer briefing UI was verified by source inspection (CustomerDashboard.jsx 325–395 — has project-name-input with required asterisk, floor-plan-upload-input with `multiple` attr + correct accept whitelist, and remove-floor-plan-{idx} per file); a fresh /register E2E walk could not be completed in this iteration because the /register form silently rejected the submission (likely OTP/profile-complete gate) — main agent or next agent can verify directly by logging in as an existing customer that's already in `unpaid` phase and clicking the dev-toggle '1. Briefing' link visible at the bottom of CustomerDashboard.",
+  "rca of the issue": "AdminLogin.jsx redirect bug: `const intended = location.state?.from?.pathname || '/admin'`. When the admin opens /admin/login directly (no prior location.state), `intended` defaults to '/admin'. App.js Routes block only contains '/admin/login' (line 42) and '/dashboard/admin' (line 45) — no plain '/admin' route. React Router logs `No routes matched location '/admin'` and the page goes blank. Fix: change the default to '/dashboard/admin'. Reproduce: open /admin/login in a fresh tab, submit valid admin creds, observe blank page + console warning. Mitigation in the meantime: use /login (Login.jsx role-based redirect lands admins on /dashboard/admin correctly)."
+}

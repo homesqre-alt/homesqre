@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import DashShell from "@/components/layout/DashShell";
@@ -25,6 +24,19 @@ export default function DesignerDashboard() {
 
   return (
     <DashShell links={LINKS} title="Designer Studio">
+      {/* Visible top tab bar — same pattern as admin command center */}
+      <div className="flex gap-4 border-b border-[#E8E4D9] mb-6 pb-2 overflow-x-auto" data-testid="designer-tabs">
+        {LINKS.map(link => (
+          <button
+            key={link.to}
+            data-testid={`designer-tab-${link.to.slice(1)}`}
+            onClick={() => { window.location.hash = link.to; }}
+            className={`text-sm font-medium pb-2 whitespace-nowrap ${activeTab === link.to.slice(1) ? "text-[#06402B] border-b-2 border-[#06402B]" : "text-gray-400 hover:text-[#06402B]"}`}
+          >
+            {link.label}
+          </button>
+        ))}
+      </div>
       <div className="mb-6">
         <p className="text-[#4A5D54] max-w-2xl text-sm">
           {activeTab === "projects"

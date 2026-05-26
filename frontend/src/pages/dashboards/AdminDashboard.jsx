@@ -4,6 +4,10 @@ import { Navigate, useLocation } from "react-router-dom";
 import DashShell from "@/components/layout/DashShell";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 import MasterLeadPipeline from "@/components/admin/MasterLeadPipeline";
 import CrmSettings from "@/components/admin/CrmSettings";
 import RejectPackageDialog from "@/components/admin/RejectPackageDialog";
@@ -17,7 +21,7 @@ const LINKS = [
   { to: "#measurements", label: "Verification & Site Visits" },
   { to: "#designs", label: "Active Designs (3D)" },
   { to: "#quotations", label: "Awaiting Quotation" },
-  { to: "#users", label: "Team Management" },
+  { to: "#users", label: "Departments" },
   { to: "#crm-settings", label: "CRM Settings" },
 ];
 
@@ -81,29 +85,129 @@ export default function AdminDashboard() {
 }
 
 // ==========================================
-// TAB 1: OVERVIEW & PLANNER
+// TAB 1: OVERVIEW & PLANNER (Analytics)
 // ==========================================
 export function TabOverview() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/admin/analytics/overview");
+        setData(data);
+      } catch (err) {
+        toast.error(formatApiError(err));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <p className="text-sm text-[#4A5D54]">Loading analytics…</p>;
+  if (!data) return <p className="text-sm text-red-600">Could not load analytics.</p>;
+
+  const c = data.cards || {};
+
   return (
-    <div className="animate-in fade-in space-y-8">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
-          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Total Retainers</p>
-          <p className="font-display text-4xl text-[#06402B]">₹0</p>
-        </div>
-        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
-          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Pending Verifications</p>
-          <p className="font-display text-4xl text-[#B68D40]">0</p>
-        </div>
-        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
-          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">Active Site Visits</p>
-          <p className="font-display text-4xl text-[#06402B]">0</p>
-        </div>
-        <div className="bg-white border border-[#E8E4D9] p-6 text-center">
-          <p className="text-xs uppercase tracking-widest text-[#4A5D54] mb-2">In 3D Design</p>
-          <p className="font-display text-4xl text-[#06402B]">0</p>
-        </div>
+    <div className="animate-in fade-in space-y-8" data-testid="admin-analytics">
+      {/* Top-line metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard label="Total Retainers" value={`₹${Number(c.total_retainers || 0).toLocaleString("en-IN")}`} accent="green" />
+        <MetricCard label="Pending Verifications" value={c.pending_verifications ?? 0} accent="gold" />
+        <MetricCard label="Active Site Visits" value={c.active_site_visits ?? 0} accent="green" />
+        <MetricCard label="In 3D Design" value={c.in_3d_design ?? 0} accent="green" />
+        <MetricCard label="Awaiting Quotation" value={c.ready_for_quotation ?? 0} accent="gold" />
+        <MetricCard label="Follow-ups Today" value={c.followups_today ?? 0} accent="red" testId="metric-followups-today" />
       </div>
+
+      {/* Charts grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard title="New Leads (last 14 days)" testId="chart-leads-by-day">
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={data.leads_by_day} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gLeads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#06402B" stopOpacity={0.5} />
+                  <stop offset="100%" stopColor="#06402B" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#4A5D54" }} tickFormatter={(d) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 10, fill: "#4A5D54" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+              <Area type="monotone" dataKey="count" stroke="#06402B" strokeWidth={2} fill="url(#gLeads)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Leads by Status" testId="chart-leads-by-status">
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart>
+              <Pie
+                data={data.leads_by_status}
+                dataKey="count"
+                nameKey="name"
+                cx="50%" cy="50%"
+                innerRadius={48}
+                outerRadius={88}
+                paddingAngle={2}
+              >
+                {data.leads_by_status.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Top Lead Sources" testId="chart-leads-by-source">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={data.leads_by_source} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#4A5D54" }} />
+              <YAxis tick={{ fontSize: 10, fill: "#4A5D54" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+              <Bar dataKey="count" fill="#B68D40" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Customers by Project Phase" testId="chart-customers-by-phase">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={data.customers_by_phase} layout="vertical" margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+              <XAxis type="number" tick={{ fontSize: 10, fill: "#4A5D54" }} allowDecimals={false} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#4A5D54" }} width={110} />
+              <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+              <Bar dataKey="count" fill="#06402B" radius={[0, 3, 3, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+const PIE_COLORS = ["#06402B", "#B68D40", "#9d7936", "#0a5839", "#4A5D54", "#D4B069", "#7a4f1f", "#2d6e54"];
+
+function MetricCard({ label, value, accent, testId }) {
+  const color = accent === "gold" ? "#B68D40" : accent === "red" ? "#B53A3A" : "#06402B";
+  return (
+    <div className="bg-white border border-[#E8E4D9] p-4" data-testid={testId}>
+      <p className="text-[10px] uppercase tracking-widest text-[#4A5D54] mb-2">{label}</p>
+      <p className="font-display text-2xl" style={{ color }}>{value}</p>
+    </div>
+  );
+}
+
+function ChartCard({ title, testId, children }) {
+  return (
+    <div className="bg-white border border-[#E8E4D9] p-4" data-testid={testId}>
+      <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-3">{title}</h4>
+      {children}
     </div>
   );
 }
@@ -247,17 +351,24 @@ export function TabSiteVisits() {
           <div key={v.verification_id} className="bg-white border border-[#E8E4D9] p-6 mb-4" data-testid={`verification-${v.verification_id}`}>
             <div className="flex justify-between items-start mb-4">
               <div>
+                {(v.customer?.name || v.customer?.project_name) && (
+                  <p className="text-xs uppercase tracking-widest text-[#B68D40] font-bold mb-1">
+                    {v.customer?.name}{v.customer?.project_name ? ` — ${v.customer.project_name}` : ""}
+                  </p>
+                )}
                 <h4 className="font-bold text-[#06402B] capitalize">{v.bhk_or_units} {v.property_type}</h4>
                 <p className="text-sm text-gray-500">Invoice Paid: ₹{Number(v.invoice_paid).toLocaleString('en-IN')}</p>
                 <p className="text-sm text-gray-500 mt-2"><strong>Client Notes:</strong> {v.room_requirements}</p>
               </div>
-              {v.pdf_url && (
-                <a href={v.pdf_url} target="_blank" rel="noopener noreferrer" download
-                   data-testid={`download-plan-${v.verification_id}`}
-                   className="text-[#B68D40] underline text-sm border p-2">
-                  Download Floor Plan
-                </a>
-              )}
+              <div className="flex flex-col items-end gap-2">
+                {((v.pdf_urls && v.pdf_urls.length > 0) ? v.pdf_urls : (v.pdf_url ? [v.pdf_url] : [])).map((u, idx) => (
+                  <a key={idx} href={u} target="_blank" rel="noopener noreferrer" download
+                     data-testid={`download-plan-${v.verification_id}-${idx}`}
+                     className="text-[#B68D40] underline text-sm border p-2">
+                    Floor Plan {idx + 1}
+                  </a>
+                ))}
+              </div>
             </div>
             <div className="flex flex-wrap gap-3 border-t pt-4">
               <button onClick={() => handleApprove(v.verification_id)}
@@ -362,7 +473,7 @@ function TabUsers() {
     if (!window.confirm(`Are you sure you want to permanently remove ${email}?`)) return;
     try {
       await api.delete(`/admin/employees/${email}`);
-      toast.success("Team member deleted.");
+      toast.success("Department member deleted.");
       loadEmployees();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to delete member.");
@@ -385,12 +496,12 @@ function TabUsers() {
     <div className="animate-in fade-in space-y-8">
       {/* ADD EMPLOYEE FORM */}
       <div className="bg-white p-6 border border-[#E8E4D9]">
-        <h3 className="font-display text-lg mb-4 text-[#06402B]">Add New Team Member</h3>
+        <h3 className="font-display text-lg mb-4 text-[#06402B]">Add Department Member</h3>
         <form onSubmit={handleAddMember} className="flex flex-col gap-4 max-w-md mt-4">
           <div className="grid grid-cols-2 gap-4">
             <input 
               type="email" 
-              placeholder="Employee Email Address *"
+              placeholder="Department Member Email *"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
@@ -417,14 +528,14 @@ function TabUsers() {
               onChange={(e) => setNewRole(e.target.value)}
               className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#0B4A3F]"
             >
-              <option value="sales">Sales Representative</option>
-              <option value="designer">Interior Designer</option>
+              <option value="sales">Sales Department</option>
+              <option value="designer">Design Department</option>
               <option value="admin">Administrator</option>
             </select>
           </div>
           
           <button type="submit" className="bg-[#0B4A3F] text-white px-4 py-2 rounded hover:bg-[#08362e] transition-colors w-full">
-            Create Team Member Account
+            Create Department Account
           </button>
         </form>
       </div>
@@ -453,8 +564,8 @@ function TabUsers() {
                       onChange={(evt) => setEditRole(evt.target.value)}
                       className="border border-[#0B4A3F] p-1 rounded"
                     >
-                      <option value="sales">Sales</option>
-                      <option value="designer">Designer</option>
+                      <option value="sales">Sales Department</option>
+                      <option value="designer">Design Department</option>
                       <option value="admin">Admin</option>
                     </select>
                   ) : (

@@ -26,8 +26,10 @@ export default function CustomerDashboard() {
   const [roomRequirements, setRoomRequirements] = useState("");
 
   // Floor plan upload state (Briefing phase)
-  const [floorPlan, setFloorPlan] = useState(null); // { url, name, file_id }
+  // Supports multiple files. Each entry: { url, name, file_id }
+  const [floorPlans, setFloorPlans] = useState([]);
   const [isUploadingPlan, setIsUploadingPlan] = useState(false);
+  const [projectName, setProjectName] = useState(user?.project_name || "");
 
   // Modal States
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -116,17 +118,23 @@ export default function CustomerDashboard() {
   };
 
   const handleSubmitBrief = async () => {
-    if (!floorPlan?.url) {
-      toast.error("Please upload a floor plan (PDF, PNG, JPG, JPEG or WEBP) before submitting.");
+    if (!projectName.trim()) {
+      toast.error("Please enter a project name (e.g. 'Lotus Apartment 4BHK').");
+      return;
+    }
+    if (floorPlans.length === 0) {
+      toast.error("Please upload at least one floor plan (PDF, PNG, JPG, JPEG or WEBP) before submitting.");
       return;
     }
     setIsLoading(true);
     try {
       await api.post("/verifications", {
+        project_name: projectName.trim(),
         property_type: propertyType,
         bhk_or_units: propertyType === "apartment" ? bhkType : (propertyType === "villa" ? villaType : unitCount.toString()),
         invoice_paid: calculatedPrice,
-        pdf_url: floorPlan.url,
+        pdf_urls: floorPlans.map(f => f.url),
+        pdf_url: floorPlans[0]?.url,
         room_requirements: roomRequirements || "None provided"
       });
       toast.success("Brief submitted successfully for verification.");
@@ -139,36 +147,47 @@ export default function CustomerDashboard() {
     }
   };
 
-  // ----- Floor-plan upload -----
+  // ----- Floor-plan upload (multi-file) -----
   const ALLOWED_FLOOR_PLAN_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"];
   const handleFloorPlanChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!ALLOWED_FLOOR_PLAN_TYPES.includes(file.type)) {
-      toast.error("Only PDF, PNG, JPG, JPEG or WEBP files are allowed.");
-      e.target.value = "";
-      return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const valid = [];
+    for (const f of files) {
+      if (!ALLOWED_FLOOR_PLAN_TYPES.includes(f.type)) {
+        toast.error(`${f.name}: only PDF, PNG, JPG, JPEG or WEBP allowed.`);
+        continue;
+      }
+      if (f.size > 15 * 1024 * 1024) {
+        toast.error(`${f.name}: file too large (max 15 MB).`);
+        continue;
+      }
+      valid.push(f);
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error("File too large (max 15 MB).");
-      e.target.value = "";
-      return;
-    }
+    if (valid.length === 0) { e.target.value = ""; return; }
     setIsUploadingPlan(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await api.post("/upload", form, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      setFloorPlan({ url: data.url, file_id: data.file_id, name: file.name });
-      toast.success("Floor plan uploaded.");
+      const uploaded = [];
+      for (const file of valid) {
+        const form = new FormData();
+        form.append("file", file);
+        const { data } = await api.post("/upload", form, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        uploaded.push({ url: data.url, file_id: data.file_id, name: file.name });
+      }
+      setFloorPlans(prev => [...prev, ...uploaded]);
+      toast.success(`${uploaded.length} floor plan${uploaded.length > 1 ? "s" : ""} uploaded.`);
     } catch (err) {
       toast.error(formatApiError(err));
-      e.target.value = "";
     } finally {
       setIsUploadingPlan(false);
+      e.target.value = "";
     }
+  };
+
+  const handleRemoveFloorPlan = (idx) => {
+    setFloorPlans(prev => prev.filter((_, i) => i !== idx));
   };
 
   // ----- Payment completion -----
@@ -305,6 +324,20 @@ export default function CustomerDashboard() {
             <p className="text-[#4A5D54] mb-8">Tell us about your space and style preferences to kick off the design process.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="md:col-span-2">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">
+                  Project Name <span className="text-red-500">*</span>
+                  <span className="text-gray-400 font-normal lowercase tracking-normal ml-1">(How you&apos;ll refer to this project)</span>
+                </label>
+                <input
+                  type="text"
+                  data-testid="project-name-input"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="e.g. Lotus Apartment 3BHK, My Whitefield Villa"
+                  className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm"
+                />
+              </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">Estimated Budget</label>
                 <select 
@@ -330,10 +363,11 @@ export default function CustomerDashboard() {
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">
-                  Upload Floor Plan <span className="text-gray-400 font-normal lowercase tracking-normal">(PDF, PNG, JPG, JPEG or WEBP — max 15 MB)</span>
+                  Upload Floor Plan(s) <span className="text-gray-400 font-normal lowercase tracking-normal">(PDF, PNG, JPG, JPEG or WEBP — max 15 MB each. Multiple files allowed.)</span>
                 </label>
                 <input
                   type="file"
+                  multiple
                   accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
                   onChange={handleFloorPlanChange}
                   disabled={isUploadingPlan}
@@ -343,17 +377,22 @@ export default function CustomerDashboard() {
                 {isUploadingPlan && (
                   <p className="mt-2 text-xs text-[#4A5D54]">Uploading…</p>
                 )}
-                {floorPlan?.url && !isUploadingPlan && (
-                  <p className="mt-2 text-xs text-[#06402B] font-semibold" data-testid="floor-plan-upload-success">
-                    ✓ {floorPlan.name} uploaded.
-                    <button
-                      type="button"
-                      onClick={() => setFloorPlan(null)}
-                      className="ml-3 underline text-[#B68D40] hover:text-[#9d7936]"
-                    >
-                      Replace
-                    </button>
-                  </p>
+                {floorPlans.length > 0 && !isUploadingPlan && (
+                  <ul className="mt-2 space-y-1" data-testid="floor-plan-upload-success">
+                    {floorPlans.map((f, idx) => (
+                      <li key={idx} className="text-xs text-[#06402B] font-semibold flex items-center gap-2">
+                        <span>✓ {f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFloorPlan(idx)}
+                          data-testid={`remove-floor-plan-${idx}`}
+                          className="underline text-[#B68D40] hover:text-[#9d7936]"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
             </div>
