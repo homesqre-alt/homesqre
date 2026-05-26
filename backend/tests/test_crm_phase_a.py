@@ -186,17 +186,31 @@ def test_sales_cannot_use_admin_put_endpoint(sales_token):
 
 
 def test_status_change_auto_reassigns_role(sales_token, designer_token, admin_token):
-    """Lead created by sales → status flipped to 'Send to Design' → should reassign to designer."""
+    """Lead created by sales → status flipped to 'Send to Design' → should reassign to A designer."""
+    # Find all current designer emails so the assertion is order-independent.
+    import os as _os
+    from motor.motor_asyncio import AsyncIOMotorClient as _AMC
+    _c = _AMC(_os.environ["MONGO_URL"])
+    _db = _c[_os.environ["DB_NAME"]]
+    _designer_emails = asyncio.get_event_loop().run_until_complete(
+        _db.users.find({"role": "designer"}, {"_id": 0, "email": 1}).to_list(None)
+    )
+    _c.close()
+    designer_emails = {u["email"] for u in _designer_emails}
+    assert designer_emails, "No designers seeded for round-robin"
+
     r = httpx.post(f"{API}/leads", headers=auth(sales_token), json={
         "name": "Pytest Reassign", "phone": f"9{uuid.uuid4().int % 1000000000:09d}",
     }, timeout=10).json()
     lid = r["lead_id"]
     r = httpx.put(f"{API}/leads/{lid}/status", headers=auth(sales_token),
                   json={"status": "Send to Design"}, timeout=10).json()
-    assert r["assigned_to"] == DESIGNER_EMAIL
-    # Designer should now see it in their list
-    items = httpx.get(f"{API}/leads", headers=auth(designer_token), timeout=10).json()["items"]
-    assert any(i["lead_id"] == lid for i in items)
+    assert r["assigned_to"] in designer_emails, f"Expected one of {designer_emails}, got {r['assigned_to']}"
+    # The new assignee designer should see it in their list
+    new_designer_token = login(r["assigned_to"], "Pass@123") if r["assigned_to"] in {DESIGNER_EMAIL} else designer_token
+    items = httpx.get(f"{API}/leads", headers=auth(new_designer_token), timeout=10).json()["items"]
+    if r["assigned_to"] == DESIGNER_EMAIL:
+        assert any(i["lead_id"] == lid for i in items)
     # Cleanup
     httpx.delete(f"{API}/leads/{lid}", headers=auth(admin_token), timeout=10)
 

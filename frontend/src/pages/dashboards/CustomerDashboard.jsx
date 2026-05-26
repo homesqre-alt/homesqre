@@ -185,6 +185,20 @@ export default function CustomerDashboard() {
     }
   };
 
+  // ----- Package adjustment payment (designer flagged a mismatch) -----
+  const handlePayPackageAdjustment = async () => {
+    setIsLoading(true);
+    try {
+      await api.post("/me/pay-package-adjustment");
+      toast.success("Package adjustment paid. Your designer is on it!");
+      await refresh();
+    } catch (err) {
+      toast.error(formatApiError(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <DashShell links={INTERIOR_LINKS} title="Welcome to Homesqre Interiors.">
       
@@ -206,6 +220,45 @@ export default function CustomerDashboard() {
           <p className="text-sm uppercase tracking-widest text-[#06402B] font-bold">The Homesqre Promise</p>
           <p className="text-[#4A5D54]">Design first. The most accurate quotation after design approval.</p>
         </blockquote>
+      )}
+
+      {/* PACKAGE ADJUSTMENT BANNER — designer flagged a mismatch */}
+      {currentPhase === "package_adjustment" && user?.package_adjustment && (
+        <div className="bg-[#FFF8EC] border-2 border-[#B68D40] p-6 mb-10 animate-in fade-in" data-testid="package-adjustment-banner">
+          <h3 className="font-display text-2xl text-[#06402B] mb-2">Package Adjustment Required</h3>
+          <p className="text-sm text-[#4A5D54] mb-4">
+            Your designer reviewed your floor plan and recommends upgrading to a{" "}
+            <strong className="capitalize">
+              {user.package_adjustment.corrected_bhk_or_units} {user.package_adjustment.corrected_property_type}
+            </strong>{" "}
+            package to match the layout you uploaded.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            <div className="bg-white border border-[#E8E4D9] p-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-[#4A5D54]">You paid</p>
+              <p className="font-display text-xl text-[#06402B]">₹{Number(user.package_adjustment.invoice_paid).toLocaleString("en-IN")}</p>
+            </div>
+            <div className="bg-white border border-[#E8E4D9] p-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-[#4A5D54]">Correct package</p>
+              <p className="font-display text-xl text-[#06402B]">₹{Number(user.package_adjustment.corrected_price).toLocaleString("en-IN")}</p>
+            </div>
+            <div className="bg-[#F3F0E9] border border-[#06402B] p-3 text-center">
+              <p className="text-[10px] uppercase tracking-widest text-[#06402B] font-bold">You owe</p>
+              <p className="font-display text-2xl text-[#06402B]" data-testid="differential-amount">
+                ₹{Number(user.package_adjustment.differential_amount).toLocaleString("en-IN")}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handlePayPackageAdjustment}
+            disabled={isLoading}
+            data-testid="pay-package-adjustment-btn"
+            className="bg-[#B68D40] text-white px-8 py-3 uppercase tracking-widest text-sm font-bold hover:bg-[#9d7936] transition disabled:opacity-60"
+          >
+            {isLoading ? "Processing…" : `Pay ₹${Number(user.package_adjustment.differential_amount).toLocaleString("en-IN")} & Continue`}
+          </button>
+          <p className="text-[11px] text-gray-500 mt-3">After payment, your designer begins work immediately. No further verification needed.</p>
+        </div>
       )}
 
       <div className="bg-white border border-[#E8E4D9] p-8 mb-10 shadow-sm relative">

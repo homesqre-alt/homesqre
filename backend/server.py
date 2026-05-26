@@ -1072,8 +1072,58 @@ async def _migrate_to_unified_leads():
 
 
 # ---------------------------------------------------------------------------
-# HOMESQRE INTERIORS: FLOOR PLAN VERIFICATION QUEUE
+# HOMESQRE INTERIORS: PACKAGE PRICING + FLOOR PLAN VERIFICATION QUEUE
 # ---------------------------------------------------------------------------
+# Canonical package pricing — must stay in sync with the customer-dashboard
+# checkout calculator. Owns the math; designer cannot enter a custom amount.
+def calculate_package_price(property_type: str, bhk_or_units: Any) -> int:
+    pt = (property_type or "").strip().lower()
+    spec = str(bhk_or_units or "").strip().lower()
+    if pt == "apartment":
+        if spec in ("1-2", "1", "2", "1bhk", "2bhk"):
+            return 10000
+        if spec in ("3", "3bhk"):
+            return 12000
+        if spec in ("4+", "4", "4bhk", "5", "5bhk"):
+            return 15000
+        return 0
+    if pt == "villa":
+        if spec in ("duplex",):
+            return 15000
+        if spec in ("triplex",):
+            return 18000
+        return 0
+    if pt == "independent":
+        try:
+            n = int(spec)
+        except (TypeError, ValueError):
+            return 0
+        if n <= 1:
+            return 12000
+        return max(20000, 6000 * n)
+    return 0
+
+
+PACKAGE_OPTIONS = {
+    "apartment":   [{"value": "1-2", "label": "1–2 BHK", "price": 10000},
+                    {"value": "3",   "label": "3 BHK",   "price": 12000},
+                    {"value": "4+",  "label": "4+ BHK",  "price": 15000}],
+    "villa":       [{"value": "duplex",  "label": "Duplex",  "price": 15000},
+                    {"value": "triplex", "label": "Triplex", "price": 18000}],
+    "independent": [{"value": "1", "label": "1 unit (Rental/Independent)", "price": 12000},
+                    {"value": "2", "label": "2 units", "price": 20000},
+                    {"value": "3", "label": "3 units", "price": 20000},
+                    {"value": "4", "label": "4 units", "price": 24000},
+                    {"value": "5", "label": "5 units", "price": 30000}],
+}
+
+
+@api.get("/packages")
+async def list_packages():
+    """Designer dashboard reads this to populate the corrected-package dropdown."""
+    return PACKAGE_OPTIONS
+
+
 @api.post("/verifications")
 async def create_verification(payload: VerificationCreate, user: dict = Depends(current_user)):
     ver_id = f"ver_{uuid.uuid4().hex[:10]}"
@@ -1092,27 +1142,134 @@ async def create_verification(payload: VerificationCreate, user: dict = Depends(
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"project_phase": "verification"}})
     return clean_doc(rec)
 
+
 @api.get("/admin/verifications")
 async def admin_list_verifications(user: dict = Depends(require_role("admin", "designer"))):
     return await db.verifications.find({}, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
 
+
 @api.put("/admin/verifications/{ver_id}")
-async def admin_moderate_verification(ver_id: str, payload: dict, user: dict = Depends(require_role("admin", "designer"))):
+async def admin_moderate_verification(
+    ver_id: str,
+    payload: dict,
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    """Approve → push customer into 'scheduling'.
+    reject_package → designer selects corrected package; backend auto-calculates
+    the differential customer must pay. No manual amount input from designer.
+    """
     action = payload.get("action")
-    deficit_amount = payload.get("deficit_amount", 0)
     ver = await db.verifications.find_one({"verification_id": ver_id})
-    
     if not ver:
-        raise HTTPException(status_code=404, detail="Not found")
+        raise HTTPException(status_code=404, detail="Verification not found")
 
     if action == "approve":
-        await db.verifications.update_one({"verification_id": ver_id}, {"$set": {"status": "approved"}})
-        await db.users.update_one({"user_id": ver["user_id"]}, {"$set": {"project_phase": "scheduling"}})
-    elif action == "reject":
-        await db.verifications.update_one({"verification_id": ver_id}, {"$set": {"status": "rejected", "deficit_amount": deficit_amount}})
-        await db.users.update_one({"user_id": ver["user_id"]}, {"$set": {"project_phase": "unpaid", "deficit_due": deficit_amount}})
-    
-    return {"ok": True}
+        await db.verifications.update_one(
+            {"verification_id": ver_id},
+            {"$set": {"status": "approved", "moderated_by": _user_identifier(user),
+                      "moderated_at": iso(now_utc())}}
+        )
+        await db.users.update_one(
+            {"user_id": ver["user_id"]},
+            {"$set": {"project_phase": "scheduling"}}
+        )
+        return {"ok": True}
+
+    if action == "reject_package":
+        corrected_pt = (payload.get("corrected_property_type") or "").strip()
+        corrected_spec = payload.get("corrected_bhk_or_units")
+        if not corrected_pt or corrected_spec in (None, ""):
+            raise HTTPException(status_code=400, detail="corrected_property_type and corrected_bhk_or_units are required")
+        new_price = calculate_package_price(corrected_pt, corrected_spec)
+        if new_price <= 0:
+            raise HTTPException(status_code=400, detail="Unknown package combination")
+        invoice_paid = float(ver.get("invoice_paid") or 0)
+        differential = max(0, new_price - int(invoice_paid))
+        update = {
+            "status": "package_mismatch",
+            "corrected_property_type": corrected_pt,
+            "corrected_bhk_or_units": str(corrected_spec),
+            "corrected_price": new_price,
+            "differential_amount": differential,
+            "rejection_reason": payload.get("reason") or "Floor plan did not match selected package",
+            "moderated_by": _user_identifier(user),
+            "moderated_at": iso(now_utc()),
+        }
+        await db.verifications.update_one({"verification_id": ver_id}, {"$set": update})
+        # If price already covered, treat as accepted — bypass payment, push to designing.
+        if differential == 0:
+            await db.verifications.update_one(
+                {"verification_id": ver_id},
+                {"$set": {"status": "package_adjusted_paid"}}
+            )
+            await db.users.update_one(
+                {"user_id": ver["user_id"]},
+                {"$set": {"project_phase": "designing"}}
+            )
+            return {"ok": True, "differential_amount": 0, "auto_approved": True}
+        # Otherwise: customer must pay the differential before designing begins.
+        await db.users.update_one(
+            {"user_id": ver["user_id"]},
+            {"$set": {
+                "project_phase": "package_adjustment",
+                "package_adjustment": {
+                    "verification_id": ver_id,
+                    "corrected_property_type": corrected_pt,
+                    "corrected_bhk_or_units": str(corrected_spec),
+                    "corrected_price": new_price,
+                    "invoice_paid": int(invoice_paid),
+                    "differential_amount": differential,
+                    "raised_at": iso(now_utc()),
+                },
+            }}
+        )
+        return {"ok": True, "differential_amount": differential, "auto_approved": False}
+
+    # Legacy "reject" with explicit deficit_amount — preserved for back-compat
+    if action == "reject":
+        deficit_amount = payload.get("deficit_amount", 0)
+        await db.verifications.update_one(
+            {"verification_id": ver_id},
+            {"$set": {"status": "rejected", "deficit_amount": deficit_amount}}
+        )
+        await db.users.update_one(
+            {"user_id": ver["user_id"]},
+            {"$set": {"project_phase": "unpaid", "deficit_due": deficit_amount}}
+        )
+        return {"ok": True}
+
+    raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+
+
+@api.post("/me/pay-package-adjustment")
+async def pay_package_adjustment(user: dict = Depends(current_user)):
+    """Customer-facing payment endpoint for the package-mismatch differential.
+    On success: marks the verification as paid and advances phase to 'designing'.
+    NOTE: real payment integration (Razorpay) will replace this stub by calling
+    the same logic from the payment-success webhook. The differential AMOUNT is
+    canonical from the verification record — it cannot be tampered with by the
+    client."""
+    adj = user.get("package_adjustment")
+    if not adj or not adj.get("verification_id"):
+        raise HTTPException(status_code=400, detail="No pending package adjustment")
+    ver_id = adj["verification_id"]
+    ver = await db.verifications.find_one({"verification_id": ver_id})
+    if not ver or ver.get("status") != "package_mismatch":
+        raise HTTPException(status_code=400, detail="Verification is not in package_mismatch state")
+    await db.verifications.update_one(
+        {"verification_id": ver_id},
+        {"$set": {
+            "status": "package_adjusted_paid",
+            "differential_paid_at": iso(now_utc()),
+            "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0),
+        }}
+    )
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"project_phase": "designing"},
+         "$unset": {"package_adjustment": ""}}
+    )
+    return {"ok": True, "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)}
 
 
 # ---------------------------------------------------------------------------

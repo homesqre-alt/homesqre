@@ -6,6 +6,7 @@ import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 import MasterLeadPipeline from "@/components/admin/MasterLeadPipeline";
 import CrmSettings from "@/components/admin/CrmSettings";
+import RejectPackageDialog from "@/components/admin/RejectPackageDialog";
 
 // Custom Tabs based on Homesqre Architecture
 const LINKS = [
@@ -201,6 +202,7 @@ export function TabDiscoveryCalls({ triggerNotification, currentUser }) {
 // ==========================================
 export function TabSiteVisits() {
   const [verifications, setVerifications] = useState([]);
+  const [rejecting, setRejecting] = useState(null);   // verification record being rejected
 
   const loadVerifications = useCallback(async () => {
     try {
@@ -213,39 +215,89 @@ export function TabSiteVisits() {
 
   useEffect(() => { loadVerifications(); }, [loadVerifications]);
 
-  const handleModeration = async (verId, action) => {
+  const handleApprove = async (verId) => {
     try {
-      await api.put(`/admin/verifications/${verId}`, { action });
-      toast.success(`Verification ${action}d successfully.`);
+      await api.put(`/admin/verifications/${verId}`, { action: "approve" });
+      toast.success("Approved — customer moved to scheduling.");
       loadVerifications();
     } catch (err) {
       toast.error(formatApiError(err));
     }
   };
 
+  const pending = verifications.filter(v => v.status === "pending");
+  const recentlyResolved = verifications.filter(v =>
+    v.status === "package_mismatch" || v.status === "package_adjusted_paid" || v.status === "approved"
+  ).slice(0, 8);
+
   return (
-    <div className="animate-in fade-in">
+    <div className="animate-in fade-in" data-testid="verification-queue">
       <h3 className="font-display text-xl text-[#06402B] mb-4">Floor Plan Verification Queue</h3>
-      
-      {verifications.filter(v => v.status === "pending").length === 0 ? (
+
+      {pending.length === 0 ? (
         <p className="text-gray-500 bg-white border border-[#E8E4D9] p-6 mb-8 text-center">No pending floor plans to verify.</p>
       ) : (
-        verifications.filter(v => v.status === "pending").map(v => (
-          <div key={v.verification_id} className="bg-white border border-[#E8E4D9] p-6 mb-4">
+        pending.map(v => (
+          <div key={v.verification_id} className="bg-white border border-[#E8E4D9] p-6 mb-4" data-testid={`verification-${v.verification_id}`}>
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h4 className="font-bold text-[#06402B] capitalize">{v.bhk_or_units} {v.property_type}</h4>
-                <p className="text-sm text-gray-500">Invoice Paid: ₹{v.invoice_paid.toLocaleString('en-IN')}</p>
+                <p className="text-sm text-gray-500">Invoice Paid: ₹{Number(v.invoice_paid).toLocaleString('en-IN')}</p>
                 <p className="text-sm text-gray-500 mt-2"><strong>Client Notes:</strong> {v.room_requirements}</p>
               </div>
-              <button className="text-[#B68D40] underline text-sm border p-2">View Uploaded PDF</button>
+              {v.pdf_url && (
+                <a href={v.pdf_url} target="_blank" rel="noopener noreferrer" download
+                   data-testid={`download-plan-${v.verification_id}`}
+                   className="text-[#B68D40] underline text-sm border p-2">
+                  Download Floor Plan
+                </a>
+              )}
             </div>
-            <div className="flex gap-4 border-t pt-4">
-              <button onClick={() => handleModeration(v.verification_id, 'approve')} className="bg-[#06402B] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold">Approve (Push to Scheduling)</button>
-              <button onClick={() => handleModeration(v.verification_id, 'reject')} className="border border-red-600 text-red-600 px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-red-50">Reject (Mismatch)</button>
+            <div className="flex flex-wrap gap-3 border-t pt-4">
+              <button onClick={() => handleApprove(v.verification_id)}
+                      data-testid={`approve-${v.verification_id}`}
+                      className="bg-[#06402B] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839]">
+                Approve (Push to Scheduling)
+              </button>
+              <button onClick={() => setRejecting(v)}
+                      data-testid={`reject-package-${v.verification_id}`}
+                      className="border border-red-600 text-red-600 px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-red-50">
+                Reject — Package Mismatch
+              </button>
             </div>
           </div>
         ))
+      )}
+
+      {recentlyResolved.length > 0 && (
+        <div className="mt-10">
+          <h4 className="font-display text-sm uppercase tracking-widest text-[#06402B] mb-3">Recently resolved</h4>
+          <div className="space-y-2">
+            {recentlyResolved.map(v => (
+              <div key={v.verification_id} className="bg-[#F3F0E9] border border-[#E8E4D9] p-3 text-xs flex justify-between items-center">
+                <span className="capitalize">
+                  {v.bhk_or_units} {v.property_type}
+                  {v.corrected_property_type && (
+                    <> → <strong>{v.corrected_bhk_or_units} {v.corrected_property_type}</strong></>
+                  )}
+                </span>
+                <span className="text-[#4A5D54]">
+                  {v.status === "approved" && "Approved — Scheduling"}
+                  {v.status === "package_mismatch" && `Awaiting customer payment ₹${(v.differential_amount || 0).toLocaleString("en-IN")}`}
+                  {v.status === "package_adjusted_paid" && `Paid — Designing (final ₹${(v.final_invoice || 0).toLocaleString("en-IN")})`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {rejecting && (
+        <RejectPackageDialog
+          verification={rejecting}
+          onClose={() => setRejecting(null)}
+          onSubmitted={() => { setRejecting(null); loadVerifications(); }}
+        />
       )}
     </div>
   );
