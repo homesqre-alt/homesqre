@@ -38,6 +38,17 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 — Workflow tweaks + Admin Analytics (this session).**
+  - **Designer privacy:** `/api/admin/verifications`, `/api/admin/design/projects`, `/api/admin/design/projects/{id}` now scope the embedded `customer` payload by role. Designers see only `{name, project_name}`; admins still see full `{name, email, mobile, project_name}`.
+  - **Customer briefing:** `POST /api/verifications` accepts new `project_name` (str) + `pdf_urls` (List[str]); legacy `pdf_url` still accepted (auto-promoted to a 1-element list). Empty list → 400. `users.project_name` is persisted on submit. UI: required Project Name input, multi-file floor-plan upload with per-file remove.
+  - **DesignerDashboard:** added a visible top tab bar (`data-testid="designer-tabs"`) mirroring the admin command-center pattern. Tabs persist via URL hash.
+  - **Master Lead Pipeline:** prominent "Follow-ups Today" toggle button (`data-testid="followups-today-btn"`) that flips `followup=today` filter on/off.
+  - **Terminology:** "Team Management" tab → "Departments". "Add New Team Member" → "Add Department Member". "Sales Representative" / "Interior Designer" labels → "Sales Department" / "Design Department".
+  - **Admin Analytics (Overview tab):** new endpoint `GET /api/admin/analytics/overview` returns `cards{6 fields}` + `leads_by_status[]` + `leads_by_source[]` + `leads_by_day[14]` + `customers_by_phase[]`. Frontend renders 6 metric cards + 4 Recharts (area, donut, bar, horizontal bar).
+  - **Bug fix:** `/admin/login` now correctly redirects to `/dashboard/admin` (was dangling at `/admin`).
+  - **Tests:** new `backend/tests/test_workflow_tweaks.py` (8 tests). Full regression: 48/48 pytest pass.
+
+## Changelog (prior)
 - **2026-05-26 — Phase A: Master CRM shipped.** Unified `leads` collection replaces `interior_leads` + `discovery_calls` (one-time idempotent migration). 15 endpoints (CRUD + role-scoped list + CSV export + admin-customizable statuses/sources + auto-assign rules). Round-robin auto-assignment on lead create AND status change. New components: `MasterLeadPipeline` (shared admin/sales), `CrmSettings` (admin only). 19/19 pytest pass. Old 15-min discovery-call rotation worker removed.
 - **2026-05-26 — CustomerDashboard:** persisted `project_phase` via `PUT /me/phase` (whitelisted transitions); floor-plan upload restricted to PDF/PNG/JPG/JPEG/WEBP with 15 MB cap; client-side + server-side validation.
 - **2026-05-25 — Discovery call assignment fixed.** Hard-coded names replaced with dynamic round-robin from `users` collection (`role=sales`). Legacy doc auto-migration on startup. (Superseded by Phase A.)

@@ -9,7 +9,7 @@ export default function AdminLogin() {
   const { login } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
-  const intended = location.state?.from?.pathname || "/admin";
+  const intended = location.state?.from?.pathname || "/dashboard/admin";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
