@@ -589,7 +589,9 @@ DEFAULT_CRM_STATUSES = [
     {"name": "No Answer / Not Reachable",    "sort_order": 1, "assign_to_role": "sales"},
     {"name": "Not Interested",               "sort_order": 2, "assign_to_role": None},
     {"name": "Send to Design",               "sort_order": 3, "assign_to_role": "designer"},
-    {"name": "Awaiting Customer Approval",   "sort_order": 4, "assign_to_role": None},
+    {"name": "Designing",                    "sort_order": 4, "assign_to_role": "designer"},
+    {"name": "Awaiting Customer Approval",   "sort_order": 5, "assign_to_role": None},
+    {"name": "Ready for Quotation",          "sort_order": 6, "assign_to_role": "admin"},
 ]
 DEFAULT_CRM_SOURCES = [
     {"name": "Website",   "sort_order": 0},
@@ -953,7 +955,7 @@ async def delete_lead(lead_id: str, user: dict = Depends(require_role("admin")))
 
 
 @api.put("/leads/{lead_id}/status")
-async def update_lead_status(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+async def update_lead_status(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
     new_status = (payload.get("status") or "").strip()
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
@@ -1005,7 +1007,7 @@ async def add_lead_comment(lead_id: str, payload: dict, user: dict = Depends(req
 
 
 @api.put("/leads/{lead_id}/followup")
-async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales"))):
+async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(require_role("admin", "sales", "designer"))):
     when = payload.get("next_followup_at")  # ISO string or null
     lead = await db.leads.find_one({"lead_id": lead_id})
     if not lead:
@@ -1021,12 +1023,24 @@ async def set_lead_followup(lead_id: str, payload: dict, user: dict = Depends(re
 
 # ----- CRM seeding + migration -----
 async def _seed_crm_defaults():
-    if await db.crm_statuses.count_documents({}) == 0:
-        await db.crm_statuses.insert_many([dict(s) for s in DEFAULT_CRM_STATUSES])
-        log.info("[CRM] Seeded default statuses")
-    if await db.crm_sources.count_documents({}) == 0:
-        await db.crm_sources.insert_many([dict(s) for s in DEFAULT_CRM_SOURCES])
-        log.info("[CRM] Seeded default sources")
+    # Idempotent — only insert statuses/sources that don't already exist.
+    # Allows new defaults (e.g. "Ready for Quotation") to be picked up on
+    # subsequent deploys without forcing the admin to add them manually.
+    existing_status_names = {
+        s["name"] async for s in db.crm_statuses.find({}, {"_id": 0, "name": 1})
+    }
+    to_insert = [dict(s) for s in DEFAULT_CRM_STATUSES if s["name"] not in existing_status_names]
+    if to_insert:
+        await db.crm_statuses.insert_many(to_insert)
+        log.info(f"[CRM] Seeded {len(to_insert)} missing default statuses")
+
+    existing_source_names = {
+        s["name"] async for s in db.crm_sources.find({}, {"_id": 0, "name": 1})
+    }
+    src_to_insert = [dict(s) for s in DEFAULT_CRM_SOURCES if s["name"] not in existing_source_names]
+    if src_to_insert:
+        await db.crm_sources.insert_many(src_to_insert)
+        log.info(f"[CRM] Seeded {len(src_to_insert)} missing default sources")
 
 
 async def _migrate_to_unified_leads():
@@ -1341,13 +1355,83 @@ async def schedule_site_visit(payload: dict, user: dict = Depends(current_user))
 #   5. Designer can upload more images at any time (typically replacements)
 #   6. When ALL images are approved AND >=1 image exists → project flips to
 #      'ready_for_quotation', user phase advances, admin sees in dedicated tab.
+async def _find_or_create_lead_for_user(user_doc: dict, status: str = "Send to Design") -> str:
+    """Find the most recent lead for this user (match by email or phone) or
+    create a fresh one. Returns the lead_id. Idempotent: if the user already
+    has a `lead_id` field, returns it directly."""
+    if user_doc.get("lead_id"):
+        return user_doc["lead_id"]
+
+    email = (user_doc.get("email") or "").strip().lower()
+    phone = (user_doc.get("mobile") or "").strip()
+    or_clauses = []
+    if email:
+        or_clauses.append({"email": email})
+    if phone:
+        or_clauses.append({"phone": phone})
+    lead = None
+    if or_clauses:
+        lead = await db.leads.find_one({"$or": or_clauses}, sort=[("created_at", -1)])
+
+    if not lead:
+        # Create a new lead for this paying customer.
+        lead = _build_lead(
+            {
+                "name": user_doc.get("name") or email.split("@")[0] or "Customer",
+                "phone": phone, "email": email,
+                "source": "Website",
+                "status": status,
+            },
+            created_by="system:auto-link",
+            default_status=status,
+        )
+        lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
+        lead["extra"] = {"auto_created_for_user": user_doc.get("user_id")}
+        await db.leads.insert_one(lead)
+        log.info(f"[CRM] Auto-created lead {lead['lead_id']} for user {user_doc.get('user_id')}")
+    else:
+        # Existing lead found — promote its status if it's still in early funnel.
+        terminal_progress = {"Send to Design", "Designing", "Awaiting Customer Approval", "Ready for Quotation"}
+        if lead.get("status") not in terminal_progress:
+            new_assignee = await _auto_assign_for_status(status, lead.get("assigned_to"))
+            await db.leads.update_one(
+                {"lead_id": lead["lead_id"]},
+                {
+                    "$set": {"status": status, "assigned_to": new_assignee, "updated_at": iso(now_utc())},
+                    "$push": {"history": {
+                        "from_status": lead.get("status"), "to_status": status,
+                        "at": iso(now_utc()), "by": "system:auto-link",
+                    }},
+                },
+            )
+
+    await db.users.update_one(
+        {"user_id": user_doc["user_id"]},
+        {"$set": {"lead_id": lead["lead_id"]}},
+    )
+    return lead["lead_id"]
+
+
 async def _ensure_design_project(user_id: str, verification_id: Optional[str] = None) -> dict:
     existing = await db.design_projects.find_one({"user_id": user_id, "status": {"$in": ["in_progress", "ready_for_quotation"]}})
     if existing:
+        # Backfill lead_id on legacy projects.
+        if not existing.get("lead_id"):
+            u = await db.users.find_one({"user_id": user_id})
+            if u:
+                lead_id = await _find_or_create_lead_for_user(u, status="Designing")
+                await db.design_projects.update_one(
+                    {"project_id": existing["project_id"]},
+                    {"$set": {"lead_id": lead_id, "updated_at": iso(now_utc())}},
+                )
+                existing["lead_id"] = lead_id
         return existing
+    u = await db.users.find_one({"user_id": user_id})
+    lead_id = await _find_or_create_lead_for_user(u, status="Designing") if u else None
     rec = {
         "project_id": f"dp_{uuid.uuid4().hex[:10]}",
         "user_id": user_id,
+        "lead_id": lead_id,
         "verification_id": verification_id,
         "designer_id": None,         # claimed when first designer uploads an image
         "status": "in_progress",
@@ -1358,7 +1442,7 @@ async def _ensure_design_project(user_id: str, verification_id: Optional[str] = 
     }
     await db.design_projects.insert_one(rec)
     rec.pop("_id", None)
-    log.info(f"[DESIGN] Created project {rec['project_id']} for user {user_id}")
+    log.info(f"[DESIGN] Created project {rec['project_id']} for user {user_id} (lead {lead_id})")
     return rec
 
 
@@ -1384,6 +1468,30 @@ async def _maybe_promote_to_quotation(project_id: str) -> bool:
         {"user_id": project["user_id"]},
         {"$set": {"project_phase": "ready_for_quotation"}}
     )
+    # Mirror the milestone onto the linked lead: status → "Ready for Quotation",
+    # reassign to the admin pool (status' assign_to_role drives this).
+    lead_id = project.get("lead_id")
+    if lead_id:
+        lead = await db.leads.find_one({"lead_id": lead_id})
+        if lead:
+            new_assignee = await _auto_assign_for_status("Ready for Quotation", lead.get("assigned_to"))
+            await db.leads.update_one(
+                {"lead_id": lead_id},
+                {
+                    "$set": {
+                        "status": "Ready for Quotation",
+                        "assigned_to": new_assignee,
+                        "updated_at": iso(now_utc()),
+                    },
+                    "$push": {"history": {
+                        "from_status": lead.get("status"),
+                        "to_status": "Ready for Quotation",
+                        "at": iso(now_utc()),
+                        "by": "system:design-approved",
+                    }},
+                },
+            )
+            log.info(f"[CRM] Lead {lead_id} promoted to 'Ready for Quotation' (assignee={new_assignee})")
     log.info(f"[DESIGN] Project {project_id} promoted to ready_for_quotation")
     return True
 
@@ -1448,6 +1556,13 @@ async def list_design_projects(
         else:
             p["customer"] = u
         p["site_visit_at"] = u.get("site_visit_at")
+        # Attach a minimal lead summary so the designer can change status inline.
+        if p.get("lead_id"):
+            ld = await db.leads.find_one(
+                {"lead_id": p["lead_id"]},
+                {"_id": 0, "lead_id": 1, "status": 1, "assigned_to": 1, "name": 1},
+            )
+            p["lead"] = ld
         out.append(p)
     return out
 
@@ -1466,6 +1581,12 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
     else:
         p["customer"] = u
     p["site_visit_at"] = u.get("site_visit_at")
+    if p.get("lead_id"):
+        ld = await db.leads.find_one(
+            {"lead_id": p["lead_id"]},
+            {"_id": 0, "lead_id": 1, "status": 1, "assigned_to": 1, "name": 1, "next_followup_at": 1},
+        )
+        p["lead"] = ld
     return p
 
 

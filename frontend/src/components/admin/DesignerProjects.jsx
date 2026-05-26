@@ -137,6 +137,8 @@ function ProjectDetail({ project, onReload, currentUser }) {
         </div>
       </header>
 
+      <LeadInlinePanel project={project} onChanged={onReload} />
+
       {project.status === "in_progress" && (
         <form onSubmit={upload} data-testid="designer-upload-form" className="bg-[#F3F0E9] border border-[#E8E4D9] p-4 space-y-3">
           <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Upload new render</h4>
@@ -212,5 +214,129 @@ function Card({ img, absUrl, children }) {
         {children}
       </div>
     </div>
+  );
+}
+
+
+/**
+ * LeadInlinePanel — inline lead status + comment + follow-up controls shown on
+ * each active design project so the designer can keep the lead in sync without
+ * leaving the page. Mirrors the workflow controls from MasterLeadPipeline's
+ * detail drawer (status + comment + follow-up datetime).
+ */
+function LeadInlinePanel({ project, onChanged }) {
+  const [statuses, setStatuses] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [comment, setComment] = useState("");
+  const [leadStatus, setLeadStatus] = useState(project.lead?.status || "");
+  const [followup, setFollowup] = useState(project.lead?.next_followup_at?.slice(0, 16) || "");
+
+  useEffect(() => {
+    setLeadStatus(project.lead?.status || "");
+    setFollowup(project.lead?.next_followup_at?.slice(0, 16) || "");
+  }, [project.lead?.lead_id, project.lead?.status, project.lead?.next_followup_at]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/crm/statuses");
+        setStatuses(data || []);
+      } catch (e) { /* non-fatal */ }
+    })();
+  }, []);
+
+  const leadId = project.lead?.lead_id;
+
+  if (!leadId) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900" data-testid="lead-inline-missing">
+        This design project has no linked lead yet. It will auto-link on the next status change or render upload.
+      </div>
+    );
+  }
+
+  const changeStatus = async (next) => {
+    setBusy(true);
+    try {
+      await api.put(`/leads/${leadId}/status`, { status: next });
+      setLeadStatus(next);
+      toast.success("Lead status updated");
+      onChanged?.();
+    } catch (err) { toast.error(formatApiError(err)); }
+    finally { setBusy(false); }
+  };
+
+  const setFollowupOn = async (when) => {
+    setBusy(true);
+    try {
+      await api.put(`/leads/${leadId}/followup`, { next_followup_at: when || null });
+      setFollowup(when || "");
+      toast.success("Follow-up updated");
+    } catch (err) { toast.error(formatApiError(err)); }
+    finally { setBusy(false); }
+  };
+
+  const postComment = async () => {
+    if (!comment.trim()) return;
+    setBusy(true);
+    try {
+      await api.post(`/leads/${leadId}/comments`, { text: comment.trim() });
+      setComment("");
+      toast.success("Comment added to lead");
+    } catch (err) { toast.error(formatApiError(err)); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <section className="bg-white border border-[#E8E4D9] p-4 space-y-3" data-testid="lead-inline-panel">
+      <header className="flex items-center justify-between">
+        <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Linked Lead</h4>
+        <span className="text-[10px] text-[#4A5D54] font-mono">{leadId}</span>
+      </header>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">Status</span>
+          <select
+            data-testid="lead-inline-status"
+            disabled={busy}
+            value={leadStatus}
+            onChange={(e) => changeStatus(e.target.value)}
+            className="w-full p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+          >
+            {statuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">Next Follow-up</span>
+          <input
+            type="datetime-local"
+            data-testid="lead-inline-followup"
+            disabled={busy}
+            value={followup}
+            onChange={(e) => setFollowupOn(e.target.value)}
+            className="w-full p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+          />
+        </label>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          data-testid="lead-inline-comment-input"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Add a comment to this lead (visible to admin & sales)…"
+          className="flex-1 p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+        />
+        <button
+          onClick={postComment}
+          disabled={!comment.trim() || busy}
+          data-testid="lead-inline-comment-btn"
+          className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white font-bold disabled:opacity-40 hover:bg-[#0a5839]"
+        >
+          Post
+        </button>
+      </div>
+    </section>
   );
 }
