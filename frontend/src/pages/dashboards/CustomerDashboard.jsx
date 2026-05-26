@@ -451,38 +451,9 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* PHASE 2: SCHEDULING */}
-        {currentPhase === "scheduling" && (
-          <div className="animate-in fade-in">
-            <h2 className="font-display text-2xl text-[#06402B] mb-2">Floor plan approved. Let&apos;s map your space.</h2>
-            <p className="text-[#4A5D54] mb-8">To ensure your 3D designs are millimetre-perfect, select a time for our founder to visit your site for exact measurements.</p>
-            
-            <div className="max-w-md">
-              <label className="block text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">Preferred Date &amp; Time</label>
-              <input type="datetime-local" className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] text-sm mb-4" />
-              <button className="bg-[#06402B] text-white px-8 py-3 w-full uppercase tracking-widest text-xs font-bold hover:bg-[#042c1e] transition">
-                Request Site Visit
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* PHASE 3: CONFIRMED */}
-        {currentPhase === "confirmed" && (
-          <div className="animate-in fade-in">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-[#F3F0E9] flex items-center justify-center text-[#06402B]">✓</div>
-              <div>
-                <h2 className="font-display text-2xl text-[#06402B]">Site Visit Confirmed</h2>
-                <p className="text-[#4A5D54]">We will see you at your property.</p>
-              </div>
-            </div>
-            <div className="bg-[#F3F0E9] p-4 border border-[#E8E4D9] max-w-md">
-              <p className="text-sm mb-2"><strong className="text-[#06402B]">Date:</strong> Thursday, 28th May, 10:00 AM</p>
-              <p className="text-sm"><strong className="text-[#06402B]">Assigned Lead Engineer:</strong> Girish Balaji</p>
-            </div>
-          </div>
-        )}
+        {/* PHASE 2 & 3 (scheduling/confirmed) are now driven inline inside the
+            PHASE 4 (designing) block: backend skips them and surfaces the
+            site-visit picker + confirmation directly. */}
 
         {/* PHASE 4: DESIGNING */}
         {(currentPhase === "designing" || currentPhase === "ready_for_quotation") && (
@@ -663,9 +634,9 @@ export default function CustomerDashboard() {
           <h3 className="font-display text-xl mb-6 text-[#06402B]">Project Journey</h3>
           <div className="flex flex-col md:flex-row gap-2 justify-between items-center text-center text-sm mb-12">
             <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#06402B]' : 'border-[#B68D40]'}`}>1. Briefing &amp; Review</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'confirmed' || currentPhase === 'designing' ? 'border-[#06402B]' : currentPhase === 'scheduling' || currentPhase === 'verification' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>2. Measurement</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>3. 3D Design</div>
-            <div className="flex-1 border-b-4 border-[#E8E4D9] pb-2 w-full opacity-40">4. Approvals &amp; Quote</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' || currentPhase === 'ready_for_quotation' ? 'border-[#06402B]' : currentPhase === 'verification' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>2. Site Visit &amp; Design</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#B68D40]' : currentPhase === 'ready_for_quotation' ? 'border-[#06402B]' : 'border-[#E8E4D9] opacity-40'}`}>3. 3D Design</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'ready_for_quotation' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>4. Approvals &amp; Quote</div>
           </div>
 
           <div className="bg-white border border-[#E8E4D9] p-6">
@@ -675,20 +646,20 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      {/* DEV MODE TOGGLE */}
-      <div className="mt-16 p-4 border border-red-200 bg-red-50 rounded text-xs flex flex-wrap gap-4 items-center">
-        <span className="font-bold text-red-600">Dev Tool (Test the UI Flow):</span>
-        <button onClick={() => setCurrentPhase('unpaid')} className="underline">0. Unpaid</button>
-        <button onClick={() => setCurrentPhase('briefing')} className="underline">1. Briefing</button>
-        <button onClick={() => setCurrentPhase('verification')} className="underline">1.5 Verification</button>
-        <button onClick={() => setCurrentPhase('scheduling')} className="underline">2. Scheduling</button>
-        <button onClick={() => setCurrentPhase('confirmed')} className="underline">3. Confirmed</button>
-        <button onClick={() => setCurrentPhase('designing')} className="underline">4. Designing</button>
-        <div className="w-full border-t border-red-200 my-2"></div>
-        <span className="font-bold text-red-600">Test CRM Alerts:</span>
-        <button onClick={() => setCallStatus('missed')} className="underline bg-white px-2 py-1 rounded">Trigger &apos;Missed Call&apos; Banner</button>
-        <button onClick={() => setCallStatus('none')} className="underline bg-white px-2 py-1 rounded">Clear Banner</button>
-      </div>
+      {/* DEV MODE TOGGLE — only rendered outside production builds */}
+      {process.env.NODE_ENV !== "production" && (
+        <div className="mt-16 p-4 border border-red-200 bg-red-50 rounded text-xs flex flex-wrap gap-4 items-center">
+          <span className="font-bold text-red-600">Dev Tool (Test the UI Flow):</span>
+          <button onClick={() => setCurrentPhase('unpaid')} className="underline">0. Unpaid</button>
+          <button onClick={() => setCurrentPhase('briefing')} className="underline">1. Briefing</button>
+          <button onClick={() => setCurrentPhase('verification')} className="underline">1.5 Verification</button>
+          <button onClick={() => setCurrentPhase('designing')} className="underline">4. Designing</button>
+          <div className="w-full border-t border-red-200 my-2"></div>
+          <span className="font-bold text-red-600">Test CRM Alerts:</span>
+          <button onClick={() => setCallStatus('missed')} className="underline bg-white px-2 py-1 rounded">Trigger &apos;Missed Call&apos; Banner</button>
+          <button onClick={() => setCallStatus('none')} className="underline bg-white px-2 py-1 rounded">Clear Banner</button>
+        </div>
+      )}
 
     </DashShell>
   );

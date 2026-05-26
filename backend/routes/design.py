@@ -1,0 +1,181 @@
+"""3D Design Iteration loop — customer review + designer/admin uploads + admin
+quotation pipeline."""
+import uuid
+from typing import Optional
+
+from fastapi import Depends, File, Form, HTTPException, UploadFile
+
+from core import (
+    api, db, iso, now_utc,
+    current_user, require_role, APP_NAME,
+)
+from crm_helpers import _user_identifier
+from storage_helpers import (
+    put_object, _validate_upload,
+    FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS,
+)
+from design_helpers import ensure_design_project, maybe_promote_to_quotation
+
+
+# ----- Customer view -----
+@api.get("/design/my-project")
+async def design_my_project(user: dict = Depends(current_user)):
+    project = await db.design_projects.find_one(
+        {"user_id": user["user_id"]}, {"_id": 0}, sort=[("created_at", -1)]
+    )
+    if not project:
+        return None
+    return project
+
+
+@api.put("/design/my-project/images/{image_id}/review")
+async def review_image(image_id: str, payload: dict, user: dict = Depends(current_user)):
+    decision = (payload.get("decision") or "").strip()  # 'approved' | 'needs_improvement'
+    comment = (payload.get("comment") or "").strip()
+    if decision not in ("approved", "needs_improvement"):
+        raise HTTPException(status_code=400, detail="decision must be 'approved' or 'needs_improvement'")
+    if decision == "needs_improvement" and not comment:
+        raise HTTPException(status_code=400, detail="Comment is required when requesting improvement")
+    project = await db.design_projects.find_one(
+        {"user_id": user["user_id"], "images.image_id": image_id}
+    )
+    if not project:
+        raise HTTPException(status_code=404, detail="Image not found in your projects")
+    await db.design_projects.update_one(
+        {"project_id": project["project_id"], "images.image_id": image_id},
+        {"$set": {
+            "images.$.customer_status": decision,
+            "images.$.customer_comment": comment or None,
+            "images.$.reviewed_at": iso(now_utc()),
+            "updated_at": iso(now_utc()),
+        }}
+    )
+    promoted = await maybe_promote_to_quotation(project["project_id"])
+    return {"ok": True, "ready_for_quotation": promoted}
+
+
+# ----- Designer + Admin views -----
+@api.get("/admin/design/projects")
+async def list_design_projects(
+    status_filter: Optional[str] = None,
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    flt = {}
+    if status_filter:
+        flt["status"] = status_filter
+    if user["role"] == "designer":
+        flt["$or"] = [{"designer_id": _user_identifier(user)}, {"designer_id": None}]
+    projects = await db.design_projects.find(flt, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    is_designer = user.get("role") == "designer"
+    out = []
+    for p in projects:
+        u = await db.users.find_one(
+            {"user_id": p["user_id"]},
+            {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1, "site_visit_at": 1},
+        ) or {}
+        if is_designer:
+            p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
+        else:
+            p["customer"] = u
+        p["site_visit_at"] = u.get("site_visit_at")
+        if p.get("lead_id"):
+            ld = await db.leads.find_one(
+                {"lead_id": p["lead_id"]},
+                {"_id": 0, "lead_id": 1, "status": 1, "assigned_to": 1, "name": 1},
+            )
+            p["lead"] = ld
+        out.append(p)
+    return out
+
+
+@api.get("/admin/design/projects/{project_id}")
+async def get_design_project(project_id: str, user: dict = Depends(require_role("admin", "designer"))):
+    p = await db.design_projects.find_one({"project_id": project_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Project not found")
+    u = await db.users.find_one(
+        {"user_id": p["user_id"]},
+        {"_id": 0, "email": 1, "name": 1, "mobile": 1, "project_name": 1, "site_visit_at": 1},
+    ) or {}
+    if user.get("role") == "designer":
+        p["customer"] = {"name": u.get("name"), "project_name": u.get("project_name")}
+    else:
+        p["customer"] = u
+    p["site_visit_at"] = u.get("site_visit_at")
+    if p.get("lead_id"):
+        ld = await db.leads.find_one(
+            {"lead_id": p["lead_id"]},
+            {"_id": 0, "lead_id": 1, "status": 1, "assigned_to": 1, "name": 1, "next_followup_at": 1},
+        )
+        p["lead"] = ld
+    return p
+
+
+@api.post("/admin/design/projects/{project_id}/images")
+async def upload_design_image(
+    project_id: str,
+    file: UploadFile = File(...),
+    comment: str = Form(...),
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    if not (comment or "").strip():
+        raise HTTPException(status_code=400, detail="Designer comment is required")
+    data = await file.read()
+    _validate_upload(file, data, FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS)
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
+    path = f"{APP_NAME}/designs/{project_id}/{uuid.uuid4().hex}.{ext}"
+    result = put_object(path, data, file.content_type or "application/octet-stream")
+    project = await db.design_projects.find_one({"project_id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.get("status") != "in_progress":
+        raise HTTPException(status_code=400, detail="Project is not in_progress")
+    next_round = max([i.get("round", 1) for i in project.get("images", [])] + [0]) + 1
+    image = {
+        "image_id": f"img_{uuid.uuid4().hex[:10]}",
+        "url": f"/api/files/{result['path']}",
+        "filename": file.filename,
+        "designer_comment": comment.strip(),
+        "customer_status": "pending",
+        "customer_comment": None,
+        "round": next_round,
+        "uploaded_at": iso(now_utc()),
+        "uploaded_by": _user_identifier(user),
+        "reviewed_at": None,
+    }
+    update = {"$push": {"images": image},
+              "$set": {"updated_at": iso(now_utc())}}
+    if not project.get("designer_id"):
+        update["$set"]["designer_id"] = _user_identifier(user)
+    await db.design_projects.update_one({"project_id": project_id}, update)
+    return image
+
+
+@api.post("/admin/design/projects/start/{user_id}")
+async def admin_start_designing(user_id: str, user: dict = Depends(require_role("admin", "designer"))):
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"project_phase": "designing"}})
+    project = await ensure_design_project(user_id)
+    return {"ok": True, "project_id": project["project_id"]}
+
+
+@api.put("/admin/design/projects/{project_id}/quotation-status")
+async def update_quotation_status(
+    project_id: str,
+    payload: dict,
+    user: dict = Depends(require_role("admin")),
+):
+    new_status = (payload.get("quotation_status") or "").strip()
+    if not new_status:
+        raise HTTPException(status_code=400, detail="quotation_status is required")
+    if not await db.crm_statuses.find_one({"name": new_status}):
+        raise HTTPException(status_code=400, detail=f"Unknown status: {new_status}")
+    res = await db.design_projects.update_one(
+        {"project_id": project_id, "status": "ready_for_quotation"},
+        {"$set": {"quotation_status": new_status, "updated_at": iso(now_utc())}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not in ready_for_quotation state")
+    return {"ok": True}

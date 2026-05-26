@@ -38,6 +38,19 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (fourth update) — Server refactor + Customer Dashboard cleanup.**
+  - **`server.py` reduced from 1857 → 38 lines.** Split into focused modules:
+    - `core.py` (204) — env config, app/api router, MongoDB client, all shared helpers + auth deps (`current_user`, `require_role`, `_set_auth_cookie`).
+    - `crm_helpers.py` (230) — CRM seeds + status/source defaults + `_build_lead`, `_auto_assign_for_status`, `find_or_create_lead_for_user`, `migrate_to_unified_leads`.
+    - `design_helpers.py` (102) — `ensure_design_project`, `maybe_promote_to_quotation`, `project_all_approved`.
+    - `storage_helpers.py` (46) — file upload validation + put/get object wrappers.
+    - `packages.py` (48) — `PACKAGE_OPTIONS` + `calculate_package_price`.
+    - `seeds.py` (80) — startup admin user + content seeding + status migrations.
+    - `routes/` — `auth`, `me`, `files`, `crm`, `leads`, `verifications`, `design`, `admin`, `content`. None exceed 280 lines.
+  - **Behavior identical** — all routes keep the `/api` prefix, all 53 pytest tests pass, all 9 smoke-tested endpoints return 200.
+  - **CustomerDashboard.jsx cleanup** — removed orphan `scheduling` and `confirmed` phase UI blocks (replaced by inline site-visit picker inside the `designing` block in the previous update). Journey-map progress bar now reflects the new 4-step flow (Briefing → Site Visit & Design → 3D Design → Approvals & Quote). Dev-tool toggle gated behind `process.env.NODE_ENV !== "production"`.
+
+## Changelog (prior)
 - **2026-02-26 (third update) — Designer ↔ Lead linkage (Phase D).**
   - **Designer Dashboard** gains a top-level **"My Leads"** tab (new default landing) reusing `MasterLeadPipeline` in `mode=sales` — designer can change status, post comments, set follow-ups exactly like sales. Tab order: My Leads → Verification & Site Visits → Approved Floor Plans → Active Projects (3D).
   - **Inline LeadInlinePanel** on each Active Project (3D) — status dropdown + follow-up datetime + comment input bound to `design_project.lead_id`. Renders "no linked lead yet" fallback for legacy projects.
