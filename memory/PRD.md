@@ -38,6 +38,20 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-02-26 (sixth update) — Designer Dashboard restructure + total PII privacy.**
+  - **5 strict tabs:** My Leads → Verify Floor Plan → Active Projects → Awaiting Approvals → Completed. `Approved Floor Plans` tab removed; `LeadInlinePanel` removed (designer takes no manual lead actions).
+  - **My Leads** (`DesignerLeadsList.jsx`) — static read-only table (Name / Status / Source / Next Follow-up / Updated). Click does nothing. No phone/email displayed.
+  - **Verify Floor Plan** — renamed (was 'Verification & Site Visits'). Same TabSiteVisits component; pending verifications + recently resolved.
+  - **Active / Awaiting / Completed** — single mode-driven `DesignerProjectsPanel.jsx`:
+    - Active: `status=in_progress AND no pending images`. Detail view shows floor-plan download links + multi-file render uploader (batch upload N files with ONE shared comment, loops POST /admin/design/projects/{id}/images per file). After upload the project migrates to Awaiting Approvals.
+    - Awaiting: `status=in_progress AND ≥1 pending image`. Detail view locked — render uploader is omitted, locked banner shown.
+    - Completed: `status=ready_for_quotation`. View-only render history.
+  - **Backend PII strip** — `/api/leads` and `/api/leads/{id}` strip `phone` + `email` when caller is `role=designer`. `LeadOut` schema dropped declared phone/email so Pydantic doesn't re-inject them as nulls; `extra='allow'` keeps them flowing for admin/sales.
+  - **Verification on design detail** — `GET /api/admin/design/projects/{id}` now attaches the linked `verification` blob (`pdf_urls`, `room_requirements`, `property_type`, `bhk_or_units`) so the designer can download floor plans directly from the project detail view.
+  - **Cleanup** — orphan `ApprovedFloorPlans.jsx` deleted.
+  - **Tests** — `test_designer_restructure.py` (NEW, 2 tests). 55/55 pytest pass. testing_agent_v3_fork verified all 12 review items.
+
+## Changelog (prior)
 - **2026-02-26 (fifth update) — Pydantic typing pass for OpenAPI.**
   - New `schemas/` package — Pydantic v2 models for every request/response shape (53 distinct schemas surfaced in OpenAPI). Files: `common.py`, `auth.py`, `crm.py`, `leads.py`, `verifications.py`, `design.py`, `admin.py`, `me.py`.
   - Every route now declares `response_model=…` so `/docs` Swagger shows accurate shapes (43 typed paths). Routes that previously took `payload: dict` now take a typed request model — `LeadCreateRequest`, `LeadStatusUpdateRequest`, `LeadCommentCreateRequest`, `LeadFollowupRequest`, `LeadUpdateRequest`, `VerificationModerateRequest`, `ImageReviewRequest`, `QuotationStatusRequest`, `EmployeeCreateRequest`, `EmployeeUpdateRequest`, `StatusCreateRequest`, `StatusUpdateRequest`, `SourceCreateRequest`, `SourceUpdateRequest`, `PhaseUpdateRequest`, `SiteVisitRequest`, `GoogleAuthRequest`.
