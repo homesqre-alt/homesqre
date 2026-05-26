@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom";
 import DashShell from "@/components/layout/DashShell";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import CustomerDesignReview from "@/components/customer/CustomerDesignReview";
 
 export default function CustomerDashboard() {
   const { user, refresh } = useAuth();
@@ -432,12 +433,9 @@ export default function CustomerDashboard() {
         )}
 
         {/* PHASE 4: DESIGNING */}
-        {currentPhase === "designing" && (
-          <div className="animate-in fade-in text-center py-8">
-            <h2 className="font-display text-2xl text-[#06402B] mb-4">Site mapped. The design engine is running.</h2>
-            <p className="text-[#4A5D54] max-w-xl mx-auto">
-              Our team is currently modeling your space into photorealistic 3D renders based on your exact brief and budget. You will receive an alert here when Phase 1 designs are ready for approval.
-            </p>
+        {(currentPhase === "designing" || currentPhase === "ready_for_quotation") && (
+          <div className="animate-in fade-in">
+            <CustomerDesignReview phase={currentPhase} onProjectAdvance={refresh} />
           </div>
         )}
 

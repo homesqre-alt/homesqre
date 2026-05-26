@@ -36,7 +36,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from fastapi import (
     FastAPI, APIRouter, Request, Response, HTTPException, Depends,
-    UploadFile, File, Header, Query
+    UploadFile, File, Form, Header, Query
 )
 from fastapi.responses import Response as RawResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -1269,7 +1269,202 @@ async def pay_package_adjustment(user: dict = Depends(current_user)):
         {"$set": {"project_phase": "designing"},
          "$unset": {"package_adjustment": ""}}
     )
+    await _ensure_design_project(user["user_id"], verification_id=ver_id)
     return {"ok": True, "final_invoice": int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)}
+
+
+# ---------------------------------------------------------------------------
+# PHASE C — 3D DESIGN ITERATION LOOP
+# ---------------------------------------------------------------------------
+# Workflow:
+#   1. Customer reaches phase=designing (via Phase B pay OR admin start)
+#   2. Backend lazily creates a design_project for them
+#   3. Designer uploads images, each with a mandatory comment
+#   4. Customer per-image: Approve OR Need Improvement (mandatory comment)
+#   5. Designer can upload more images at any time (typically replacements)
+#   6. When ALL images are approved AND >=1 image exists → project flips to
+#      'ready_for_quotation', user phase advances, admin sees in dedicated tab.
+async def _ensure_design_project(user_id: str, verification_id: Optional[str] = None) -> dict:
+    existing = await db.design_projects.find_one({"user_id": user_id, "status": {"$in": ["in_progress", "ready_for_quotation"]}})
+    if existing:
+        return existing
+    rec = {
+        "project_id": f"dp_{uuid.uuid4().hex[:10]}",
+        "user_id": user_id,
+        "verification_id": verification_id,
+        "designer_id": None,         # claimed when first designer uploads an image
+        "status": "in_progress",
+        "quotation_status": None,    # set when ready_for_quotation: admin uses crm_statuses
+        "images": [],
+        "created_at": iso(now_utc()),
+        "updated_at": iso(now_utc()),
+    }
+    await db.design_projects.insert_one(rec)
+    rec.pop("_id", None)
+    log.info(f"[DESIGN] Created project {rec['project_id']} for user {user_id}")
+    return rec
+
+
+def _project_all_approved(project: dict) -> bool:
+    imgs = project.get("images", [])
+    return len(imgs) > 0 and all(i.get("customer_status") == "approved" for i in imgs)
+
+
+async def _maybe_promote_to_quotation(project_id: str) -> bool:
+    project = await db.design_projects.find_one({"project_id": project_id})
+    if not project or project.get("status") != "in_progress":
+        return False
+    if not _project_all_approved(project):
+        return False
+    await db.design_projects.update_one(
+        {"project_id": project_id},
+        {"$set": {"status": "ready_for_quotation",
+                  "quotation_status": "Awaiting Customer Approval",
+                  "approved_at": iso(now_utc()),
+                  "updated_at": iso(now_utc())}}
+    )
+    await db.users.update_one(
+        {"user_id": project["user_id"]},
+        {"$set": {"project_phase": "ready_for_quotation"}}
+    )
+    log.info(f"[DESIGN] Project {project_id} promoted to ready_for_quotation")
+    return True
+
+
+# ----- Customer view -----
+@api.get("/design/my-project")
+async def design_my_project(user: dict = Depends(current_user)):
+    project = await db.design_projects.find_one({"user_id": user["user_id"]}, {"_id": 0}, sort=[("created_at", -1)])
+    if not project:
+        return None
+    return project
+
+
+@api.put("/design/my-project/images/{image_id}/review")
+async def review_image(image_id: str, payload: dict, user: dict = Depends(current_user)):
+    decision = (payload.get("decision") or "").strip()  # 'approved' | 'needs_improvement'
+    comment = (payload.get("comment") or "").strip()
+    if decision not in ("approved", "needs_improvement"):
+        raise HTTPException(status_code=400, detail="decision must be 'approved' or 'needs_improvement'")
+    if decision == "needs_improvement" and not comment:
+        raise HTTPException(status_code=400, detail="Comment is required when requesting improvement")
+    project = await db.design_projects.find_one({"user_id": user["user_id"], "images.image_id": image_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Image not found in your projects")
+    await db.design_projects.update_one(
+        {"project_id": project["project_id"], "images.image_id": image_id},
+        {"$set": {
+            "images.$.customer_status": decision,
+            "images.$.customer_comment": comment or None,
+            "images.$.reviewed_at": iso(now_utc()),
+            "updated_at": iso(now_utc()),
+        }}
+    )
+    promoted = await _maybe_promote_to_quotation(project["project_id"])
+    return {"ok": True, "ready_for_quotation": promoted}
+
+
+# ----- Designer + Admin views -----
+@api.get("/admin/design/projects")
+async def list_design_projects(
+    status_filter: Optional[str] = None,
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    flt = {}
+    if status_filter:
+        flt["status"] = status_filter
+    if user["role"] == "designer":
+        # Designer sees: (a) projects already claimed by them, (b) unclaimed projects
+        flt["$or"] = [{"designer_id": _user_identifier(user)}, {"designer_id": None}]
+    projects = await db.design_projects.find(flt, {"_id": 0}).sort([("created_at", -1)]).to_list(500)
+    # Attach minimal customer info for the queue UI
+    out = []
+    for p in projects:
+        u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1, "name": 1, "mobile": 1})
+        p["customer"] = u or {}
+        out.append(p)
+    return out
+
+
+@api.get("/admin/design/projects/{project_id}")
+async def get_design_project(project_id: str, user: dict = Depends(require_role("admin", "designer"))):
+    p = await db.design_projects.find_one({"project_id": project_id}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Project not found")
+    u = await db.users.find_one({"user_id": p["user_id"]}, {"_id": 0, "email": 1, "name": 1, "mobile": 1})
+    p["customer"] = u or {}
+    return p
+
+
+@api.post("/admin/design/projects/{project_id}/images")
+async def upload_design_image(
+    project_id: str,
+    file: UploadFile = File(...),
+    comment: str = Form(...),
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    if not (comment or "").strip():
+        raise HTTPException(status_code=400, detail="Designer comment is required")
+    data = await file.read()
+    _validate_upload(file, data, FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS)
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else "bin"
+    path = f"{APP_NAME}/designs/{project_id}/{uuid.uuid4().hex}.{ext}"
+    result = put_object(path, data, file.content_type or "application/octet-stream")
+    project = await db.design_projects.find_one({"project_id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.get("status") != "in_progress":
+        raise HTTPException(status_code=400, detail="Project is not in_progress")
+    # Round = max(existing round) + 1 if any current images have a comment from customer
+    next_round = max([i.get("round", 1) for i in project.get("images", [])] + [0]) + 1
+    image = {
+        "image_id": f"img_{uuid.uuid4().hex[:10]}",
+        "url": f"/api/files/{result['path']}",
+        "filename": file.filename,
+        "designer_comment": comment.strip(),
+        "customer_status": "pending",
+        "customer_comment": None,
+        "round": next_round,
+        "uploaded_at": iso(now_utc()),
+        "uploaded_by": _user_identifier(user),
+        "reviewed_at": None,
+    }
+    update = {"$push": {"images": image},
+              "$set": {"updated_at": iso(now_utc())}}
+    if not project.get("designer_id"):
+        update["$set"]["designer_id"] = _user_identifier(user)
+    await db.design_projects.update_one({"project_id": project_id}, update)
+    return image
+
+
+@api.post("/admin/design/projects/start/{user_id}")
+async def admin_start_designing(user_id: str, user: dict = Depends(require_role("admin", "designer"))):
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"project_phase": "designing"}})
+    project = await _ensure_design_project(user_id)
+    return {"ok": True, "project_id": project["project_id"]}
+
+
+@api.put("/admin/design/projects/{project_id}/quotation-status")
+async def update_quotation_status(
+    project_id: str,
+    payload: dict,
+    user: dict = Depends(require_role("admin")),
+):
+    new_status = (payload.get("quotation_status") or "").strip()
+    if not new_status:
+        raise HTTPException(status_code=400, detail="quotation_status is required")
+    if not await db.crm_statuses.find_one({"name": new_status}):
+        raise HTTPException(status_code=400, detail=f"Unknown status: {new_status}")
+    res = await db.design_projects.update_one(
+        {"project_id": project_id, "status": "ready_for_quotation"},
+        {"$set": {"quotation_status": new_status, "updated_at": iso(now_utc())}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not in ready_for_quotation state")
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

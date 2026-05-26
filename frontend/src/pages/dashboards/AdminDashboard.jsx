@@ -7,12 +7,16 @@ import { toast } from "sonner";
 import MasterLeadPipeline from "@/components/admin/MasterLeadPipeline";
 import CrmSettings from "@/components/admin/CrmSettings";
 import RejectPackageDialog from "@/components/admin/RejectPackageDialog";
+import DesignerProjects from "@/components/admin/DesignerProjects";
+import AdminQuotationQueue from "@/components/admin/AdminQuotationQueue";
 
 // Custom Tabs based on Homesqre Architecture
 const LINKS = [
   { to: "#overview", label: "Overview & Planner" },
   { to: "#pipeline", label: "Master Lead Pipeline" },
   { to: "#measurements", label: "Verification & Site Visits" },
+  { to: "#designs", label: "Active Designs (3D)" },
+  { to: "#quotations", label: "Awaiting Quotation" },
   { to: "#users", label: "Team Management" },
   { to: "#crm-settings", label: "CRM Settings" },
 ];
@@ -67,6 +71,8 @@ export default function AdminDashboard() {
       {activeTab === "overview" && <TabOverview />}
       {activeTab === "pipeline" && <MasterLeadPipeline mode="admin" currentUser={user} />}
       {activeTab === "measurements" && <TabSiteVisits />}
+      {activeTab === "designs" && <DesignerProjects currentUser={user} />}
+      {activeTab === "quotations" && <AdminQuotationQueue />}
       {activeTab === "users" && <TabUsers />}
       {activeTab === "crm-settings" && <CrmSettings />}
       
