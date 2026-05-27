@@ -144,7 +144,15 @@ async def upload_design_image(
         raise HTTPException(status_code=404, detail="Project not found")
     if project.get("status") != "in_progress":
         raise HTTPException(status_code=400, detail="Project is not in_progress")
-    next_round = max([i.get("round", 1) for i in project.get("images", [])] + [0]) + 1
+    # Smart round assignment: if there are already pending images (from a
+    # sequential batch upload in the same session), keep the same round number
+    # so all images in one upload session share one round.  Only start a new
+    # round when there are no pending images (i.e. all previous images have
+    # already been reviewed by the customer).
+    existing = project.get("images", [])
+    pending_count = sum(1 for i in existing if i.get("customer_status") == "pending")
+    max_existing_round = max([i.get("round", 1) for i in existing] + [0])
+    next_round = max_existing_round if pending_count > 0 else max_existing_round + 1
     image = {
         "image_id": f"img_{uuid.uuid4().hex[:10]}",
         "url": f"/api/files/{result['path']}",

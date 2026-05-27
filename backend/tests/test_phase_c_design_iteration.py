@@ -189,10 +189,10 @@ def test_customer_needs_improvement_loop(customer_token, designer_token, project
     assert r2.json()["round"] == 2
 
 
-def test_project_only_promotes_when_all_approved(customer_token, designer_token, admin_token, project_id):
-    """Approve the new render — should NOT promote (one image is still needs_improvement).
-    Need to clear that one too, but customer can't change a needs_improvement decision; so for
-    completeness the designer keeps uploading until customer approves enough to cover."""
+def test_project_promotes_when_latest_round_fully_approved(customer_token, admin_token, project_id):
+    """Approve the round-2 image — project SHOULD promote to ready_for_quotation because
+    all images in the latest round are approved.  Old round-1 'needs_improvement' images
+    do not block promotion once a newer round is fully approved."""
     # Approve the round-2 image
     p = httpx.get(f"{API}/design/my-project", headers=auth(customer_token), timeout=10).json()
     pending = [i for i in p["images"] if i["customer_status"] == "pending"]
@@ -203,38 +203,26 @@ def test_project_only_promotes_when_all_approved(customer_token, designer_token,
         json={"decision": "approved"},
         timeout=10,
     ).json()
-    # Project should NOT flip because the round-1 image is still needs_improvement
-    assert r["ready_for_quotation"] is False
+    # Project SHOULD flip because the latest round (round 2) is fully approved
+    assert r["ready_for_quotation"] is True
     me = httpx.get(f"{API}/auth/me", headers=auth(customer_token), timeout=10).json()
-    assert me["project_phase"] == "designing"
+    assert me["project_phase"] == "ready_for_quotation"
 
 
-def test_quotation_status_endpoint_not_yet_available(admin_token, project_id):
-    """Project not yet ready_for_quotation → quotation-status update 404."""
+def test_quotation_status_endpoint_is_available_after_promotion(admin_token, project_id):
+    """Project is now ready_for_quotation — quotation-status update should succeed."""
     r = httpx.put(
         f"{API}/admin/design/projects/{project_id}/quotation-status",
         headers=auth(admin_token),
         json={"quotation_status": "Awaiting Customer Approval"},
         timeout=10,
     )
-    assert r.status_code == 404
+    assert r.status_code == 200
 
 
-def test_full_approval_promotes_to_quotation(customer_token, designer_token, admin_token, project_id):
-    """Move project to a clean state: designer uploads a fresh image which customer approves,
-    AFTER we deliberately approve over the lingering needs_improvement one to clear it."""
-    # Hack the lingering needs_improvement image directly (server lets a customer
-    # change a needs_improvement → approved by sending an approval again).
-    p = httpx.get(f"{API}/design/my-project", headers=auth(customer_token), timeout=10).json()
-    for img in p["images"]:
-        if img["customer_status"] != "approved":
-            httpx.put(
-                f"{API}/design/my-project/images/{img['image_id']}/review",
-                headers=auth(customer_token),
-                json={"decision": "approved"},
-                timeout=10,
-            )
-    # All images approved → project should be ready_for_quotation
+def test_project_already_ready_for_quotation(customer_token, admin_token, project_id):
+    """Project was already promoted when the latest round was approved.
+    Verifies the state is stable: still ready_for_quotation, phase advanced."""
     p = httpx.get(f"{API}/design/my-project", headers=auth(customer_token), timeout=10).json()
     assert p["status"] == "ready_for_quotation"
     me = httpx.get(f"{API}/auth/me", headers=auth(customer_token), timeout=10).json()
@@ -242,7 +230,8 @@ def test_full_approval_promotes_to_quotation(customer_token, designer_token, adm
 
 
 def test_admin_quotation_status_dropdown_uses_crm_statuses(admin_token, project_id):
-    """Admin sets quotation_status to 'Awaiting Customer Approval' (a seeded crm_status)."""
+    """Admin sets quotation_status to a different valid crm_status value, and rejects unknown ones."""
+    # Update to a second valid status (first was set in the promotion test)
     r = httpx.put(
         f"{API}/admin/design/projects/{project_id}/quotation-status",
         headers=auth(admin_token),

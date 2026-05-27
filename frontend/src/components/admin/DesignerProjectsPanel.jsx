@@ -222,76 +222,131 @@ function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
 
 
 function RenderUploader({ projectId, onUploaded }) {
-  const [files, setFiles] = useState([]);
-  const [comment, setComment] = useState("");
+  // Each entry: { file: File, comment: string }
+  const [entries, setEntries] = useState([]);
   const [busy, setBusy] = useState(false);
 
-  const onPick = (e) => setFiles(Array.from(e.target.files || []));
+  const onPick = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setEntries(files.map(f => ({ file: f, comment: "" })));
+    e.target.value = "";
+  };
+
+  const updateComment = (idx, val) => {
+    setEntries(prev => prev.map((en, i) => i === idx ? { ...en, comment: val } : en));
+  };
+
+  const removeEntry = (idx) => {
+    setEntries(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const allHaveComments = entries.length > 0 && entries.every(en => en.comment.trim());
 
   const upload = async () => {
-    if (files.length === 0) return toast.error("Pick one or more render files first.");
-    if (!comment.trim()) return toast.error("A comment is required so the customer knows what they're looking at.");
+    if (!allHaveComments) return toast.error("Each render needs a comment before sending.");
     setBusy(true);
     let ok = 0;
-    for (const f of files) {
+    for (const en of entries) {
       try {
         const form = new FormData();
-        form.append("file", f);
-        form.append("comment", comment.trim());
+        form.append("file", en.file);
+        form.append("comment", en.comment.trim());
         await api.post(`/admin/design/projects/${projectId}/images`, form, {
           headers: { "Content-Type": "multipart/form-data" }
         });
-        ok += 1;
+        ok++;
       } catch (err) {
-        toast.error(`Failed to upload ${f.name}: ${formatApiError(err)}`);
+        toast.error(`Failed to upload ${en.file.name}: ${formatApiError(err)}`);
       }
     }
     if (ok > 0) {
       toast.success(`Sent ${ok} render${ok === 1 ? "" : "s"} to the customer.`);
-      setFiles([]);
-      setComment("");
+      setEntries([]);
       onUploaded?.();
     }
     setBusy(false);
   };
 
   return (
-    <section className="bg-[#FCFAF6] border border-[#E8E4D9] p-4 space-y-3"
+    <section className="bg-[#FCFAF6] border border-[#E8E4D9] p-4 space-y-4"
              data-testid="designer-render-uploader">
       <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#06402B]">
-        Upload Renders — sends straight to this customer
+        Upload Renders — each with its own note for the customer
       </h4>
-      <input
-        type="file"
-        multiple
-        accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
-        onChange={onPick}
-        disabled={busy}
-        data-testid="designer-render-files-input"
-        className="w-full p-2 border border-[#E8E4D9] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#06402B] hover:file:bg-[#E8E4D9] disabled:opacity-50"
-      />
-      {files.length > 0 && (
-        <ul className="text-xs text-[#06402B] space-y-1" data-testid="designer-render-files-preview">
-          {files.map((f, i) => <li key={i}>• {f.name}</li>)}
+
+      {/* File picker */}
+      <div>
+        <input
+          type="file"
+          multiple
+          accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf"
+          onChange={onPick}
+          disabled={busy}
+          data-testid="designer-render-files-input"
+          className="w-full p-2 border border-[#E8E4D9] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#06402B] hover:file:bg-[#E8E4D9] disabled:opacity-50"
+        />
+        {entries.length > 0 && (
+          <p className="text-[10px] text-[#4A5D54] mt-1">
+            {entries.length} file{entries.length === 1 ? "" : "s"} selected — add a note for each render below.
+          </p>
+        )}
+      </div>
+
+      {/* Per-file comment rows */}
+      {entries.length > 0 && (
+        <ul className="space-y-3" data-testid="designer-render-files-preview">
+          {entries.map((en, idx) => (
+            <li key={idx}
+                className="bg-white border border-[#E8E4D9] p-3 space-y-2"
+                data-testid={`designer-render-entry-${idx}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-[#06402B] truncate">
+                  {idx + 1}. {en.file.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeEntry(idx)}
+                  disabled={busy}
+                  data-testid={`designer-render-remove-${idx}`}
+                  className="text-[10px] text-[#B68D40] hover:text-[#9d7936] underline whitespace-nowrap disabled:opacity-40"
+                >
+                  Remove
+                </button>
+              </div>
+              <textarea
+                value={en.comment}
+                onChange={(e) => updateComment(idx, e.target.value)}
+                placeholder={`Note for this render — what does it show? What should the customer review?`}
+                disabled={busy}
+                rows={2}
+                data-testid={`designer-render-comment-${idx}`}
+                className={`w-full p-2 border text-sm bg-white focus:outline-none resize-none ${
+                  en.comment.trim() ? "border-[#06402B]" : "border-[#E8E4D9] focus:border-[#06402B]"
+                }`}
+              />
+              {!en.comment.trim() && (
+                <p className="text-[10px] text-red-500">Note required</p>
+              )}
+            </li>
+          ))}
         </ul>
       )}
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="A note for the customer — what does this render show? What should they look at?"
-        disabled={busy}
-        rows={3}
-        data-testid="designer-render-comment-input"
-        className="w-full p-2 border border-[#E8E4D9] text-sm bg-white focus:outline-none focus:border-[#06402B]"
-      />
-      <button
-        onClick={upload}
-        disabled={busy || files.length === 0 || !comment.trim()}
-        data-testid="designer-render-send-btn"
-        className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839] disabled:opacity-40"
-      >
-        {busy ? "Sending…" : `Send ${files.length || ""} render${files.length === 1 ? "" : "s"} to customer →`}
-      </button>
+
+      {entries.length > 0 && (
+        <button
+          onClick={upload}
+          disabled={busy || !allHaveComments}
+          data-testid="designer-render-send-btn"
+          className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839] disabled:opacity-40 w-full"
+        >
+          {busy
+            ? "Sending…"
+            : allHaveComments
+              ? `Send ${entries.length} render${entries.length === 1 ? "" : "s"} to customer →`
+              : `Add notes to all ${entries.length} renders to continue`}
+        </button>
+      )}
     </section>
   );
 }

@@ -53,8 +53,27 @@ async def ensure_design_project(user_id: str, verification_id: Optional[str] = N
 
 
 def project_all_approved(project: dict) -> bool:
+    """Return True only when the customer has reviewed and approved the entire
+    latest round of renders uploaded by the designer.
+
+    Earlier rounds may contain "needs_improvement" entries (they were superseded
+    by newer rounds), so we only look at images whose round equals the current
+    maximum round number.  We also require that NO image anywhere is still in
+    "pending" state — safety guard in case the data gets into an unexpected state.
+    """
     imgs = project.get("images", [])
-    return len(imgs) > 0 and all(i.get("customer_status") == "approved" for i in imgs)
+    if not imgs:
+        return False
+    # Safety: any unreviewed images → not ready
+    if any(i.get("customer_status") == "pending" for i in imgs):
+        return False
+    # Only the latest round needs to be fully approved; earlier rounds may have
+    # "needs_improvement" items that have since been superseded.
+    max_round = max(i.get("round", 1) for i in imgs)
+    latest_round_imgs = [i for i in imgs if i.get("round") == max_round]
+    return len(latest_round_imgs) > 0 and all(
+        i.get("customer_status") == "approved" for i in latest_round_imgs
+    )
 
 
 async def maybe_promote_to_quotation(project_id: str) -> bool:
