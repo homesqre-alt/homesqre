@@ -540,12 +540,12 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* PHASE 2 & 3 (scheduling/confirmed) are now driven inline inside the
-            PHASE 4 (designing) block: backend skips them and surfaces the
-            site-visit picker + confirmation directly. */}
-
-        {/* PHASE 4: DESIGNING */}
-        {(currentPhase === "designing" || currentPhase === "ready_for_quotation") && (
+        {/* PHASE 4: DESIGNING
+            Also handles legacy phases: "scheduling" and "confirmed" were removed
+            from the phase flow in Feb 2026. Users with those phases in the DB
+            are shown the designing UI so they are not stuck on a blank screen. */}
+        {(currentPhase === "designing" || currentPhase === "ready_for_quotation" ||
+          currentPhase === "scheduling" || currentPhase === "confirmed") && (
           <div className="animate-in fade-in space-y-6">
             {/* Design started banner */}
             <div className="bg-[#F3F0E9] border-l-4 border-[#06402B] p-4" data-testid="design-started-banner">
@@ -651,8 +651,8 @@ export default function CustomerDashboard() {
         <div className="animate-in fade-in">
           <h3 className="font-display text-xl mb-6 text-[#06402B]">Project Journey</h3>
           <div className="flex flex-col md:flex-row gap-2 justify-between items-center text-center text-sm mb-12">
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#06402B]' : 'border-[#B68D40]'}`}>1. Briefing &amp; Review</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' || currentPhase === 'ready_for_quotation' ? 'border-[#06402B]' : currentPhase === 'verification' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>2. Site Visit &amp; Design</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#06402B]' : ['verification','scheduling','confirmed','designing','ready_for_quotation'].includes(currentPhase) ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>1. Briefing &amp; Review</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${['designing','ready_for_quotation'].includes(currentPhase) ? 'border-[#06402B]' : ['verification','scheduling','confirmed'].includes(currentPhase) ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>2. Site Visit &amp; Design</div>
             <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#B68D40]' : currentPhase === 'ready_for_quotation' ? 'border-[#06402B]' : 'border-[#E8E4D9] opacity-40'}`}>3. 3D Design</div>
             <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'ready_for_quotation' ? 'border-[#B68D40]' : 'border-[#E8E4D9] opacity-40'}`}>4. Approvals &amp; Quote</div>
           </div>
