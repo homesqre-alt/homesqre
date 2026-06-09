@@ -6,12 +6,127 @@ export default function CrmSettings() {
   return (
     <div className="space-y-10" data-testid="crm-settings">
       <header>
-        <h2 className="font-display text-2xl text-[#06402B]">CRM Customization</h2>
-        <p className="text-xs text-[#4A5D54]">Statuses and Sources used across the lead pipeline. Auto-assignment rules are bound to status.</p>
+        <h2 className="font-display text-2xl text-[#0C1D42]">CRM Customization</h2>
+        <p className="text-xs text-[#333333]">Statuses and Sources used across the lead pipeline. Auto-assignment rules are bound to status.</p>
       </header>
       <SettingsList kind="statuses" supportsRole />
       <SettingsList kind="sources" />
+      <PackageManagement />
     </div>
+  );
+}
+
+function PackageManagement() {
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try { const { data } = await api.get(`/packages`); setPackages(data); }
+    catch (err) { toast.error(formatApiError(err)); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    try {
+      await api.put(`/admin/packages`, { packages });
+      toast.success("Packages updated successfully");
+      load();
+    } catch (err) { toast.error(formatApiError(err)); }
+  };
+
+  const addGroup = () => {
+    setPackages([...packages, { group: "New Group", property_type: "new_type", options: [] }]);
+  };
+
+  const removeGroup = (idx) => {
+    if (!confirm("Remove this group?")) return;
+    const newPkgs = [...packages];
+    newPkgs.splice(idx, 1);
+    setPackages(newPkgs);
+  };
+
+  const updateGroup = (idx, field, value) => {
+    const newPkgs = [...packages];
+    newPkgs[idx] = { ...newPkgs[idx], [field]: value };
+    setPackages(newPkgs);
+  };
+
+  const addOption = (groupIdx) => {
+    const newPkgs = [...packages];
+    newPkgs[groupIdx] = { ...newPkgs[groupIdx], options: [...newPkgs[groupIdx].options, { value: "", label: "", price: 0, blurb: "" }] };
+    setPackages(newPkgs);
+  };
+
+  const updateOption = (groupIdx, optIdx, field, value) => {
+    const newPkgs = [...packages];
+    const newOptions = [...newPkgs[groupIdx].options];
+    newOptions[optIdx] = { ...newOptions[optIdx], [field]: field === 'price' ? Number(value) : value };
+    newPkgs[groupIdx] = { ...newPkgs[groupIdx], options: newOptions };
+    setPackages(newPkgs);
+  };
+
+  const removeOption = (groupIdx, optIdx) => {
+    const newPkgs = [...packages];
+    const newOptions = [...newPkgs[groupIdx].options];
+    newOptions.splice(optIdx, 1);
+    newPkgs[groupIdx] = { ...newPkgs[groupIdx], options: newOptions };
+    setPackages(newPkgs);
+  };
+
+  return (
+    <section data-testid="package-management" className="mt-10 border-t border-[#E8E4D9] pt-10">
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h3 className="font-display text-2xl text-[#0C1D42]">Property Packages Catalogue</h3>
+          <p className="text-xs text-[#333333]">Manage the dynamic package catalogue shown to customers in the onboarding wizard.</p>
+        </div>
+        <button onClick={save} className="bg-[#DA9E3E] text-white px-6 py-2 uppercase tracking-widest text-xs font-bold hover:bg-[#C88C2F]">Save Changes</button>
+      </div>
+
+      {loading ? <p className="text-sm text-[#333333]">Loading packages...</p> : (
+        <div className="space-y-6">
+          {packages.map((pkg, gIdx) => (
+            <div key={gIdx} className="border border-[#E8E4D9] p-4 bg-white">
+              <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <input value={pkg.group} onChange={e => updateGroup(gIdx, 'group', e.target.value)} placeholder="Group Name (e.g. Apartment)" className="border p-2 text-sm font-bold text-[#0C1D42] w-48 focus:border-[#0C1D42] outline-none" />
+                  <input value={pkg.property_type} onChange={e => updateGroup(gIdx, 'property_type', e.target.value)} placeholder="Type ID (e.g. apartment)" className="border p-2 text-sm w-48 focus:border-[#0C1D42] outline-none" />
+                </div>
+                <button onClick={() => removeGroup(gIdx)} className="text-red-600 text-xs uppercase tracking-widest hover:underline whitespace-nowrap">Remove Group</button>
+              </div>
+              <div className="space-y-2 overflow-x-auto">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead className="bg-[#F3F0E9] text-[10px] uppercase tracking-widest text-[#0C1D42]">
+                    <tr>
+                      <th className="p-2 text-left w-24">Value ID</th>
+                      <th className="p-2 text-left w-32">Label</th>
+                      <th className="p-2 text-left w-32">Price (₹)</th>
+                      <th className="p-2 text-left">Description</th>
+                      <th className="p-2 text-center w-12">Del</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pkg.options.map((opt, oIdx) => (
+                      <tr key={oIdx} className="border-t border-[#E8E4D9]">
+                        <td className="p-1"><input value={opt.value} onChange={e => updateOption(gIdx, oIdx, 'value', e.target.value)} className="w-full border p-1 text-xs focus:border-[#0C1D42] outline-none" /></td>
+                        <td className="p-1"><input value={opt.label} onChange={e => updateOption(gIdx, oIdx, 'label', e.target.value)} className="w-full border p-1 text-xs focus:border-[#0C1D42] outline-none" /></td>
+                        <td className="p-1"><input type="number" value={opt.price} onChange={e => updateOption(gIdx, oIdx, 'price', e.target.value)} className="w-full border p-1 text-xs focus:border-[#0C1D42] outline-none" /></td>
+                        <td className="p-1"><input value={opt.blurb} onChange={e => updateOption(gIdx, oIdx, 'blurb', e.target.value)} className="w-full border p-1 text-xs focus:border-[#0C1D42] outline-none" /></td>
+                        <td className="p-1 text-center"><button onClick={() => removeOption(gIdx, oIdx)} className="text-red-600 hover:text-red-800 font-bold">&times;</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button onClick={() => addOption(gIdx)} className="text-[#DA9E3E] text-xs uppercase tracking-widest font-bold hover:underline mt-2 inline-block">+ Add Option</button>
+              </div>
+            </div>
+          ))}
+          <button onClick={addGroup} className="border-2 border-[#0C1D42] text-[#0C1D42] px-6 py-3 uppercase tracking-widest text-xs font-bold hover:bg-[#F3F0E9] transition">Add New Property Group</button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -61,10 +176,10 @@ function SettingsList({ kind, supportsRole }) {
 
   return (
     <section data-testid={`crm-settings-${kind}`}>
-      <h3 className="font-display text-lg text-[#06402B] mb-3 capitalize">{kind}</h3>
+      <h3 className="font-display text-lg text-[#0C1D42] mb-3 capitalize">{kind}</h3>
       <div className="border border-[#E8E4D9]">
         <table className="w-full text-sm">
-          <thead className="bg-[#06402B] text-white text-xs uppercase tracking-widest">
+          <thead className="bg-[#0C1D42] text-white text-xs uppercase tracking-widest">
             <tr>
               <th className="p-3 text-left">Name</th>
               {supportsRole && <th className="p-3 text-left">Auto-assign role</th>}
@@ -72,13 +187,13 @@ function SettingsList({ kind, supportsRole }) {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={supportsRole ? 3 : 2} className="p-4 text-center text-[#4A5D54]">Loading…</td></tr>}
+            {loading && <tr><td colSpan={supportsRole ? 3 : 2} className="p-4 text-center text-[#333333]">Loading…</td></tr>}
             {!loading && items.length === 0 && (
-              <tr><td colSpan={supportsRole ? 3 : 2} className="p-4 text-center text-[#4A5D54]">None defined.</td></tr>
+              <tr><td colSpan={supportsRole ? 3 : 2} className="p-4 text-center text-[#333333]">None defined.</td></tr>
             )}
             {items.map(it => (
               <tr key={it.name} className="border-t border-[#E8E4D9]">
-                <td className="p-3 font-semibold text-[#06402B]">{it.name}</td>
+                <td className="p-3 font-semibold text-[#0C1D42]">{it.name}</td>
                 {supportsRole && (
                   <td className="p-3">
                     <select
@@ -125,7 +240,7 @@ function SettingsList({ kind, supportsRole }) {
           </select>
         )}
         <button type="submit" data-testid={`new-${kind}-submit`}
-                className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white">Add</button>
+                className="px-4 py-2 text-xs uppercase tracking-widest bg-[#0C1D42] text-white">Add</button>
       </form>
     </section>
   );

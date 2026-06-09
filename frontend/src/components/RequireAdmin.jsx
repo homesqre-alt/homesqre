@@ -13,7 +13,7 @@ export default function RequireAdmin({ children }) {
 
   if (user === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-display text-2xl text-[#06402B]">
+      <div className="min-h-screen flex items-center justify-center font-display text-2xl text-[#0C1D42]">
         Loading…
       </div>
     );

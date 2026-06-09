@@ -50,10 +50,15 @@ export default function DesignerProjectsPanel({ mode = "active" }) {
 
   const filtered = useMemo(() => {
     return (projects || []).filter(p => {
-      const pending = (p.images || []).filter(i => i.customer_status === "pending").length;
-      if (mode === "completed") return p.status === "ready_for_quotation";
-      if (mode === "awaiting") return p.status === "in_progress" && pending > 0;
-      return p.status === "in_progress" && pending === 0;
+      const status = p.lead?.status || p.status; // Fallback to p.status if no lead
+      if (mode === "completed") {
+        return ["Design Approved", "Ready for Quotation", "In Production", "Delivered"].includes(status) || p.status !== "in_progress";
+      }
+      if (mode === "awaiting") {
+        return status === "Awaiting Customer Approval";
+      }
+      // active
+      return ["Floor Plan Approved", "Floor Plan Rejected", "Designing"].includes(status);
     });
   }, [projects, mode]);
 
@@ -67,13 +72,13 @@ export default function DesignerProjectsPanel({ mode = "active" }) {
     <div className="animate-in fade-in space-y-4" data-testid={`designer-${mode}-panel`}>
       <header className="flex items-center justify-between border-b border-[#E8E4D9] pb-3">
         <div>
-          <h3 className="font-display text-xl text-[#06402B]">{label.title}</h3>
-          <p className="text-xs text-[#4A5D54]">{label.help}</p>
+          <h3 className="font-display text-xl text-[#0C1D42]">{label.title}</h3>
+          <p className="text-xs text-[#333333]">{label.help}</p>
         </div>
-        <button onClick={load} className="text-xs underline text-[#B68D40]" data-testid={`designer-${mode}-refresh`}>Refresh</button>
+        <button onClick={load} className="text-xs underline text-[#DA9E3E]" data-testid={`designer-${mode}-refresh`}>Refresh</button>
       </header>
 
-      {loading && <p className="text-sm text-[#4A5D54]">Loading…</p>}
+      {loading && <p className="text-sm text-[#333333]">Loading…</p>}
 
       {!loading && !active && (
         <ProjectList
@@ -99,7 +104,7 @@ export default function DesignerProjectsPanel({ mode = "active" }) {
 function ProjectList({ mode, projects, onPick }) {
   if (projects.length === 0) {
     return (
-      <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#4A5D54]"
+      <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#333333]"
          data-testid={`designer-${mode}-empty`}>
         No projects here yet.
       </p>
@@ -108,7 +113,7 @@ function ProjectList({ mode, projects, onPick }) {
   return (
     <div className="bg-white border border-[#E8E4D9] overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#06402B]">
+        <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
           <tr>
             <th className="px-4 py-3 font-bold">Customer</th>
             <th className="px-4 py-3 font-bold">Project</th>
@@ -125,15 +130,15 @@ function ProjectList({ mode, projects, onPick }) {
                 key={p.project_id}
                 onClick={() => onPick(p.project_id)}
                 data-testid={`designer-project-row-${p.project_id}`}
-                className="border-t border-[#E8E4D9] hover:bg-[#FCFAF6] cursor-pointer"
+                className="border-t border-[#E8E4D9] hover:bg-[#FCFAF5] cursor-pointer"
               >
-                <td className="px-4 py-3 font-medium text-[#06402B]">{p.customer?.name || "—"}</td>
-                <td className="px-4 py-3 text-[#4A5D54]">{p.customer?.project_name || "—"}</td>
-                <td className="px-4 py-3 text-[#4A5D54]">
+                <td className="px-4 py-3 font-medium text-[#0C1D42]">{p.customer?.name || "—"}</td>
+                <td className="px-4 py-3 text-[#333333]">{p.customer?.project_name || "—"}</td>
+                <td className="px-4 py-3 text-[#333333]">
                   {renders} total
-                  {pending > 0 && <span className="ml-1 text-[#B68D40]">• {pending} pending</span>}
+                  {pending > 0 && <span className="ml-1 text-[#DA9E3E]">• {pending} pending</span>}
                 </td>
-                <td className="px-4 py-3 text-[#4A5D54]">{p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
+                <td className="px-4 py-3 text-[#333333]">{p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "—"}</td>
               </tr>
             );
           })}
@@ -162,14 +167,14 @@ function ProjectDetail({ mode, project, onBack, onChanged }) {
              data-testid={`designer-${mode}-detail`}>
       <header className="flex items-start justify-between gap-3 border-b border-[#E8E4D9] pb-3">
         <div>
-          <button onClick={onBack} className="text-xs underline text-[#B68D40] mb-2"
+          <button onClick={onBack} className="text-xs underline text-[#DA9E3E] mb-2"
                   data-testid={`designer-${mode}-back-btn`}>← Back to list</button>
-          <h3 className="font-display text-xl text-[#06402B]">{project.customer?.name || "Customer"}</h3>
+          <h3 className="font-display text-xl text-[#0C1D42]">{project.customer?.name || "Customer"}</h3>
           {project.customer?.project_name && (
-            <p className="text-xs text-[#4A5D54] italic">{project.customer.project_name}</p>
+            <p className="text-xs text-[#333333] italic">{project.customer.project_name}</p>
           )}
-          <p className="text-[10px] uppercase tracking-widest text-[#4A5D54] mt-1">
-            {project.status === "ready_for_quotation" ? "Completed" : (mode === "awaiting" ? "Awaiting customer approval" : "Active")}
+          <p className="text-[10px] uppercase tracking-widest text-[#333333] mt-1">
+            {project.status !== "in_progress" ? "Completed" : (mode === "awaiting" ? "Awaiting customer approval" : "Active")}
           </p>
         </div>
       </header>
@@ -197,7 +202,7 @@ function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
   if (!files || files.length === 0) return null;
   return (
     <section>
-      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-2">
+      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-2">
         Floor Plan Files
       </h4>
       <ul className="flex flex-wrap gap-2">
@@ -209,7 +214,7 @@ function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
               rel="noopener noreferrer"
               download
               data-testid={`${testIdPrefix}-floor-plan-${idx}`}
-              className="inline-block text-xs underline text-[#B68D40] hover:text-[#9d7936] border border-[#E8E4D9] px-3 py-1.5"
+              className="inline-block text-xs underline text-[#DA9E3E] hover:text-[#C88C2F] border border-[#E8E4D9] px-3 py-1.5"
             >
               ⬇ Download Floor Plan {idx + 1}
             </a>
@@ -229,7 +234,7 @@ function RenderUploader({ projectId, onUploaded }) {
   const onPick = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    setEntries(files.map(f => ({ file: f, comment: "" })));
+    setEntries(prev => [...prev, ...files.map(f => ({ file: f, comment: "" }))]);
     e.target.value = "";
   };
 
@@ -269,9 +274,9 @@ function RenderUploader({ projectId, onUploaded }) {
   };
 
   return (
-    <section className="bg-[#FCFAF6] border border-[#E8E4D9] p-4 space-y-4"
+    <section className="bg-[#FCFAF5] border border-[#E8E4D9] p-4 space-y-4"
              data-testid="designer-render-uploader">
-      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#06402B]">
+      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42]">
         Upload Renders — each with its own note for the customer
       </h4>
 
@@ -284,10 +289,10 @@ function RenderUploader({ projectId, onUploaded }) {
           onChange={onPick}
           disabled={busy}
           data-testid="designer-render-files-input"
-          className="w-full p-2 border border-[#E8E4D9] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#06402B] hover:file:bg-[#E8E4D9] disabled:opacity-50"
+          className="w-full p-2 border border-[#E8E4D9] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#0C1D42] hover:file:bg-[#E8E4D9] disabled:opacity-50"
         />
         {entries.length > 0 && (
-          <p className="text-[10px] text-[#4A5D54] mt-1">
+          <p className="text-[10px] text-[#333333] mt-1">
             {entries.length} file{entries.length === 1 ? "" : "s"} selected — add a note for each render below.
           </p>
         )}
@@ -301,7 +306,7 @@ function RenderUploader({ projectId, onUploaded }) {
                 className="bg-white border border-[#E8E4D9] p-3 space-y-2"
                 data-testid={`designer-render-entry-${idx}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-[#06402B] truncate">
+                <span className="text-xs font-medium text-[#0C1D42] truncate">
                   {idx + 1}. {en.file.name}
                 </span>
                 <button
@@ -309,7 +314,7 @@ function RenderUploader({ projectId, onUploaded }) {
                   onClick={() => removeEntry(idx)}
                   disabled={busy}
                   data-testid={`designer-render-remove-${idx}`}
-                  className="text-[10px] text-[#B68D40] hover:text-[#9d7936] underline whitespace-nowrap disabled:opacity-40"
+                  className="text-[10px] text-[#DA9E3E] hover:text-[#C88C2F] underline whitespace-nowrap disabled:opacity-40"
                 >
                   Remove
                 </button>
@@ -322,7 +327,7 @@ function RenderUploader({ projectId, onUploaded }) {
                 rows={2}
                 data-testid={`designer-render-comment-${idx}`}
                 className={`w-full p-2 border text-sm bg-white focus:outline-none resize-none ${
-                  en.comment.trim() ? "border-[#06402B]" : "border-[#E8E4D9] focus:border-[#06402B]"
+                  en.comment.trim() ? "border-[#0C1D42]" : "border-[#E8E4D9] focus:border-[#0C1D42]"
                 }`}
               />
               {!en.comment.trim() && (
@@ -338,7 +343,7 @@ function RenderUploader({ projectId, onUploaded }) {
           onClick={upload}
           disabled={busy || !allHaveComments}
           data-testid="designer-render-send-btn"
-          className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839] disabled:opacity-40 w-full"
+          className="bg-[#0C1D42] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D] disabled:opacity-40 w-full"
         >
           {busy
             ? "Sending…"
@@ -356,7 +361,7 @@ function RenderHistory({ images, absUrl, mode }) {
   if (images.length === 0) return null;
   return (
     <section>
-      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-2">
+      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-2">
         Render History
       </h4>
       <ul className="space-y-3">
@@ -368,16 +373,16 @@ function RenderHistory({ images, absUrl, mode }) {
               <img src={absUrl(img.url)} alt={img.filename || "render"} className="w-full h-32 object-cover border border-[#E8E4D9]" loading="lazy" />
             </a>
             <div className="flex-1 text-sm">
-              <p className="text-[10px] uppercase tracking-widest text-[#4A5D54]">
+              <p className="text-[10px] uppercase tracking-widest text-[#333333]">
                 Round {img.round} • {new Date(img.uploaded_at).toLocaleDateString()}
               </p>
-              <p className="text-[#06402B] mt-1"><strong>Designer note:</strong> {img.designer_comment}</p>
+              <p className="text-[#0C1D42] mt-1"><strong>Designer note:</strong> {img.designer_comment}</p>
               <p className="text-xs mt-2">
                 Status:{" "}
                 <StatusPill status={img.customer_status} />
               </p>
               {img.customer_comment && (
-                <p className="text-xs text-[#4A5D54] mt-1"><strong>Customer feedback:</strong> {img.customer_comment}</p>
+                <p className="text-xs text-[#333333] mt-1"><strong>Customer feedback:</strong> {img.customer_comment}</p>
               )}
             </div>
           </li>

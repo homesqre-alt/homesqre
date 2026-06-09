@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Fallback to localhost for local dev if env var is not set
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
 export const API = `${BACKEND_URL}/api`;
 
 // Auth is cookie-based (httpOnly). withCredentials sends the cookie automatically.

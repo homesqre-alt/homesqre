@@ -6,7 +6,7 @@ import "@/App.css";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
-import Interiors from "@/pages/Interiors";
+import Home from "@/pages/Home";
 import EmiCalculatorPage from "@/pages/EmiCalculatorPage";
 import ProfileComplete from "@/pages/ProfileComplete";
 
@@ -16,6 +16,7 @@ import SalesDashboard from "@/pages/dashboards/SalesDashboard";
 import DesignerDashboard from "@/pages/dashboards/DesignerDashboard";
 import AuthCallback from "@/components/layout/AuthCallback";
 import AdminLogin from "@/pages/AdminLogin";
+import CustomerProfile from "@/pages/dashboards/CustomerProfile";
 
 function AppRouter() {
   // Detect session_id during render (sync) — handles OAuth race condition
@@ -27,9 +28,8 @@ function AppRouter() {
 
   return (
     <Routes>
-      {/* 🚀 REDIRECT: Instantly forwards homesqre.com to homesqre.com/interiors */}
-      <Route path="/" element={<Navigate to="/interiors" replace />} />
-      <Route path="/interiors" element={<Interiors />} />
+      {/* HOMEPAGE - 100% INTERIORS FOCUSED */}
+      <Route path="/" element={<Home />} />
 
       {/* CORE AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
@@ -41,25 +41,19 @@ function AppRouter() {
       {/* Admin Console (quick add) */}
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* Admin Dashboard */}
-      <Route path="/dashboard/admin" element={<AdminDashboard tab="overview" />} />
-      <Route path="/dashboard/admin/users" element={<AdminDashboard tab="users" />} />
-      <Route path="/dashboard/admin/listings" element={<AdminDashboard tab="listings" />} />
-      <Route path="/dashboard/admin/projects" element={<AdminDashboard tab="projects" />} />
-      <Route path="/dashboard/admin/inquiries" element={<AdminDashboard tab="inquiries" />} />
-      <Route path="/dashboard/admin/interior-leads" element={<AdminDashboard tab="interior-leads" />} />
-      <Route path="/dashboard/admin/loan-leads" element={<AdminDashboard tab="loan-leads" />} />
-      <Route path="/dashboard/admin/banks" element={<AdminDashboard tab="banks" />} />
-      <Route path="/dashboard/admin/amenities" element={<AdminDashboard tab="amenities" />} />
-      <Route path="/dashboard/admin/cms/homepage" element={<AdminDashboard tab="cms-homepage" />} />
-      <Route path="/dashboard/admin/cms/interiors" element={<AdminDashboard tab="cms-interiors" />} />
+      {/* Admin Dashboard — uses hash-based tab navigation internally (#overview, #pipeline, etc.) */}
+      <Route path="/dashboard/admin" element={<AdminDashboard />} />
 
       {/* Customer Dashboard */}
       <Route path="/dashboard/customer" element={<CustomerDashboard />} />
+      <Route path="/dashboard/profile" element={<CustomerProfile />} />
 
       {/* Staff Dashboards (role-gated inside each component) */}
       <Route path="/dashboard/sales" element={<SalesDashboard />} />
       <Route path="/dashboard/designer" element={<DesignerDashboard />} />
+
+      {/* 404 catch-all — redirect unknown URLs to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

@@ -145,3 +145,34 @@ DEFAULT_INTERIORS_CONTENT: Dict[str, Any] = {
         "background": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1600",
     },
 }
+
+DEFAULT_PACKAGES: List[Dict[str, Any]] = [
+    {
+        "group": "Apartment / Flat",
+        "property_type": "apartment",
+        "options": [
+            {"value": "1-2", "label": "1–2 BHK", "price": 10000, "blurb": "Compact apartments up to 2 bedrooms."},
+            {"value": "3", "label": "3 BHK", "price": 12000, "blurb": "Mid-size families. Most popular package."},
+            {"value": "4+", "label": "4+ BHK", "price": 15000, "blurb": "Large apartments / penthouse layouts."}
+        ]
+    },
+    {
+        "group": "Villa",
+        "property_type": "villa",
+        "options": [
+            {"value": "duplex", "label": "Duplex Villa", "price": 15000, "blurb": "Two-storey independent villa."},
+            {"value": "triplex", "label": "Triplex / Luxury", "price": 18000, "blurb": "Three-storey or luxury villa."}
+        ]
+    },
+    {
+        "group": "Independent / Rental",
+        "property_type": "independent",
+        "options": [
+            {"value": "1", "label": "1 unit", "price": 12000, "blurb": "Single rental / studio."},
+            {"value": "2", "label": "2 units", "price": 20000, "blurb": "Duplex rental."},
+            {"value": "3", "label": "3 units", "price": 20000, "blurb": "Triple rental."},
+            {"value": "4", "label": "4 units", "price": 24000, "blurb": "Quad rental."},
+            {"value": "5", "label": "5 units", "price": 30000, "blurb": "5-unit rental block."}
+        ]
+    }
+]

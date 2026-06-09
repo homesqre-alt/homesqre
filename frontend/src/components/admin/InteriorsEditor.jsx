@@ -113,7 +113,7 @@ export default function InteriorsEditor() {
       />
       <FinalCtaSection data={data} upd={upd} />
 
-      <div className="flex justify-end gap-3 pt-6 border-t border-[#E8E4D9] sticky bottom-0 bg-[#FAF9F6] py-4">
+      <div className="flex justify-end gap-3 pt-6 border-t border-[#E8E4D9] sticky bottom-0 bg-[#FCFAF5] py-4">
         <button onClick={load} className="btn-secondary">
           Reset
         </button>
@@ -212,7 +212,7 @@ function ListSection({ title, items, columns, onChange, newItem, addLabel, testI
 
 function ListRow({ row, columns, onUpdate, onDelete }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-[#FAF9F6] p-3 border border-[#E8E4D9]">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-[#FCFAF5] p-3 border border-[#E8E4D9]">
       {columns.map((c) => (
         <input
           key={c.key}
@@ -243,7 +243,7 @@ function WhyChooseUsSection({ items, updateList }) {
     <Section title="Why Choose Us (stats, max 6)">
       <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
         {list.map((s, i) => (
-          <div key={`why-${i}-${s.value || ""}`} className="bg-[#FAF9F6] p-3 border border-[#E8E4D9] relative">
+          <div key={`why-${i}-${s.value || ""}`} className="bg-[#FCFAF5] p-3 border border-[#E8E4D9] relative">
             <input
               className="hs-input mb-2"
               placeholder="icon"
@@ -367,7 +367,7 @@ function CostMatrixCell({ range, onChange }) {
           onChange={(e) => onChange([lo, Number(e.target.value)])}
         />
       </div>
-      <div className="text-[10px] text-[#758A80] mt-1">
+      <div className="text-[10px] text-[#456C9A] mt-1">
         {formatINR(lo)} – {formatINR(hi)}
       </div>
     </>
@@ -412,7 +412,7 @@ function FinalCtaSection({ data, upd }) {
 function Section({ title, children }) {
   return (
     <div className="bg-white border border-[#E8E4D9] p-6">
-      <div className="font-display text-2xl text-[#06402B] mb-5">{title}</div>
+      <div className="font-display text-2xl text-[#0C1D42] mb-5">{title}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
     </div>
   );

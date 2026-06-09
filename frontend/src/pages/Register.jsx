@@ -3,21 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
-const ROLES = [
-  { value: "customer", label: "I'm looking for a home" },
-  { value: "agent", label: "I'm an agent" },
-  { value: "builder", label: "I'm a builder" },
-];
+const GOOGLE_CLIENT_ID = "792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com";
 
-// REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-const googleLogin = () => {
-  const redirectUrl = window.location.origin + "/";
-  window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-};
+
+
+
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const nav = useNavigate();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ name: "", email: "", mobile: "", password: "", role: "customer" });
@@ -35,6 +30,26 @@ export default function Register() {
       setStep(2);
     } catch (e) {
       toast.error(formatApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setBusy(true);
+    try {
+      // Passes the token directly to your backend
+      const u = await googleLogin(credentialResponse.credential);
+      toast.success("Welcome back!");
+        const dest =
+          u.role === "admin" ? "/dashboard/admin"
+          : u.role === "sales" ? "/dashboard/sales"
+          : u.role === "designer" ? "/dashboard/designer"
+          : "/dashboard/customer";
+      nav(dest);
+    } catch (e) {
+      toast.error("Google login failed. Please try again.");
+      console.error(e);
     } finally {
       setBusy(false);
     }
@@ -61,8 +76,9 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      <div className="hidden lg:block relative">
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+        <div className="hidden lg:block relative">
         <img
           src="https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80"
           alt=""
@@ -70,42 +86,40 @@ export default function Register() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60" />
         <div className="absolute bottom-12 left-12 right-12 text-white">
-          <div className="label-eyebrow text-[#B68D40] mb-4">Join Homesqre</div>
+          <div className="label-eyebrow text-[#DA9E3E] mb-4">Join Homesqre</div>
           <h2 className="font-display text-5xl leading-tight">
-            Find, list and design<br /><span className="italic text-[#B68D40]">all in one place.</span>
+            Find, list and design<br /><span className="italic text-[#DA9E3E]">all in one place.</span>
           </h2>
         </div>
       </div>
 
       <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-24 py-12">
-        <Link to="/" className="font-display text-3xl text-[#06402B] mb-12">Homesqre</Link>
+        <Link to="/" className="mb-12"><img src="/logo.svg" alt="Homesqre" className="h-24 md:h-32 w-auto object-contain" /></Link>
 
         {step === 1 && (
           <>
             <h1 className="font-display text-4xl mb-3">Create your account</h1>
-            <p className="text-sm text-[#4A5D54] mb-10">Takes less than a minute.</p>
+            <p className="text-sm text-[#333333] mb-10">Takes less than a minute.</p>
+
+            <div className="mb-6 max-w-md flex justify-center w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => toast.error("Google authentication failed")}
+                useOneTap
+                shape="rectangular"
+                size="large"
+                text="continue_with"
+                width="100%"
+              />
+            </div>
+
+            <div className="my-6 flex items-center gap-4 max-w-md">
+              <div className="flex-1 h-px bg-[#E8E4D9]" />
+              <span className="label-eyebrow text-xs text-[#666666]">or register manually</span>
+              <div className="flex-1 h-px bg-[#E8E4D9]" />
+            </div>
 
             <form onSubmit={submit} className="space-y-6 max-w-md" data-testid="register-form">
-              <div>
-                <label className="label-eyebrow mb-2 block">I am</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {ROLES.map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      onClick={() => setForm({ ...form, role: r.value })}
-                      className={`text-xs p-3 border tracking-wide ${
-                        form.role === r.value
-                          ? "border-[#06402B] bg-[#06402B] text-[#FAF9F6]"
-                          : "border-[#E8E4D9] text-[#1A2421]"
-                      }`}
-                      data-testid={`role-${r.value}`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div>
                 <label className="label-eyebrow mb-2 block">Full name</label>
                 <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="hs-input" data-testid="reg-name" />
@@ -117,7 +131,7 @@ export default function Register() {
                 </div>
                 <div>
                   <label className="label-eyebrow mb-2 block">Mobile</label>
-                  <input required value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} className="hs-input" data-testid="reg-mobile" />
+                  <input required pattern="^[0-9]{10}$" title="Phone number must be exactly 10 digits" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} className="hs-input" data-testid="reg-mobile" />
                 </div>
               </div>
               <div>
@@ -129,18 +143,8 @@ export default function Register() {
               </button>
             </form>
 
-            <div className="my-6 flex items-center gap-4 max-w-md">
-              <div className="flex-1 h-px bg-[#E8E4D9]" />
-              <span className="label-eyebrow">or</span>
-              <div className="flex-1 h-px bg-[#E8E4D9]" />
-            </div>
-
-            <button onClick={googleLogin} className="btn-secondary w-full justify-center max-w-md" data-testid="google-signup">
-              Continue with Google
-            </button>
-
-            <div className="mt-8 text-sm text-[#4A5D54] max-w-md">
-              Already a member? <Link to="/login" className="text-[#06402B] hover:text-[#B68D40]">Sign in</Link>
+            <div className="mt-8 text-sm text-[#333333] max-w-md">
+              Already a member? <Link to="/login" className="text-[#0C1D42] hover:text-[#DA9E3E]">Sign in</Link>
             </div>
           </>
         )}
@@ -148,9 +152,9 @@ export default function Register() {
         {step === 2 && (
           <>
             <h1 className="font-display text-4xl mb-3">Verify mobile</h1>
-            <p className="text-sm text-[#4A5D54] mb-2">We sent a 6-digit OTP to {form.mobile}.</p>
+            <p className="text-sm text-[#333333] mb-2">We sent a 6-digit OTP to {form.mobile}.</p>
             {devOtp && (
-              <p className="text-xs text-[#B68D40] mb-8" data-testid="dev-otp-display">
+              <p className="text-xs text-[#DA9E3E] mb-8" data-testid="dev-otp-display">
                 Dev mode — your OTP is: <strong>{devOtp}</strong>
               </p>
             )}
@@ -173,6 +177,7 @@ export default function Register() {
           </>
         )}
       </div>
-    </div>
+      </div>
+    </GoogleOAuthProvider>
   );
 }

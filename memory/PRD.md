@@ -38,7 +38,16 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
-- **2026-05-27 (eighth update) — Designer per-file comments + Project Completed-tab fix.**
+- **2026-06-09 (ninth update) — Full production codebase adopted from zip.**
+  - Adopted all new backend route files: `routes/payments.py` (Razorpay), `routes/vault.py` (Document Vault), `routes/site_visits.py` (Site visit slots), `routes/quotations.py` (Quotation engine), `routes/packages.py` (CMS packages).
+  - Adopted new backend helpers: `storage.py`, `storage_helpers.py`, `zoho_helpers.py` (Zoho Books), `notification_helpers.py`, `seeds.py`, `defaults.py` (with DEFAULT_PACKAGES).
+  - Adopted new `server.py` (828 lines), `core.py` (Razorpay/Zoho vars), and full `routes/__init__.py`.
+  - Adopted new frontend: `CustomerDashboard.jsx` (1165 lines, API-driven packages + Razorpay), `DesignerProjectsPanel.jsx` (new lead-status filtering + per-file comments), `AdminQuotationQueue.jsx`, `DocumentVault.jsx`, `SalesAnalyticsPanel.jsx`, `CustomerProfile.jsx`, `InquiryDialog.jsx`, `LeadCaptureModal.jsx`, `InquiryForm.jsx`, `StickyInquiryBar.jsx`, `RequireAdmin.jsx`.
+  - **Bug fixes during migration:** Removed duplicate `GET /packages` from verifications.py (returned dict; real CMS endpoint returns array). Fixed 404 catch-all redirect from `/interiors` to `/`. Added package seeding to server.py startup. Updated package test to new array format.
+  - **Added env vars:** RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, ZOHO_* (all optional/empty — no prod keys configured yet).
+  - **All 64 pytest tests passing.**
+
+
   - **DesignerProjectsPanel.jsx — RenderUploader redesigned.** Each selected file now gets its own comment textarea. `entries = [{ file, comment }]` state replaces the old single `comment` string. `allHaveComments` gate keeps the Send button disabled until all per-file comments are filled. Individual Remove button per file. Upload loop passes each file with its own comment to `POST /admin/design/projects/{id}/images`.
   - **design_helpers.py — project_all_approved() fixed.** Now checks only the LATEST round's images (`max_round` filter). Old rounds with `needs_improvement` images no longer block project promotion. Project promotes to `ready_for_quotation` (Completed tab) when the latest round is fully approved by the customer.
   - **routes/design.py — round assignment fixed.** Sequential uploads in the same upload session now share one round number: `next_round = max_existing_round if pending_count > 0 else max_existing_round + 1`. Prevents spurious per-file round increments when the frontend uploads N files sequentially.

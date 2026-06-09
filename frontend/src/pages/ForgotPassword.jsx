@@ -23,9 +23,9 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md w-full">
-        <Link to="/" className="font-display text-3xl text-[#06402B] mb-12 block">Homesqre</Link>
+        <Link to="/" className="mb-12 block"><img src="/logo.svg" alt="Homesqre" className="h-24 md:h-32 w-auto object-contain" /></Link>
         <h1 className="font-display text-4xl mb-3">Forgot password</h1>
-        <p className="text-sm text-[#4A5D54] mb-8">Enter your email and we'll send a reset link.</p>
+        <p className="text-sm text-[#333333] mb-8">Enter your email and we'll send a reset link.</p>
         {!sent ? (
           <form onSubmit={submit} className="space-y-6">
             <input
@@ -41,19 +41,19 @@ export default function ForgotPassword() {
           </form>
         ) : (
           <div className="bg-white border border-[#E8E4D9] p-6">
-            <div className="font-display text-2xl mb-2 text-[#06402B]">Check your email</div>
-            <p className="text-sm text-[#4A5D54]">
+            <div className="font-display text-2xl mb-2 text-[#0C1D42]">Check your email</div>
+            <p className="text-sm text-[#333333]">
               If an account exists for {email}, you'll receive a reset link shortly.
             </p>
             {devToken && (
-              <p className="text-xs text-[#B68D40] mt-4">
+              <p className="text-xs text-[#DA9E3E] mt-4">
                 Dev token: <code className="text-[10px]">{devToken}</code>
               </p>
             )}
           </div>
         )}
         <div className="mt-8 text-sm">
-          <Link to="/login" className="text-[#06402B] hover:text-[#B68D40]">← Back to sign in</Link>
+          <Link to="/login" className="text-[#0C1D42] hover:text-[#DA9E3E]">← Back to sign in</Link>
         </div>
       </div>
     </div>

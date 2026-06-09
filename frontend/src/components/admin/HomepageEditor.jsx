@@ -58,7 +58,7 @@ export default function HomepageEditor() {
           <input className="hs-input" value={data.promo_banner?.text || ""} onChange={(e) => upd("promo_banner.text", e.target.value)} />
         </Field>
         <Field label="Background Color (hex)">
-          <input className="hs-input" value={data.promo_banner?.color || "#06402B"} onChange={(e) => upd("promo_banner.color", e.target.value)} />
+          <input className="hs-input" value={data.promo_banner?.color || "#0C1D42"} onChange={(e) => upd("promo_banner.color", e.target.value)} />
         </Field>
         <Field label="Show banner?">
           <label className="flex items-center gap-2 text-sm">
@@ -89,7 +89,7 @@ export default function HomepageEditor() {
 function Section({ title, children }) {
   return (
     <div className="bg-white border border-[#E8E4D9] p-6">
-      <div className="font-display text-2xl text-[#06402B] mb-5">{title}</div>
+      <div className="font-display text-2xl text-[#0C1D42] mb-5">{title}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
     </div>
   );

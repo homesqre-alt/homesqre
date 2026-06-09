@@ -65,7 +65,7 @@ export default function StickyInquiryBar({
 
       {/* Mobile — bottom bar opens modal */}
       <div
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#06402B] text-[#FAF9F6] border-t border-[#B68D40]/40 shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.4)] transition-transform duration-300 ${
+        className={`lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#0C1D42] text-[#FCFAF5] border-t border-[#DA9E3E]/40 shadow-[0_-12px_40px_-12px_rgba(0,0,0,0.4)] transition-transform duration-300 ${
           show ? "translate-y-0" : "translate-y-full"
         }`}
         data-testid="sticky-inquiry-bar"
@@ -73,20 +73,20 @@ export default function StickyInquiryBar({
         <div className="px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             {subtitle && (
-              <div className="text-[9px] tracking-widest uppercase text-[#B68D40] truncate">
+              <div className="text-[9px] tracking-widest uppercase text-[#DA9E3E] truncate">
                 {subtitle}
               </div>
             )}
             <div className="font-display text-base truncate leading-tight">
               {title}
             </div>
-            <div className="text-[10px] tracking-widest uppercase text-[#B68D40] mt-0.5">
+            <div className="text-[10px] tracking-widest uppercase text-[#DA9E3E] mt-0.5">
               {priceLabel} · {formatINR(price)}
             </div>
           </div>
           <button
             onClick={() => setOpen(true)}
-            className="shrink-0 bg-[#B68D40] hover:bg-[#947230] text-white px-5 py-3 text-[11px] tracking-widest uppercase font-semibold transition-colors"
+            className="shrink-0 bg-[#DA9E3E] hover:bg-[#C88C2F] text-white px-5 py-3 text-[11px] tracking-widest uppercase font-semibold transition-colors"
             data-testid="sticky-enquire-btn"
           >
             Enquire
@@ -95,7 +95,7 @@ export default function StickyInquiryBar({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md bg-[#FAF9F6] p-0 border-0">
+        <DialogContent className="max-w-md bg-[#FCFAF5] p-0 border-0">
           <DialogTitle className="sr-only">{formTitle}</DialogTitle>
           <DialogDescription className="sr-only">
             Send your contact details to the owner

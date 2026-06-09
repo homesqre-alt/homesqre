@@ -26,20 +26,13 @@ export default function AuthCallback() {
         setUserData(data.user);
         // Clean URL hash
         window.history.replaceState({}, "", "/");
-        if (!data.user?.profile_completed) {
-          nav("/profile/complete");
-          return;
-        }
         const role = data.user?.role;
-        const dashHref =
-          role === "admin"
-            ? "/dashboard/admin"
-            : role === "agent"
-            ? "/dashboard/agent"
-            : role === "builder"
-            ? "/dashboard/builder"
-            : "/dashboard/customer";
-        nav(dashHref);
+        const dash =
+          role === "admin" ? "/dashboard/admin"
+          : role === "sales" ? "/dashboard/sales"
+          : role === "designer" ? "/dashboard/designer"
+          : "/dashboard/customer";
+        nav(dash);
       } catch {
         nav("/login?error=oauth");
       }
@@ -48,7 +41,7 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="font-display text-3xl text-[#06402B]">Signing you in…</div>
+      <div className="font-display text-3xl text-[#0C1D42]">Signing you in…</div>
     </div>
   );
 }

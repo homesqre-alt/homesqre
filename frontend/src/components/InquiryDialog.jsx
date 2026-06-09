@@ -74,15 +74,15 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6] p-0 max-h-[90vh]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5] p-0 max-h-[90vh]">
         <DialogHeader className="p-6 pb-4 border-b border-[#E8E4D9]">
           <DialogTitle className="font-display text-2xl flex items-center justify-between">
             <span>{data.name}</span>
             <button onClick={() => onOpenChange(false)} className="text-[#9B4A3A]"><X size={18} /></button>
           </DialogTitle>
           <DialogDescription className="sr-only">Inquiry conversation, notes and status</DialogDescription>
-          <div className="text-sm text-[#4A5D54] mt-1">{data.mobile} · {data.email || "—"}</div>
-          <div className="text-xs text-[#758A80] mt-1">For: {data.target_title}</div>
+          <div className="text-sm text-[#333333] mt-1">{data.mobile} · {data.email || "—"}</div>
+          <div className="text-xs text-[#456C9A] mt-1">For: {data.target_title}</div>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0 max-h-[70vh] overflow-hidden">
@@ -105,12 +105,12 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
               onChange={(e) => setFollowup(e.target.value)}
               className="hs-input"
             />
-            <button onClick={saveFollowup} className="text-xs underline mt-2 text-[#06402B]" data-testid="inq-set-followup">
+            <button onClick={saveFollowup} className="text-xs underline mt-2 text-[#0C1D42]" data-testid="inq-set-followup">
               Save follow-up
             </button>
 
             <div className="label-eyebrow mt-8 mb-2">Initial message</div>
-            <p className="text-sm text-[#1A2421] leading-relaxed bg-white border border-[#E8E4D9] p-3">
+            <p className="text-sm text-[#333333] leading-relaxed bg-white border border-[#E8E4D9] p-3">
               {data.message || "—"}
             </p>
 
@@ -119,11 +119,11 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
               {(data.notes || []).map((n) => (
                 <div key={n.at} className="text-xs bg-white border border-[#E8E4D9] p-2">
                   <div>{n.text}</div>
-                  <div className="text-[#758A80] mt-1">{new Date(n.at).toLocaleString()}</div>
+                  <div className="text-[#456C9A] mt-1">{new Date(n.at).toLocaleString()}</div>
                 </div>
               ))}
               {(!data.notes || data.notes.length === 0) && (
-                <div className="text-xs text-[#758A80]">No notes yet.</div>
+                <div className="text-xs text-[#456C9A]">No notes yet.</div>
               )}
             </div>
             <textarea
@@ -133,7 +133,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
               onChange={(e) => setNote(e.target.value)}
               data-testid="inq-note-input"
             />
-            <button onClick={addNote} className="text-xs underline mt-1 text-[#06402B]" data-testid="inq-add-note">
+            <button onClick={addNote} className="text-xs underline mt-1 text-[#0C1D42]" data-testid="inq-add-note">
               Add note
             </button>
           </div>
@@ -141,20 +141,20 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
           {/* Right: chat */}
           <div className="md:col-span-2 flex flex-col">
             <div className="p-4 border-b border-[#E8E4D9] flex items-center gap-2">
-              <MessageCircle size={16} className="text-[#06402B]" />
+              <MessageCircle size={16} className="text-[#0C1D42]" />
               <span className="label-eyebrow">Conversation</span>
             </div>
-            <div className="flex-1 overflow-auto p-6 space-y-3 bg-[#FAF9F6] min-h-[300px]">
+            <div className="flex-1 overflow-auto p-6 space-y-3 bg-[#FCFAF5] min-h-[300px]">
               {(data.messages || []).map((m) => (
-                <div key={m.at} className="bg-[#06402B] text-[#FAF9F6] p-3 max-w-[80%] ml-auto">
+                <div key={m.at} className="bg-[#0C1D42] text-[#FCFAF5] p-3 max-w-[80%] ml-auto">
                   <div className="text-sm">{m.text}</div>
-                  <div className="text-[10px] text-[#FAF9F6]/60 mt-1 text-right">
+                  <div className="text-[10px] text-[#FCFAF5]/60 mt-1 text-right">
                     {new Date(m.at).toLocaleString()}
                   </div>
                 </div>
               ))}
               {(!data.messages || data.messages.length === 0) && (
-                <div className="text-center text-[#758A80] text-sm py-12">
+                <div className="text-center text-[#456C9A] text-sm py-12">
                   Start the conversation. Messages here are stored on the inquiry thread.
                 </div>
               )}

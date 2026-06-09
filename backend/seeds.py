@@ -4,7 +4,7 @@ import os
 import uuid
 
 from core import db, log, iso, now_utc, hash_password
-from defaults import DEFAULT_HOMEPAGE_CONTENT, DEFAULT_INTERIORS_CONTENT
+from defaults import DEFAULT_HOMEPAGE_CONTENT, DEFAULT_INTERIORS_CONTENT, DEFAULT_PACKAGES
 
 
 async def migrate_status_fields():
@@ -78,3 +78,13 @@ async def seed_data():
                 "updated_at": iso(now_utc()),
             })
             log.info(f"Content seeded: {key}")
+
+    # Packages seed
+    existing_packages = await db.cms_packages.find_one({"_id": "current"})
+    if not existing_packages:
+        await db.cms_packages.insert_one({
+            "_id": "current",
+            "packages": DEFAULT_PACKAGES,
+            "updated_at": iso(now_utc())
+        })
+        log.info("Packages catalogue seeded")

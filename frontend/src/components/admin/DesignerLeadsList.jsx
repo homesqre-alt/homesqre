@@ -24,26 +24,26 @@ export default function DesignerLeadsList() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <p className="text-sm text-[#4A5D54]">Loading leads…</p>;
+  if (loading) return <p className="text-sm text-[#333333]">Loading leads…</p>;
 
   return (
     <div className="animate-in fade-in space-y-4" data-testid="designer-leads-list">
       <header className="flex items-center justify-between border-b border-[#E8E4D9] pb-3">
         <div>
-          <h3 className="font-display text-xl text-[#06402B]">My Leads</h3>
-          <p className="text-xs text-[#4A5D54]">{total} lead{total === 1 ? "" : "s"} assigned to you. Read-only — workflow happens automatically as you progress design projects.</p>
+          <h3 className="font-display text-xl text-[#0C1D42]">My Leads</h3>
+          <p className="text-xs text-[#333333]">{total} lead{total === 1 ? "" : "s"} assigned to you. Read-only — workflow happens automatically as you progress design projects.</p>
         </div>
-        <button onClick={load} className="text-xs underline text-[#B68D40]" data-testid="designer-leads-refresh">Refresh</button>
+        <button onClick={load} className="text-xs underline text-[#DA9E3E]" data-testid="designer-leads-refresh">Refresh</button>
       </header>
 
       {leads.length === 0 ? (
-        <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#4A5D54]" data-testid="designer-leads-empty">
+        <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#333333]" data-testid="designer-leads-empty">
           You don&apos;t have any leads assigned yet.
         </p>
       ) : (
         <div className="bg-white border border-[#E8E4D9] overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#06402B]">
+            <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
               <tr>
                 <th className="px-4 py-3 font-bold">Name</th>
                 <th className="px-4 py-3 font-bold">Status</th>
@@ -54,17 +54,17 @@ export default function DesignerLeadsList() {
             </thead>
             <tbody>
               {leads.map(l => (
-                <tr key={l.lead_id} className="border-t border-[#E8E4D9] hover:bg-[#FCFAF6]"
+                <tr key={l.lead_id} className="border-t border-[#E8E4D9] hover:bg-[#FCFAF5]"
                     data-testid={`designer-lead-row-${l.lead_id}`}>
-                  <td className="px-4 py-3 font-medium text-[#06402B]">{l.name}</td>
+                  <td className="px-4 py-3 font-medium text-[#0C1D42]">{l.name}</td>
                   <td className="px-4 py-3">
-                    <span className="text-[10px] uppercase tracking-widest bg-[#FFF8EC] text-[#B68D40] border border-[#B68D40] px-2 py-0.5">
+                    <span className="text-[10px] uppercase tracking-widest bg-[#FCFAF5] text-[#DA9E3E] border border-[#DA9E3E] px-2 py-0.5">
                       {l.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[#4A5D54]">{l.source}</td>
-                  <td className="px-4 py-3 text-[#4A5D54]">{l.next_followup_at ? new Date(l.next_followup_at).toLocaleString() : "—"}</td>
-                  <td className="px-4 py-3 text-[#4A5D54]">{l.updated_at ? new Date(l.updated_at).toLocaleDateString() : "—"}</td>
+                  <td className="px-4 py-3 text-[#333333]">{l.source}</td>
+                  <td className="px-4 py-3 text-[#333333]">{l.next_followup_at ? new Date(l.next_followup_at).toLocaleString() : "—"}</td>
+                  <td className="px-4 py-3 text-[#333333]">{l.updated_at ? new Date(l.updated_at).toLocaleDateString() : "—"}</td>
                 </tr>
               ))}
             </tbody>

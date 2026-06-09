@@ -61,10 +61,10 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
     finally { setBusy(false); }
   };
 
-  if (loading) return <p className="text-[#4A5D54]">Loading your designs…</p>;
+  if (loading) return <p className="text-[#333333]">Loading your designs…</p>;
   if (!project) {
     return (
-      <div className="bg-white border border-[#E8E4D9] p-8 text-center text-[#4A5D54]">
+      <div className="bg-white border border-[#E8E4D9] p-8 text-center text-[#333333]">
         Your designer hasn't uploaded any renders yet. We'll notify you as soon as the first batch is ready.
       </div>
     );
@@ -77,8 +77,8 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
   return (
     <div className="space-y-10" data-testid="customer-design-review">
       <header className="border-b border-[#E8E4D9] pb-4">
-        <h3 className="font-display text-2xl text-[#06402B]">Your 3D Designs</h3>
-        <p className="text-sm text-[#4A5D54] mt-1">
+        <h3 className="font-display text-2xl text-[#0C1D42]">Your 3D Designs</h3>
+        <p className="text-sm text-[#333333] mt-1">
           Review each render. Approve the ones you love, or request improvements with notes for your designer.
         </p>
         <div className="mt-3 flex gap-4 text-xs">
@@ -87,7 +87,7 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
           <span className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1">Improvement: {needsImprovement.length}</span>
         </div>
         {project.status === "ready_for_quotation" && (
-          <div className="mt-4 bg-[#FFF8EC] border border-[#B68D40] p-3 text-sm text-[#06402B]">
+          <div className="mt-4 bg-[#FCFAF5] border border-[#DA9E3E] p-3 text-sm text-[#0C1D42]">
             🎉 All designs approved! Your detailed quotation is being prepared.
           </div>
         )}
@@ -98,13 +98,13 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
           <div className="flex gap-2 mt-3">
             <button onClick={() => approve(img)} disabled={busy}
                     data-testid={`approve-img-${img.image_id}`}
-                    className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839] disabled:opacity-50">
+                    className="bg-[#0C1D42] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D] disabled:opacity-50">
               Approve
             </button>
             <button onClick={() => { setRejecting(img); setReasonText(""); }}
                     data-testid={`improve-img-${img.image_id}`}
                     disabled={busy}
-                    className="border border-[#B68D40] text-[#B68D40] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#FFF8EC] disabled:opacity-50">
+                    className="border border-[#DA9E3E] text-[#DA9E3E] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#FCFAF5] disabled:opacity-50">
               Need Improvement
             </button>
           </div>
@@ -127,17 +127,17 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setRejecting(null)}>
           <div onClick={(e) => e.stopPropagation()} data-testid="improvement-modal"
                className="bg-white max-w-md w-full p-6">
-            <h4 className="font-display text-xl text-[#06402B] mb-2">What needs improvement?</h4>
-            <p className="text-xs text-[#4A5D54] mb-3">Be specific so your designer can address it precisely (lighting, layout, materials, colours).</p>
+            <h4 className="font-display text-xl text-[#0C1D42] mb-2">What needs improvement?</h4>
+            <p className="text-xs text-[#333333] mb-3">Be specific so your designer can address it precisely (lighting, layout, materials, colours).</p>
             <textarea data-testid="improvement-comment"
                       autoFocus value={reasonText} onChange={(e) => setReasonText(e.target.value)} rows="4"
-                      className="w-full p-2 border border-[#E8E4D9] text-sm focus:outline-none focus:border-[#06402B]"
+                      className="w-full p-2 border border-[#E8E4D9] text-sm focus:outline-none focus:border-[#0C1D42]"
                       placeholder="e.g. The sofa colour clashes with the wall paint…" />
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setRejecting(null)} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9]">Cancel</button>
               <button onClick={submitImprovement} disabled={busy || !reasonText.trim()}
                       data-testid="improvement-submit"
-                      className="px-4 py-2 text-xs uppercase tracking-widest bg-[#B68D40] text-white disabled:opacity-50">
+                      className="px-4 py-2 text-xs uppercase tracking-widest bg-[#DA9E3E] text-white disabled:opacity-50">
                 Send to Designer
               </button>
             </div>
@@ -151,7 +151,7 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
 function Section({ title, items, renderActions, dimmed = false, absUrl }) {
   return (
     <section>
-      <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-3">{title} ({items.length})</h4>
+      <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-3">{title} ({items.length})</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map(img => (
           <div key={img.image_id}
@@ -162,8 +162,8 @@ function Section({ title, items, renderActions, dimmed = false, absUrl }) {
               </a>
             </div>
             <div className="p-4">
-              <p className="text-xs uppercase tracking-widest text-[#4A5D54]">Round {img.round} • Designer note</p>
-              <p className="text-sm text-[#06402B] mt-1 whitespace-pre-wrap">{img.designer_comment}</p>
+              <p className="text-xs uppercase tracking-widest text-[#333333]">Round {img.round} • Designer note</p>
+              <p className="text-sm text-[#0C1D42] mt-1 whitespace-pre-wrap">{img.designer_comment}</p>
               {renderActions(img)}
             </div>
           </div>

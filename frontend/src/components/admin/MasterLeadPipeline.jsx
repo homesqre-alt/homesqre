@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
+import DocumentVault from "@/components/DocumentVault";
 
 /**
  * MasterLeadPipeline — shared CRM grid used by Admin and Sales dashboards.
@@ -47,7 +48,12 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([k, v]) => v && params.append(k, v));
       const { data } = await api.get(`/leads?${params.toString()}`);
-      setItems(data.items); setTotal(data.total);
+      const sortedItems = [...data.items].sort((a, b) => {
+        if (a.status === "Partial Payment Pending" && b.status !== "Partial Payment Pending") return -1;
+        if (b.status === "Partial Payment Pending" && a.status !== "Partial Payment Pending") return 1;
+        return 0;
+      });
+      setItems(sortedItems); setTotal(data.total);
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -81,10 +87,10 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-2xl text-[#06402B]">
+          <h2 className="font-display text-2xl text-[#0C1D42]">
             {mode === "admin" ? "Master Lead Pipeline" : "My Leads"}
           </h2>
-          <p className="text-xs text-[#4A5D54]">
+          <p className="text-xs text-[#333333]">
             Showing {items.length} of {total} {mode === "sales" ? "leads assigned to you" : "leads"}
           </p>
         </div>
@@ -94,33 +100,33 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
             onClick={() => setFilters(f => ({ ...f, followup: f.followup === "today" ? "" : "today" }))}
             className={`px-4 py-2 text-xs uppercase tracking-widest font-bold border transition ${
               filters.followup === "today"
-                ? "bg-[#B68D40] text-white border-[#B68D40]"
-                : "border-[#B68D40] text-[#B68D40] hover:bg-[#FFF8EC]"
+                ? "bg-[#DA9E3E] text-white border-[#DA9E3E]"
+                : "border-[#DA9E3E] text-[#DA9E3E] hover:bg-[#FCFAF5]"
             }`}
           >Follow-ups Today</button>
           <button
             data-testid="add-lead-btn"
             onClick={() => setIsAddOpen(true)}
-            className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#0a5839]"
+            className="bg-[#0C1D42] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D]"
           >+ Add Lead</button>
           {mode === "admin" && (
             <button
               data-testid="export-csv-btn"
               onClick={handleExportCSV}
-              className="border border-[#06402B] text-[#06402B] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#F3F0E9]"
+              className="border border-[#0C1D42] text-[#0C1D42] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#F3F0E9]"
             >Export CSV</button>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-[#F3F0E9] p-4 border border-[#E8E4D9]">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 bg-[#F3F0E9] p-4 border border-[#E8E4D9]">
         <input
           data-testid="filter-search"
           value={filters.q}
           onChange={e => setFilters({ ...filters, q: e.target.value })}
           placeholder="Search name / phone / email"
-          className="col-span-2 p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+          className="col-span-2 p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] bg-white"
         />
         <select
           data-testid="filter-status"
@@ -151,6 +157,16 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
           <option value="today">Due today</option>
           <option value="upcoming">Upcoming</option>
         </select>
+        <select
+          data-testid="filter-assigned-to"
+          value={filters.assigned_to}
+          onChange={e => setFilters({ ...filters, assigned_to: e.target.value })}
+          className="p-2 text-sm border border-[#E8E4D9] bg-white"
+        >
+          <option value="">All Assignees</option>
+          <option value="unassigned">Unassigned</option>
+          {employees.map(e => <option key={e.email} value={e.email}>{e.email} ({e.role})</option>)}
+        </select>
       </div>
 
       {/* Quick stats */}
@@ -160,7 +176,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
             <button
               key={k}
               onClick={() => setFilters(f => ({ ...f, status: f.status === k ? "" : k }))}
-              className={`px-3 py-1 text-xs border ${filters.status === k ? "bg-[#06402B] text-white border-[#06402B]" : "border-[#E8E4D9] text-[#06402B] hover:bg-[#F3F0E9]"}`}
+              className={`px-3 py-1 text-xs border ${filters.status === k ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#E8E4D9] text-[#0C1D42] hover:bg-[#F3F0E9]"}`}
             >
               {k}: {v}
             </button>
@@ -171,7 +187,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
       {/* Lead table */}
       <div className="border border-[#E8E4D9] overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[#06402B] text-white text-xs uppercase tracking-widest">
+          <thead className="bg-[#0C1D42] text-white text-xs uppercase tracking-widest">
             <tr>
               <th className="p-3 text-left">Name</th>
               <th className="p-3 text-left">Phone</th>
@@ -183,9 +199,9 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="7" className="p-6 text-center text-[#4A5D54]">Loading…</td></tr>}
+            {loading && <tr><td colSpan="7" className="p-6 text-center text-[#333333]">Loading…</td></tr>}
             {!loading && items.length === 0 && (
-              <tr><td colSpan="7" className="p-6 text-center text-[#4A5D54]">No leads found.</td></tr>
+              <tr><td colSpan="7" className="p-6 text-center text-[#333333]">No leads found.</td></tr>
             )}
             {items.map(l => (
               <tr
@@ -194,10 +210,17 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
                 data-testid={`lead-row-${l.lead_id}`}
                 className="border-t border-[#E8E4D9] hover:bg-[#F3F0E9] cursor-pointer"
               >
-                <td className="p-3 font-semibold text-[#06402B]">{l.name}</td>
+                <td className="p-3 font-semibold text-[#0C1D42]">
+                  {l.name}
+                  {l.is_verified && <span className="ml-2 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">Verified</span>}
+                </td>
                 <td className="p-3">{l.phone}</td>
                 <td className="p-3 text-xs">{l.source}</td>
-                <td className="p-3 text-xs"><span className="bg-[#F3F0E9] border border-[#E8E4D9] px-2 py-0.5">{l.status}</span></td>
+                <td className="p-3 text-xs">
+                  <span className={`px-2 py-0.5 border ${l.status === 'Partial Payment Pending' ? 'bg-red-600 text-white border-red-700 font-bold shadow-sm' : 'bg-[#F3F0E9] border-[#E8E4D9]'}`}>
+                    {l.status}
+                  </span>
+                </td>
                 <td className="p-3 text-xs">{l.assigned_to || "—"}</td>
                 <td className="p-3 text-xs">{l.next_followup_at ? new Date(l.next_followup_at).toLocaleString() : "—"}</td>
                 <td className="p-3 text-xs">{new Date(l.created_at).toLocaleDateString()}</td>
@@ -265,10 +288,10 @@ function LeadAddModal({ mode, statuses, sources, budgets, employees, onClose, on
       <form onClick={e => e.stopPropagation()} onSubmit={submit}
             data-testid="add-lead-modal"
             className="bg-white max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <h3 className="font-display text-xl text-[#06402B] mb-4">Add Lead</h3>
+        <h3 className="font-display text-xl text-[#0C1D42] mb-4">Add Lead</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <Field label="Name *"><input data-testid="add-lead-name" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} /></Field>
-          <Field label="Phone *"><input data-testid="add-lead-phone" required value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={inputCls} /></Field>
+          <Field label="Phone *"><input data-testid="add-lead-phone" required pattern="^[0-9]{10}$" title="Phone number must be exactly 10 digits" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className={inputCls} /></Field>
           <Field label="Email"><input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className={inputCls} /></Field>
           <Field label="Budget"><select value={form.budget_range} onChange={e => setForm({ ...form, budget_range: e.target.value })} className={inputCls}>
             <option value="">—</option>{budgets.map(b => <option key={b} value={b}>{b}</option>)}
@@ -289,7 +312,7 @@ function LeadAddModal({ mode, statuses, sources, budgets, employees, onClose, on
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9]">Cancel</button>
-          <button type="submit" disabled={busy} data-testid="add-lead-submit" className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white disabled:opacity-50">
+          <button type="submit" disabled={busy} data-testid="add-lead-submit" className="px-4 py-2 text-xs uppercase tracking-widest bg-[#0C1D42] text-white disabled:opacity-50">
             {busy ? "Creating…" : "Create"}
           </button>
         </div>
@@ -319,6 +342,19 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
 
   const dirtyCount = Object.keys(edits).length + (comment.trim() ? 1 : 0);
 
+  const allowedStatuses = useMemo(() => {
+    if (currentUser?.role === "admin") return statuses;
+    if (currentUser?.role === "designer") {
+      return statuses.filter(s => 
+        ["Floor Plan Uploaded", "Floor Plan Approved", "Floor Plan Rejected", "Designing", "Awaiting Customer Approval", "Design Approved"].includes(s.name) || s.name === data.status
+      );
+    }
+    // sales
+    return statuses.filter(s => 
+      ["New", "Followup", "Not Interested", "Payment Received", "Partial Payment Pending"].includes(s.name) || s.name === data.status
+    );
+  }, [statuses, currentUser, data.status]);
+
   // Single batched submit — fires the right endpoint for each changed field.
   // Nothing hits the API until the user clicks "Submit Changes".
   const submitChanges = async () => {
@@ -329,6 +365,11 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
     try {
       // 1) Workflow: status
       if (typeof edits.status === "string" && edits.status !== data.status) {
+        if (isAdmin && !comment.trim()) {
+          toast.error("A comment is required when manually overriding status.");
+          setBusy(false);
+          return;
+        }
         const { data: r } = await api.put(`/leads/${data.lead_id}/status`, { status: edits.status });
         reassignedTo = r?.assigned_to ?? null;
       }
@@ -360,6 +401,8 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
           ? `Changes saved · reassigned to ${reassignedTo}`
           : "Changes saved"
       );
+      // For sales mode, auto-close the drawer after a successful save — less confusion
+      if (mode === "sales") onClose();
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -391,15 +434,15 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
            className="bg-white w-full max-w-xl h-full overflow-y-auto p-6 space-y-6">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="font-display text-2xl text-[#06402B]">{data.name}</h3>
-            <p className="text-sm text-[#4A5D54]">{data.phone}{data.email ? ` • ${data.email}` : ""}</p>
+            <h3 className="font-display text-2xl text-[#0C1D42]">{data.name}</h3>
+            <p className="text-sm text-[#333333]">{data.phone}{data.email ? ` • ${data.email}` : ""}</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-[#06402B] opacity-50 hover:opacity-100">×</button>
+          <button onClick={onClose} className="text-2xl leading-none text-[#0C1D42] opacity-50 hover:opacity-100">×</button>
         </div>
 
         {/* Workflow */}
         <section className="space-y-3">
-          <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Workflow</h4>
+          <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Workflow</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Status">
               <select
@@ -408,7 +451,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
                 value={edits.status ?? data.status}
                 onChange={e => setEdits({ ...edits, status: e.target.value })}
                 className={inputCls}>
-                {statuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                {allowedStatuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
               </select>
             </Field>
             <Field label="Next Follow-up">
@@ -447,7 +490,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         {/* Core fields (admin editable, buffered) */}
         {isAdmin && (
           <section className="space-y-3">
-            <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Basic Info (admin)</h4>
+            <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Basic Info (admin)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Name"><input value={edits.name ?? data.name} onChange={e => setEdits({ ...edits, name: e.target.value })} className={inputCls} /></Field>
               <Field label="Phone"><input value={edits.phone ?? data.phone} onChange={e => setEdits({ ...edits, phone: e.target.value })} className={inputCls} /></Field>
@@ -467,33 +510,53 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         {/* Read-only info for sales */}
         {!isAdmin && (
           <section>
-            <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">Lead Info</h4>
+            <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-2">Lead Info</h4>
             <p className="text-sm">Budget: <strong>{data.budget_range || "—"}</strong></p>
             {data.message && <p className="text-sm mt-1 whitespace-pre-wrap"><em>{data.message}</em></p>}
           </section>
         )}
 
-        {/* Comments & history */}
-        <section className="space-y-3">
-          <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Comments &amp; History</h4>
-          <div className="space-y-2 max-h-72 overflow-y-auto border border-[#E8E4D9] p-3 bg-[#F3F0E9]">
-            {(data.comments || []).length === 0 && <p className="text-xs text-[#4A5D54]">No comments yet.</p>}
-            {(data.comments || []).map(c => (
-              <div key={c.id} className="text-xs bg-white p-2 border border-[#E8E4D9]">
-                <div className="font-semibold text-[#06402B]">{c.by_name || c.by}</div>
-                <div className="text-gray-500">{new Date(c.at).toLocaleString()}</div>
-                <div className="mt-1 whitespace-pre-wrap">{c.text}</div>
-              </div>
-            ))}
+        {/* Document Vault */}
+        <section className="space-y-4">
+          <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Document Vault</h4>
+          <DocumentVault leadId={data.lead_id} />
+        </section>
+
+        {/* Lead Journey Timeline */}
+        <section className="space-y-4">
+          <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Lead Journey</h4>
+          <div className="relative border-l-2 border-[#DA9E3E] ml-3 pl-5 space-y-5 pb-2">
+            
             {(data.history || []).map((h, i) => (
-              <div key={`h-${i}`} className="text-xs italic text-[#4A5D54]">
-                {new Date(h.at).toLocaleString()} — status: <strong>{h.from_status || "—"}</strong> → <strong>{h.to_status}</strong> (by {h.by})
+              <div key={`h-${i}`} className="relative">
+                <div className="absolute -left-[27px] top-1 w-3 h-3 bg-[#DA9E3E] rounded-full border-2 border-[#F3F0E9]"></div>
+                <div className="text-[10px] text-gray-500 font-medium tracking-wide">
+                  {new Date(h.at).toLocaleString()}
+                </div>
+                <div className="text-xs text-[#0C1D42] mt-0.5">
+                  <span className="font-semibold">{h.by === "system" ? "System" : h.by}</span> moved lead to <span className="font-bold bg-[#F3F0E9] px-1">{h.to_status}</span>
+                </div>
               </div>
             ))}
+
+            {(data.comments || []).map(c => (
+              <div key={c.id} className="relative bg-gray-50 border border-gray-200 p-3 rounded shadow-sm mt-3">
+                <div className="absolute -left-[32px] top-4 w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <div className="text-xs font-semibold text-[#0C1D42]">{c.by_name || c.by}</div>
+                  <div className="text-[10px] text-gray-400">{new Date(c.at).toLocaleString()}</div>
+                </div>
+                <div className="text-xs text-gray-700 whitespace-pre-wrap">{c.text}</div>
+              </div>
+            ))}
+            
+            {((data.history || []).length === 0 && (data.comments || []).length === 0) && (
+              <div className="text-xs text-gray-400 italic">No activity yet.</div>
+            )}
           </div>
           {canEditWorkflow && (
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">New comment (queued)</label>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-1">New comment (queued)</label>
               <textarea
                 data-testid="add-comment-input"
                 value={comment}
@@ -511,7 +574,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
             data-testid="lead-submit-bar"
             className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-white border-t border-[#E8E4D9] flex flex-col sm:flex-row sm:items-center gap-3"
           >
-            <p className="text-xs text-[#4A5D54] flex-1">
+            <p className="text-xs text-[#333333] flex-1">
               {dirtyCount === 0
                 ? "No pending changes."
                 : <><strong>{dirtyCount}</strong> pending change{dirtyCount === 1 ? "" : "s"} — nothing is saved yet.</>}
@@ -521,13 +584,13 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
                 onClick={discardChanges}
                 disabled={busy || dirtyCount === 0}
                 data-testid="lead-discard-btn"
-                className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9] text-[#4A5D54] disabled:opacity-40"
+                className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9] text-[#333333] disabled:opacity-40"
               >Discard</button>
               <button
                 onClick={submitChanges}
                 disabled={busy || dirtyCount === 0}
                 data-testid="lead-submit-btn"
-                className="px-5 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white hover:bg-[#0a5839] disabled:opacity-40"
+                className="px-5 py-2 text-xs uppercase tracking-widest bg-[#0C1D42] text-white hover:bg-[#08142D] disabled:opacity-40"
               >{busy ? "Submitting…" : "Submit Changes"}</button>
             </div>
           </section>
@@ -538,11 +601,11 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
 }
 
 // ---------- shared helpers ----------
-const inputCls = "p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white w-full";
+const inputCls = "p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] bg-white w-full";
 function Field({ label, full, children }) {
   return (
     <div className={full ? "md:col-span-2" : ""}>
-      <label className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">{label}</label>
+      <label className="block text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-1">{label}</label>
       {children}
     </div>
   );

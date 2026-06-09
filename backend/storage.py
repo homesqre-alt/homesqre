@@ -16,6 +16,7 @@ in `_BACKENDS` — no other code in the app should need touching.
 """
 
 import os
+import mimetypes
 from pathlib import Path
 from typing import Protocol, Tuple
 
@@ -89,10 +90,14 @@ class LocalStorage:
         return {"path": path, "size": len(data)}
 
     def get(self, path: str) -> Tuple[bytes, str]:
-        full = self.root / path
+        full = (self.root / path).resolve()
+        # Security: prevent path traversal outside the upload root
+        if not full.is_relative_to(self.root.resolve()):
+            raise PermissionError("Path traversal attempt blocked")
         if not full.exists():
             raise FileNotFoundError(path)
-        return full.read_bytes(), "application/octet-stream"
+        content_type, _ = mimetypes.guess_type(str(full))
+        return full.read_bytes(), content_type or "application/octet-stream"
 
 
 # ----------------------------------------------------------------------------

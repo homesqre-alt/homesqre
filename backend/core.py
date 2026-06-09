@@ -41,6 +41,15 @@ APP_NAME = os.environ.get("APP_NAME", "homesqre")
 EMERGENT_AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
 GOOGLE_CLIENT_ID = "792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com"
 
+# Payment & Invoice Credentials
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+
+ZOHO_CLIENT_ID = os.environ.get("ZOHO_CLIENT_ID", "")
+ZOHO_CLIENT_SECRET = os.environ.get("ZOHO_CLIENT_SECRET", "")
+ZOHO_REFRESH_TOKEN = os.environ.get("ZOHO_REFRESH_TOKEN", "")
+ZOHO_ORGANIZATION_ID = os.environ.get("ZOHO_ORGANIZATION_ID", "")
+
 # Cookie flags — set COOKIE_SAMESITE=none + COOKIE_SECURE=true in production
 # when frontend and backend are on different domains.
 COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax").lower()
@@ -52,13 +61,19 @@ db = client[DB_NAME]
 app = FastAPI(title="Homesqre API")
 api = APIRouter(prefix="/api")
 
-# Restricted CORS Origins (Security)
+# CORS origins from env var; defaults to production domain only.
+# In development, set CORS_ORIGINS=https://homesqre.com,http://localhost:3000
+_cors_origins = [o.strip() for o in os.environ.get(
+    "CORS_ORIGINS", "https://homesqre.com"
+).split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://homesqre.com", "http://localhost:5173", "http://localhost:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    # Explicit headers required — wildcard + allow_credentials violates CORS spec
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s | %(message)s")

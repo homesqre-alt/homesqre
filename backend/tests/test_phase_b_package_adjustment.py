@@ -107,12 +107,17 @@ def test_packages_endpoint_lists_options():
     r = httpx.get(f"{API}/packages", timeout=10)
     assert r.status_code == 200
     data = r.json()
-    assert "apartment" in data
-    apt = {p["value"]: p["price"] for p in data["apartment"]}
+    # New format: list of {property_type, group, options}
+    assert isinstance(data, list)
+    apt_group = next((g for g in data if g["property_type"] == "apartment"), None)
+    assert apt_group is not None
+    apt = {p["value"]: p["price"] for p in apt_group["options"]}
     assert apt["1-2"] == 10000
     assert apt["3"] == 12000
     assert apt["4+"] == 15000
-    villa = {p["value"]: p["price"] for p in data["villa"]}
+    villa_group = next((g for g in data if g["property_type"] == "villa"), None)
+    assert villa_group is not None
+    villa = {p["value"]: p["price"] for p in villa_group["options"]}
     assert villa["duplex"] == 15000
     assert villa["triplex"] == 18000
 

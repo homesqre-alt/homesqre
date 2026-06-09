@@ -8,19 +8,13 @@ from core import (
     api, db, iso, now_utc, clean_doc,
     current_user, require_role,
 )
-from packages import PACKAGE_OPTIONS, calculate_package_price
+from packages import calculate_package_price
 from crm_helpers import _user_identifier
 from design_helpers import ensure_design_project
 from schemas import (
     VerificationCreateRequest, VerificationOut,
     VerificationModerateRequest, VerificationModerateOut,
 )
-
-
-@api.get("/packages")
-async def list_packages():
-    """Designer dashboard reads this to populate the corrected-package dropdown."""
-    return PACKAGE_OPTIONS
 
 
 @api.post("/verifications", response_model=VerificationOut)
