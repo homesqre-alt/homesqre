@@ -9,7 +9,7 @@ export default function DashShell({ links = [], title, children }) {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#FCFAF5]">
       <aside className="lg:w-64 bg-white border-r border-[#EDE5DB] p-6 lg:min-h-screen">
-        <Link to="/" className="block mb-10"><img src="/logo.svg" alt="Homesqre" className="h-14 w-auto object-contain" style={{mixBlendMode:"multiply"}} /></Link>
+        <Link to="/" className="block mb-10"><img src="/logo.svg" alt="Homesqre" className="h-16 w-auto object-contain" /></Link>
         <div className="mb-6">
           <div className="label-eyebrow mb-1">Logged in as</div>
           <div className="text-sm">{user?.name || user?.email}</div>

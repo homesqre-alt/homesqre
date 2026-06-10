@@ -39,16 +39,16 @@ export default function Header() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
+        className={`sticky top-0 z-50 transition-all duration-300 bg-[#FCFAF5] border-b ${
           scrolled
-            ? "bg-[#FCFAF5]/95 backdrop-blur-xl border-b border-[#EDE5DB] shadow-sm"
-            : "bg-transparent border-b border-transparent"
+            ? "border-[#EDE5DB] shadow-sm backdrop-blur-xl bg-[#FCFAF5]/95"
+            : "border-[#EDE5DB]"
         }`}
       >
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-5 lg:px-12 h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center z-10" data-testid="logo-link">
-            <img src="/logo.svg" alt="Homesqre" className="h-14 w-auto object-contain" style={{mixBlendMode:"multiply"}} />
+            <img src="/logo.svg" alt="Homesqre" className="h-16 w-auto object-contain" />
           </Link>
 
           {/* Desktop nav */}
