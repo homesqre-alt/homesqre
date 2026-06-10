@@ -7,6 +7,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Home from "@/pages/Home";
+import Interiors from "@/pages/Interiors";
 import EmiCalculatorPage from "@/pages/EmiCalculatorPage";
 import ProfileComplete from "@/pages/ProfileComplete";
 
@@ -30,6 +31,7 @@ function AppRouter() {
     <Routes>
       {/* HOMEPAGE - 100% INTERIORS FOCUSED */}
       <Route path="/" element={<Home />} />
+      <Route path="/interiors" element={<Interiors />} />
 
       {/* CORE AUTHENTICATION */}
       <Route path="/login" element={<Login />} />
