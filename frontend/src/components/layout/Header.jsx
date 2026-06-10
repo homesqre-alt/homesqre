@@ -47,9 +47,8 @@ export default function Header() {
       >
         <div className="max-w-[1400px] mx-auto flex items-center justify-between px-5 lg:px-12 h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-baseline gap-2 z-10" data-testid="logo-link">
-            <img src="/logo.svg" alt="Homesqre" className="h-10 md:h-12 w-auto object-contain" />
-            <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-[#DA9E3E]" />
+          <Link to="/" className="flex items-center z-10" data-testid="logo-link">
+            <img src="/logo.svg" alt="Homesqre" className="h-14 w-auto object-contain" style={{mixBlendMode:"multiply"}} />
           </Link>
 
           {/* Desktop nav */}
