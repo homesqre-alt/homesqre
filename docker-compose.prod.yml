@@ -10,6 +10,16 @@ version: '3.9'
 
 services:
 
+  # ── MongoDB Database ───────────────────────────────────────────────────
+  mongo:
+    image: mongo:6
+    container_name: homesqre_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app
+
   # ── FastAPI Backend ────────────────────────────────────────────────────
   backend:
     build:
@@ -19,9 +29,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.prod
-    # Lets backend reach host-machine MongoDB (mongodb://host.docker.internal:27017)
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017
+    depends_on:
+      - mongo
     # Keep backend internal — only accessible within the Docker network
     expose:
       - "8001"
@@ -56,3 +67,6 @@ services:
 networks:
   app:
     driver: bridge
+
+volumes:
+  mongo_data:
