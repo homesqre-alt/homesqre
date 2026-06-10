@@ -1,0 +1,58 @@
+version: '3.9'
+
+# ── Homesqre — Production Docker Compose ──────────────────────────────────
+# Usage on VPS:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Secrets are read from:
+#   ./backend/.env.prod   (backend runtime secrets — never commit this)
+#   ./.env                (build-time vars like REACT_APP_BACKEND_URL — never commit)
+
+services:
+
+  # ── FastAPI Backend ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: homesqre_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.prod
+    # Lets backend reach host-machine MongoDB (mongodb://host.docker.internal:27017)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Keep backend internal — only accessible within the Docker network
+    expose:
+      - "8001"
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/api/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ── React Frontend (Nginx) ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL}
+        REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID:-792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com}
+    container_name: homesqre_frontend
+    restart: unless-stopped
+    # Only bind to localhost — host Nginx will forward traffic here
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app
+
+networks:
+  app:
+    driver: bridge

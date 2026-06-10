@@ -1,4 +1,4 @@
-name: Auto Deploy to VPS
+name: Deploy to Hostinger VPS
 
 on:
   push:
@@ -7,7 +7,10 @@ on:
 
 jobs:
   deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     steps:
       - name: Deploy to Hostinger VPS via SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -17,24 +20,54 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           timeout: 60s
-          command_timeout: 15m
+          command_timeout: 18m
           script: |
             set -e
 
-            # ── Clone repo if first run ───────────────────────────────────
-            if [ ! -d "/root/homesqre-app/.git" ]; then
-              git clone https://github.com/homesqre-alt/homesqre.git /root/homesqre-app
+            APP_DIR="/root/homesqre-app"
+
+            # ── Clone repo on first run ────────────────────────────────────
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "==> First run: cloning repository..."
+              git clone https://github.com/homesqre-alt/homesqre.git "$APP_DIR"
             fi
 
-            # ── Pull latest code ──────────────────────────────────────────
-            cd /root/homesqre-app
+            cd "$APP_DIR"
+
+            # ── Pull latest code ───────────────────────────────────────────
+            echo "==> Pulling latest code from main..."
             git fetch origin main
             git reset --hard origin/main
 
-            # ── Rebuild & restart containers ──────────────────────────────
-            docker compose up -d --build --remove-orphans
+            # ── Verify required env files exist ────────────────────────────
+            if [ ! -f ".env" ]; then
+              echo "ERROR: .env not found at $APP_DIR/.env"
+              echo "Create it with: REACT_APP_BACKEND_URL=https://yourdomain.com"
+              exit 1
+            fi
+            if [ ! -f "backend/.env.prod" ]; then
+              echo "ERROR: backend/.env.prod not found"
+              echo "Copy backend/.env.prod.example and fill in your secrets"
+              exit 1
+            fi
 
-            # ── Clean up dangling images to save disk space ───────────────
+            # ── Build & restart containers ─────────────────────────────────
+            echo "==> Building Docker images..."
+            docker compose -f docker-compose.prod.yml build --no-cache --pull
+
+            echo "==> Starting containers..."
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # ── Health check ───────────────────────────────────────────────
+            echo "==> Waiting for backend health check..."
+            sleep 10
+            docker compose -f docker-compose.prod.yml ps
+
+            # ── Cleanup old images ─────────────────────────────────────────
+            echo "==> Cleaning up dangling images..."
             docker image prune -f
 
-            echo "✅ Deployment complete."
+            echo ""
+            echo "✅ Deployment complete!"
+            echo "   Frontend: http://localhost:3000"
+            echo "   Backend:  http://localhost:8001/api/"
