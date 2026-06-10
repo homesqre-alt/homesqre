@@ -116,14 +116,14 @@ export default function Interiors() {
           <div className="absolute inset-0 bg-gradient-to-tr from-black/55 to-transparent" />
           <div className="relative z-10 h-full flex flex-col justify-end p-8 lg:p-20 text-white">
             {content.hero?.show_offer && content.hero?.offer && (
-              <div className="inline-flex items-center gap-2 self-start bg-[#B68D40] text-white text-xs tracking-widest uppercase px-3 py-2 mb-6 font-semibold">
+              <div className="inline-flex items-center gap-2 self-start bg-[#DA9E3E] text-white text-xs tracking-widest uppercase px-3 py-2 mb-6 font-semibold">
                 {content.hero.offer}
               </div>
             )}
-            <div className="label-eyebrow text-[#B68D40] mb-5">Homesqre Interiors</div>
+            <div className="label-eyebrow text-[#DA9E3E] mb-5">Homesqre Interiors</div>
             <h1 className="font-display text-5xl sm:text-6xl lg:text-[88px] leading-[0.95] max-w-3xl" data-testid="interiors-headline">
               {(content.hero?.headline || "Interiors that feel like home.").split(" ").slice(0, -1).join(" ")}{" "}
-              <span className="italic text-[#B68D40]">{(content.hero?.headline || "Interiors that feel like home.").split(" ").slice(-1)}</span>
+              <span className="italic text-[#DA9E3E]">{(content.hero?.headline || "Interiors that feel like home.").split(" ").slice(-1)}</span>
             </h1>
             <p className="text-white/85 mt-6 max-w-xl text-lg">{content.hero?.subheadline || ""}</p>
             <div className="mt-8">
@@ -135,7 +135,7 @@ export default function Interiors() {
         </div>
 
         {/* Sticky form (desktop) */}
-        <aside className="lg:col-span-4 bg-[#FAF9F6] p-8 lg:p-12 flex flex-col justify-center">
+        <aside className="lg:col-span-4 bg-[#FCFAF5] p-8 lg:p-12 flex flex-col justify-center">
           <InteriorForm form={form} setForm={setForm} onSubmit={submit} />
         </aside>
       </section>
@@ -147,19 +147,19 @@ export default function Interiors() {
             <div className="label-eyebrow mb-3">Process</div>
             <h2 className="font-display text-5xl">How it works.</h2>
           </div>
-          <p className="lg:col-span-5 text-[#4A5D54] leading-relaxed">
+          <p className="lg:col-span-5 text-[#333333] leading-relaxed">
             A studio-quality experience — without the studio drama. Four clear steps from idea to handover.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[#E8E4D9] border border-[#E8E4D9]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-[#EDE5DB] border border-[#EDE5DB]">
           {(content.how_it_works || []).map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
               <div key={`step-${s.step}`} className="bg-white p-8">
-                <div className="font-display text-5xl text-[#B68D40] mb-4">0{s.step}</div>
-                <Ic size={22} strokeWidth={1.5} className="text-[#06402B] mb-4" />
+                <div className="font-display text-5xl text-[#DA9E3E] mb-4">0{s.step}</div>
+                <Ic size={22} strokeWidth={1.5} className="text-[#0C1D42] mb-4" />
                 <div className="font-display text-2xl mb-2">{s.title}</div>
-                <p className="text-sm text-[#4A5D54]">{s.description}</p>
+                <p className="text-sm text-[#333333]">{s.description}</p>
               </div>
             );
           })}
@@ -167,7 +167,7 @@ export default function Interiors() {
       </section>
 
       {/* Gallery */}
-      <section className="bg-[#F3F0E9] py-24">
+      <section className="bg-[#F5EDE8] py-24">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="label-eyebrow mb-3">Design Gallery</div>
           <h2 className="font-display text-5xl mb-10">Real homes, beautifully done.</h2>
@@ -177,7 +177,7 @@ export default function Interiors() {
                 <TabsTrigger
                   key={r}
                   value={r}
-                  className="data-[state=active]:bg-[#06402B] data-[state=active]:text-white border border-[#D1CFC7] rounded-none px-5 py-2 text-xs tracking-widest uppercase"
+                  className="data-[state=active]:bg-[#0C1D42] data-[state=active]:text-white border border-[#D4C9BE] rounded-none px-5 py-2 text-xs tracking-widest uppercase"
                   data-testid={`tab-${r.replace(/\s/g, "-").toLowerCase()}`}
                 >
                   {r}
@@ -192,7 +192,7 @@ export default function Interiors() {
                       <img src={g.url} alt={g.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-90" />
                       <div className="absolute bottom-0 left-0 right-0 p-6">
-                        <div className="label-eyebrow text-[#B68D40] mb-1">{g.room}</div>
+                        <div className="label-eyebrow text-[#DA9E3E] mb-1">{g.room}</div>
                         <div className="font-display text-2xl text-white">{g.title}</div>
                       </div>
                     </div>
@@ -212,10 +212,10 @@ export default function Interiors() {
           {(content.services || []).map((s) => {
             const Ic = ICONS[s.icon] || Home;
             return (
-              <div key={s.title} className="bg-white border border-[#E8E4D9] p-8 group hover:bg-[#06402B] hover:text-white transition-colors">
-                <Ic size={26} strokeWidth={1.5} className="text-[#B68D40] mb-5" />
+              <div key={s.title} className="bg-white border border-[#EDE5DB] p-8 group hover:bg-[#0C1D42] hover:text-white transition-colors">
+                <Ic size={26} strokeWidth={1.5} className="text-[#DA9E3E] mb-5" />
                 <div className="font-display text-2xl mb-2">{s.title}</div>
-                <p className="text-sm text-[#4A5D54] group-hover:text-white/70">{s.description}</p>
+                <p className="text-sm text-[#333333] group-hover:text-white/70">{s.description}</p>
               </div>
             );
           })}
@@ -223,18 +223,18 @@ export default function Interiors() {
       </section>
 
       {/* Why us */}
-      <section className="bg-[#06402B] text-[#FAF9F6] py-20">
+      <section className="bg-[#0C1D42] text-[#FCFAF5] py-20">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div className="label-eyebrow text-[#B68D40] mb-3">Why Homesqre</div>
+          <div className="label-eyebrow text-[#DA9E3E] mb-3">Why Homesqre</div>
           <h2 className="font-display text-5xl mb-12">Built to make life easier.</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-[#FAF9F6]/15">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-[#FCFAF5]/15">
             {(content.why_choose_us || []).map((s) => {
               const Ic = ICONS[s.icon] || ShieldCheck;
               return (
-                <div key={`${s.value}-${s.label}`} className="bg-[#06402B] p-6 lg:p-8">
-                  <Ic size={22} strokeWidth={1.5} className="text-[#B68D40] mb-5" />
+                <div key={`${s.value}-${s.label}`} className="bg-[#0C1D42] p-6 lg:p-8">
+                  <Ic size={22} strokeWidth={1.5} className="text-[#DA9E3E] mb-5" />
                   <div className="font-display text-3xl mb-1">{s.value}</div>
-                  <div className="text-xs tracking-widest uppercase text-[#FAF9F6]/70">{s.label}</div>
+                  <div className="text-xs tracking-widest uppercase text-[#FCFAF5]/70">{s.label}</div>
                 </div>
               );
             })}
@@ -248,7 +248,7 @@ export default function Interiors() {
           <div>
             <div className="label-eyebrow mb-3">Cost Estimator</div>
             <h2 className="font-display text-5xl mb-6">What will it cost?</h2>
-            <p className="text-[#4A5D54] leading-relaxed mb-8">
+            <p className="text-[#333333] leading-relaxed mb-8">
               Pick your apartment size and package to see an estimated range. Final pricing depends on materials,
               customisation, and add-ons.
             </p>
@@ -261,7 +261,7 @@ export default function Interiors() {
                       key={b}
                       onClick={() => setBhk(b)}
                       className={`px-4 py-2 text-xs tracking-widest uppercase border ${
-                        bhk === b ? "bg-[#06402B] text-white border-[#06402B]" : "border-[#D1CFC7]"
+                        bhk === b ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#D4C9BE]"
                       }`}
                       data-testid={`bhk-${b}`}
                     >
@@ -278,7 +278,7 @@ export default function Interiors() {
                       key={t}
                       onClick={() => setTier(t)}
                       className={`px-4 py-2 text-xs tracking-widest uppercase border ${
-                        tier === t ? "bg-[#B68D40] text-white border-[#B68D40]" : "border-[#D1CFC7]"
+                        tier === t ? "bg-[#DA9E3E] text-white border-[#DA9E3E]" : "border-[#D4C9BE]"
                       }`}
                       data-testid={`tier-${t}`}
                     >
@@ -289,13 +289,13 @@ export default function Interiors() {
               </div>
             </div>
           </div>
-          <div className="bg-[#06402B] text-[#FAF9F6] p-10 lg:p-12">
-            <div className="label-eyebrow text-[#B68D40] mb-4">Estimated Range</div>
+          <div className="bg-[#0C1D42] text-[#FCFAF5] p-10 lg:p-12">
+            <div className="label-eyebrow text-[#DA9E3E] mb-4">Estimated Range</div>
             <div className="font-display text-5xl lg:text-6xl mb-2 leading-none">
               {formatINR(costRange[0])}
             </div>
-            <div className="text-[#FAF9F6]/70 text-lg mb-8">to {formatINR(costRange[1])}</div>
-            <p className="text-sm text-[#FAF9F6]/70 mb-8">
+            <div className="text-[#FCFAF5]/70 text-lg mb-8">to {formatINR(costRange[1])}</div>
+            <p className="text-sm text-[#FCFAF5]/70 mb-8">
               For a {bhk} home with the {tier} package, including design, manufacturing and installation.
             </p>
             <button onClick={() => setShowForm(true)} className="btn-gold w-full justify-center" data-testid="estimator-cta">
@@ -306,22 +306,22 @@ export default function Interiors() {
       </section>
 
       {/* Reviews */}
-      <section className="bg-[#F3F0E9] py-24">
+      <section className="bg-[#F5EDE8] py-24">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="label-eyebrow mb-3">Testimonials</div>
           <h2 className="font-display text-5xl mb-12">Love letters from our clients.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {(content.reviews || []).map((r) => (
-              <div key={`${r.name}-${r.locality}`} className="bg-white p-8 border-l-2 border-[#B68D40]">
+              <div key={`${r.name}-${r.locality}`} className="bg-white p-8 border-l-2 border-[#DA9E3E]">
                 <div className="flex gap-0.5 mb-4">
                   {[...Array(r.rating || 5)].map((_, j) => (
-                    <Star key={`star-${r.name}-${j}`} size={14} className="text-[#B68D40] fill-[#B68D40]" />
+                    <Star key={`star-${r.name}-${j}`} size={14} className="text-[#DA9E3E] fill-[#DA9E3E]" />
                   ))}
                 </div>
-                <p className="text-[#1A2421] leading-relaxed mb-5">"{r.text}"</p>
+                <p className="text-[#0C1D42] leading-relaxed mb-5">"{r.text}"</p>
                 <div className="text-xs">
                   <div className="font-semibold">{r.name}</div>
-                  <div className="text-[#758A80] mt-0.5">{r.flat} · {r.locality}</div>
+                  <div className="text-[#666666] mt-0.5">{r.flat} · {r.locality}</div>
                 </div>
               </div>
             ))}
@@ -333,11 +333,11 @@ export default function Interiors() {
       <section className="max-w-[1000px] mx-auto px-6 lg:px-12 py-24">
         <div className="label-eyebrow mb-3 text-center">FAQ</div>
         <h2 className="font-display text-5xl text-center mb-12">Good questions, good answers.</h2>
-        <Accordion type="single" collapsible className="border-t border-[#E8E4D9]">
+        <Accordion type="single" collapsible className="border-t border-[#EDE5DB]">
           {(content.faq || []).map((f) => (
-            <AccordionItem key={f.q} value={f.q} className="border-b border-[#E8E4D9]">
+            <AccordionItem key={f.q} value={f.q} className="border-b border-[#EDE5DB]">
               <AccordionTrigger className="font-display text-xl text-left hover:no-underline">{f.q}</AccordionTrigger>
-              <AccordionContent className="text-[#4A5D54] leading-relaxed">{f.a}</AccordionContent>
+              <AccordionContent className="text-[#333333] leading-relaxed">{f.a}</AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
@@ -346,9 +346,9 @@ export default function Interiors() {
       {/* Final CTA */}
       <section className="relative min-h-[60vh] flex items-center justify-center">
         <img src={content.final_cta?.background} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-[#06402B]/85" />
+        <div className="absolute inset-0 bg-[#0C1D42]/85" />
         <div className="relative z-10 text-center text-white max-w-3xl px-6">
-          <div className="label-eyebrow text-[#B68D40] mb-4">Let's begin</div>
+          <div className="label-eyebrow text-[#DA9E3E] mb-4">Let's begin</div>
           <h2 className="font-display text-5xl sm:text-6xl mb-6 leading-tight">{content.final_cta?.headline || "Ready to design your dream home?"}</h2>
           <p className="text-white/80 mb-10 text-lg">{content.final_cta?.subtext || ""}</p>
           <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="final-cta">{content.final_cta?.cta || "Book Free Consultation"}</button>
@@ -359,8 +359,8 @@ export default function Interiors() {
 
       {showForm && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FAF9F6] w-full sm:max-w-xl max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-[#E8E4D9] flex items-center justify-between">
+          <div className="bg-[#FCFAF5] w-full sm:max-w-xl max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-[#EDE5DB] flex items-center justify-between">
               <div className="font-display text-2xl">Tell us about your home</div>
               <button onClick={() => setShowForm(false)} className="text-2xl">×</button>
             </div>
@@ -396,7 +396,7 @@ function InteriorForm({ form, setForm, onSubmit }) {
         <input className="hs-input" placeholder="Budget (₹)" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
         <input className="hs-input" placeholder="Locality" value={form.locality} onChange={(e) => setForm({ ...form, locality: e.target.value })} />
       </div>
-      <label className="flex items-center gap-2 text-sm text-[#4A5D54]">
+      <label className="flex items-center gap-2 text-sm text-[#333333]">
         <input type="checkbox" checked={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.checked })} /> Updates on WhatsApp
       </label>
       <button className="btn-primary w-full justify-center" data-testid="int-submit">Book Free Consultation</button>

@@ -431,7 +431,7 @@ export default function Home() {
                     className={`p-10 border-l-4 transition-all duration-500 cursor-pointer ${
                       activeStep === i
                         ? "border-[#DA9E3E] bg-white shadow-lg"
-                        : "border-transparent bg-[#F3F0E9] opacity-60 hover:opacity-80"
+                        : "border-transparent bg-[#F5EDE8] opacity-60 hover:opacity-80"
                     }`}
                     onClick={() => setActiveStep(i)}
                   >
@@ -461,7 +461,7 @@ export default function Home() {
           <div className="lg:hidden">
             <div className="hs-carousel">
               {HOW_IT_WORKS_STEPS.map((step, i) => (
-                <div key={i} className="hs-carousel-item bg-white border border-[#E8E4D9] overflow-hidden">
+                <div key={i} className="hs-carousel-item bg-white border border-[#EDE5DB] overflow-hidden">
                   <div className="relative h-44">
                     <img src={step.visual.img} alt={step.visual.label} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -490,7 +490,7 @@ export default function Home() {
       </section>
 
       {/* ── GALLERY ──────────────────────────────────────────────────────── */}
-      <section className="bg-[#F3F0E9] py-24">
+      <section className="bg-[#F5EDE8] py-24">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="label-eyebrow mb-3">Design Gallery</div>
           <h2 className="font-display text-5xl mb-10">
@@ -502,7 +502,7 @@ export default function Home() {
                 <TabsTrigger
                   key={r}
                   value={r}
-                  className="data-[state=active]:bg-[#0C1D42] data-[state=active]:text-white border border-[#D1CFC7] rounded-none px-5 py-2 text-xs tracking-widest uppercase"
+                  className="data-[state=active]:bg-[#0C1D42] data-[state=active]:text-white border border-[#D4C9BE] rounded-none px-5 py-2 text-xs tracking-widest uppercase"
                   data-testid={`tab-${r.replace(/\s/g, "-").toLowerCase()}`}
                 >
                   {r}
@@ -587,7 +587,7 @@ export default function Home() {
                       className={`px-4 py-2 text-xs tracking-widest uppercase border ${
                         bhk === b
                           ? "bg-[#0C1D42] text-white border-[#0C1D42]"
-                          : "border-[#D1CFC7]"
+                          : "border-[#D4C9BE]"
                       }`}
                       data-testid={`bhk-${b}`}
                     >
@@ -606,7 +606,7 @@ export default function Home() {
                       className={`px-4 py-2 text-xs tracking-widest uppercase border ${
                         tier === t
                           ? "bg-[#DA9E3E] text-white border-[#DA9E3E]"
-                          : "border-[#D1CFC7]"
+                          : "border-[#D4C9BE]"
                       }`}
                       data-testid={`tier-${t}`}
                     >
@@ -656,7 +656,7 @@ export default function Home() {
       </section>
 
       {/* ── TESTIMONIALS ─────────────────────────────────────────────────── */}
-      <section className="bg-[#F3F0E9] py-24">
+      <section className="bg-[#F5EDE8] py-24">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
           <div className="label-eyebrow mb-3">Testimonials</div>
           <h2 className="font-display text-5xl mb-12">
@@ -698,12 +698,12 @@ export default function Home() {
         <h2 className="font-display text-5xl text-center mb-12">
           Good questions, good answers.
         </h2>
-        <Accordion type="single" collapsible className="border-t border-[#E8E4D9]">
+        <Accordion type="single" collapsible className="border-t border-[#EDE5DB]">
           {(content.faq || []).map((f) => (
             <AccordionItem
               key={f.q}
               value={f.q}
-              className="border-b border-[#E8E4D9]"
+              className="border-b border-[#EDE5DB]"
             >
               <AccordionTrigger className="font-display text-xl text-left hover:no-underline">
                 {f.q}

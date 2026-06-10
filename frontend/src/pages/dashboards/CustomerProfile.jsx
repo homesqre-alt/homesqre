@@ -44,9 +44,9 @@ const PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Penthouse"];
 
 function Section({ icon: Icon, title, children }) {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-6 lg:p-8">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#E8E4D9]">
-        <div className="w-8 h-8 bg-[#F3F0E9] rounded flex items-center justify-center">
+    <div className="bg-white border border-[#EDE5DB] p-6 lg:p-8">
+      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#EDE5DB]">
+        <div className="w-8 h-8 bg-[#F5EDE8] rounded flex items-center justify-center">
           <Icon size={16} className="text-[#0C1D42]" />
         </div>
         <h2 className="font-display text-2xl text-[#0C1D42]">{title}</h2>
@@ -302,7 +302,7 @@ export default function CustomerProfile() {
                     className={`text-xs px-4 py-2 border tracking-wide transition ${
                       form.pref_style === s
                         ? "border-[#0C1D42] bg-[#0C1D42] text-white"
-                        : "border-[#E8E4D9] text-[#333333] hover:border-[#DA9E3E]"
+                        : "border-[#EDE5DB] text-[#333333] hover:border-[#DA9E3E]"
                     }`}
                     data-testid={`pref-style-${s.toLowerCase().replace(/\s/g, "-")}`}
                   >
@@ -323,7 +323,7 @@ export default function CustomerProfile() {
                     className={`text-xs px-4 py-2 border tracking-wide transition ${
                       form.pref_property_type === p
                         ? "border-[#0C1D42] bg-[#0C1D42] text-white"
-                        : "border-[#E8E4D9] text-[#333333] hover:border-[#DA9E3E]"
+                        : "border-[#EDE5DB] text-[#333333] hover:border-[#DA9E3E]"
                     }`}
                   >
                     {p}
@@ -429,7 +429,7 @@ export default function CustomerProfile() {
 
       {/* OTP Modal */}
       <Dialog open={showOtpModal} onOpenChange={setShowOtpModal}>
-        <DialogContent className="sm:max-w-[425px] bg-[#FCFAF5] border-[#D1CFC7] p-6">
+        <DialogContent className="sm:max-w-[425px] bg-[#FCFAF5] border-[#D4C9BE] p-6">
           <div className="text-center mb-6">
             <DialogTitle className="font-display text-2xl text-[#0C1D42] mb-2">
               Verify New Number
@@ -447,7 +447,7 @@ export default function CustomerProfile() {
                 required
                 placeholder="123456"
                 maxLength={6}
-                className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
               />

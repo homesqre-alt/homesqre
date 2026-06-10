@@ -52,7 +52,7 @@ export default function ModerationQueue() {
   return (
     <div className="space-y-6">
       {/* Pending summary banner */}
-      <div className="bg-[#FEF08A] border-l-4 border-[#B68D40] p-5 flex items-start gap-3">
+      <div className="bg-[#FEF08A] border-l-4 border-[#DA9E3E] p-5 flex items-start gap-3">
         <AlertTriangle size={20} className="text-[#7C5800] shrink-0 mt-0.5" />
         <div>
           <div className="font-semibold text-[#7C5800]">
@@ -65,21 +65,21 @@ export default function ModerationQueue() {
       </div>
 
       {/* Sub-tabs */}
-      <div className="flex gap-2 border-b border-[#E8E4D9]">
+      <div className="flex gap-2 border-b border-[#EDE5DB]">
         {KINDS.map((k) => (
           <button
             key={k.id}
             onClick={() => setActive(k.id)}
             className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
               active === k.id
-                ? "border-[#06402B] text-[#06402B]"
-                : "border-transparent text-[#4A5D54] hover:text-[#06402B]"
+                ? "border-[#0C1D42] text-[#0C1D42]"
+                : "border-transparent text-[#333333] hover:text-[#0C1D42]"
             }`}
             data-testid={`mod-tab-${k.id}`}
           >
             {k.label}
             {counts[k.id] > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-[#B68D40] text-white text-[10px] font-semibold rounded-full">
+              <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-[#DA9E3E] text-white text-[10px] font-semibold rounded-full">
                 {counts[k.id]}
               </span>
             )}
@@ -88,9 +88,9 @@ export default function ModerationQueue() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-[#758A80]">Loading queue…</div>
+        <div className="text-center py-16 text-[#666666]">Loading queue…</div>
       ) : items.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-[#758A80]">
+        <div className="flex flex-col items-center py-16 text-[#666666]">
           <Inbox size={32} strokeWidth={1.5} className="mb-3" />
           <div className="font-display text-xl">Nothing to review here.</div>
           <div className="text-xs mt-1">All {active} are up to date.</div>
@@ -105,11 +105,11 @@ export default function ModerationQueue() {
             return (
               <article
                 key={id}
-                className="bg-white border border-[#E8E4D9] p-5 flex flex-col md:flex-row gap-5"
+                className="bg-white border border-[#EDE5DB] p-5 flex flex-col md:flex-row gap-5"
                 data-testid={`mod-item-${id}`}
               >
                 {/* Thumb */}
-                <div className="w-full md:w-44 h-32 bg-[#F3F0E9] flex items-center justify-center text-xs text-[#758A80] shrink-0 overflow-hidden">
+                <div className="w-full md:w-44 h-32 bg-[#F5EDE8] flex items-center justify-center text-xs text-[#666666] shrink-0 overflow-hidden">
                   {active === "listings" && item.photos?.[0] && (
                     <img src={item.photos[0]} alt="" className="w-full h-full object-cover" />
                   )}
@@ -121,7 +121,7 @@ export default function ModerationQueue() {
 
                 {/* Detail */}
                 <div className="flex-1 min-w-0">
-                  <div className="label-eyebrow mb-1 text-[#B68D40]">
+                  <div className="label-eyebrow mb-1 text-[#DA9E3E]">
                     {active === "listings" && `${item.kind} · ${item.property_type}`}
                     {active === "projects" && (item.builder_name || "Builder")}
                     {active === "localities" && `${item.city || "—"}`}
@@ -129,7 +129,7 @@ export default function ModerationQueue() {
                   <h3 className="font-display text-xl mb-1 truncate">
                     {item.title || item.name}
                   </h3>
-                  <div className="text-xs text-[#4A5D54] mb-3">
+                  <div className="text-xs text-[#333333] mb-3">
                     {item.locality && <span>{item.locality}</span>}
                     {item.bedrooms && <span> · {item.bedrooms} BHK</span>}
                     {item.area_sqft && <span> · {item.area_sqft} sqft</span>}
@@ -137,9 +137,9 @@ export default function ModerationQueue() {
                     {item.price_min && <span> · from {formatINR(item.price_min)}</span>}
                   </div>
                   {item.description && (
-                    <p className="text-sm text-[#1A2421] line-clamp-2 mb-3">{item.description}</p>
+                    <p className="text-sm text-[#0C1D42] line-clamp-2 mb-3">{item.description}</p>
                   )}
-                  <div className="text-[10px] tracking-widest uppercase text-[#758A80]">
+                  <div className="text-[10px] tracking-widest uppercase text-[#666666]">
                     Submitted {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
                   </div>
 
@@ -151,7 +151,7 @@ export default function ModerationQueue() {
                         placeholder="Reason for rejection (optional but recommended)"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
-                        className="w-full border border-[#E8E4D9] focus:border-[#9B4A3A] outline-none px-3 py-2 text-sm"
+                        className="w-full border border-[#EDE5DB] focus:border-[#9B4A3A] outline-none px-3 py-2 text-sm"
                         data-testid="reject-reason"
                       />
                       <div className="flex gap-2">
@@ -165,7 +165,7 @@ export default function ModerationQueue() {
                         </button>
                         <button
                           onClick={() => { setRejecting(null); setReason(""); }}
-                          className="border border-[#E8E4D9] text-xs tracking-widest uppercase px-4 py-2"
+                          className="border border-[#EDE5DB] text-xs tracking-widest uppercase px-4 py-2"
                         >
                           Cancel
                         </button>
@@ -176,7 +176,7 @@ export default function ModerationQueue() {
                       <button
                         disabled={isBusy}
                         onClick={() => moderate(active, id, "approve")}
-                        className="inline-flex items-center gap-1.5 bg-[#06402B] hover:bg-[#053220] text-white text-xs tracking-widest uppercase px-4 py-2 disabled:opacity-60"
+                        className="inline-flex items-center gap-1.5 bg-[#0C1D42] hover:bg-[#053220] text-white text-xs tracking-widest uppercase px-4 py-2 disabled:opacity-60"
                         data-testid={`approve-${id}`}
                       >
                         <CheckCircle2 size={14} /> Approve

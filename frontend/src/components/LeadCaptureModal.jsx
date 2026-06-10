@@ -111,7 +111,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-[#FCFAF5] border-[#D1CFC7] p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[425px] bg-[#FCFAF5] border-[#D4C9BE] p-0 overflow-hidden">
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <div className="bg-[#0C1D42] p-6 text-center">
             <div className="inline-flex items-center gap-2 bg-red-500/20 text-red-100 text-[10px] tracking-widest uppercase px-3 py-1 font-semibold mb-3 rounded-full border border-red-500/30">
@@ -143,7 +143,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-[#D1CFC7]" />
+                    <span className="w-full border-t border-[#D4C9BE]" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase tracking-widest">
                     <span className="bg-[#FCFAF5] px-2 text-[#333333]/50">Or fill details manually</span>
@@ -157,7 +157,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                       type="text"
                       required
                       placeholder="John Doe"
-                      className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                      className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
@@ -169,7 +169,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                       type="email"
                       required
                       placeholder="john@example.com"
-                      className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                      className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
@@ -182,7 +182,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                       required
                       placeholder="9876543210"
                       maxLength={10}
-                      className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                      className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                     />
@@ -193,7 +193,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                     <input
                       type="text"
                       placeholder="e.g. Prestige Falcon City"
-                      className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                      className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     />
@@ -220,7 +220,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                     required
                     placeholder="123456"
                     maxLength={6}
-                    className="flex h-10 w-full rounded-md border border-[#D1CFC7] bg-white px-3 py-2 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
+                    className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm text-center tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   />

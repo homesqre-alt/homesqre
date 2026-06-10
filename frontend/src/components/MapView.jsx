@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 });
 
 function Pin({ price }) {
-  const html = `<div style="background:#06402B;color:#FAF9F6;padding:4px 10px;border-radius:2px;font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;border:1px solid #B68D40;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.2)">${price}</div>`;
+  const html = `<div style="background:#0C1D42;color:#FCFAF5;padding:4px 10px;border-radius:2px;font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;border:1px solid #DA9E3E;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.2)">${price}</div>`;
   return L.divIcon({
     html,
     className: "hs-price-pin",
@@ -29,7 +29,7 @@ export default function MapView({ items = [], center = [12.9716, 77.5946], zoom 
   }, [items]);
 
   return (
-    <div style={{ height }} className="border border-[#E8E4D9] bg-[#F3F0E9] overflow-hidden">
+    <div style={{ height }} className="border border-[#EDE5DB] bg-[#F5EDE8] overflow-hidden">
       <MapContainer center={center} zoom={zoom} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
         <TileLayer
           attribution='&copy; OpenStreetMap'
@@ -43,15 +43,15 @@ export default function MapView({ items = [], center = [12.9716, 77.5946], zoom 
               <Popup>
                 <div style={{ minWidth: 180 }}>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>{it.title || it.name}</div>
-                  <div style={{ fontSize: 12, color: "#4A5D54", marginBottom: 6 }}>{it.locality}</div>
-                  <div style={{ color: "#06402B", fontWeight: 600 }}>{price}</div>
+                  <div style={{ fontSize: 12, color: "#333333", marginBottom: 6 }}>{it.locality}</div>
+                  <div style={{ color: "#0C1D42", fontWeight: 600 }}>{price}</div>
                   <Link
                     to={
                       it.listing_id
                         ? `/properties/${it.listing_id}`
                         : `/projects/${it.city_slug}/${it.locality_slug}/${it.slug}`
                     }
-                    style={{ display: "inline-block", marginTop: 8, color: "#B68D40", fontSize: 12 }}
+                    style={{ display: "inline-block", marginTop: 8, color: "#DA9E3E", fontSize: 12 }}
                   >
                     View →
                   </Link>

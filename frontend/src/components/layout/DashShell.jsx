@@ -8,7 +8,7 @@ export default function DashShell({ links = [], title, children }) {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#FCFAF5]">
-      <aside className="lg:w-64 bg-white border-r border-[#E8E4D9] p-6 lg:min-h-screen">
+      <aside className="lg:w-64 bg-white border-r border-[#EDE5DB] p-6 lg:min-h-screen">
         <Link to="/" className="block mb-10"><img src="/logo.svg" alt="Homesqre" className="h-24 lg:h-32 w-auto object-contain" /></Link>
         <div className="mb-6">
           <div className="label-eyebrow mb-1">Logged in as</div>
@@ -22,8 +22,8 @@ export default function DashShell({ links = [], title, children }) {
               to={l.to}
               className={`block px-3 py-2 text-sm border-l-2 ${
                 (l.to.startsWith('#') ? loc.hash === l.to : loc.pathname === l.to)
-                  ? "border-[#0C1D42] bg-[#F3F0E9] text-[#0C1D42] font-semibold"
-                  : "border-transparent text-[#333333] hover:bg-[#F3F0E9]"
+                  ? "border-[#0C1D42] bg-[#F5EDE8] text-[#0C1D42] font-semibold"
+                  : "border-transparent text-[#333333] hover:bg-[#F5EDE8]"
               }`}
               data-testid={`sidebar-${l.label.toLowerCase().replace(/\s/g, "-")}`}
             >

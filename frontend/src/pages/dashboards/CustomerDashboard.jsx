@@ -224,7 +224,7 @@ export default function CustomerDashboard() {
     return (
       <div 
         onClick={() => setStyles({ design: styleName })}
-        className={`border p-4 cursor-pointer transition ${isSelected ? 'border-[#0C1D42] bg-[#F3F0E9] ring-1 ring-[#0C1D42]' : 'border-[#E8E4D9] hover:border-[#DA9E3E]'}`}
+        className={`border p-4 cursor-pointer transition ${isSelected ? 'border-[#0C1D42] bg-[#F5EDE8] ring-1 ring-[#0C1D42]' : 'border-[#EDE5DB] hover:border-[#DA9E3E]'}`}
       >
         <div className="w-full h-24 bg-gray-200 mb-3 flex items-center justify-center text-xs text-gray-400">
           [Image: {styleName}]
@@ -449,7 +449,7 @@ export default function CustomerDashboard() {
       
       {/* MISSED CALL BANNER */}
       {callStatus === "missed" && (
-        <div className="bg-[#F3F0E9] border-l-4 border-[#DA9E3E] p-4 mb-8 flex justify-between items-start animate-in fade-in slide-in-from-top-4">
+        <div className="bg-[#F5EDE8] border-l-4 border-[#DA9E3E] p-4 mb-8 flex justify-between items-start animate-in fade-in slide-in-from-top-4">
           <div>
             <h4 className="text-[#0C1D42] font-bold text-sm uppercase tracking-widest">We missed you!</h4>
             <p className="text-[#333333] text-sm mt-1">
@@ -497,15 +497,15 @@ export default function CustomerDashboard() {
             package to match the layout you uploaded.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-            <div className="bg-white border border-[#E8E4D9] p-3 text-center">
+            <div className="bg-white border border-[#EDE5DB] p-3 text-center">
               <p className="text-[10px] uppercase tracking-widest text-[#333333]">You paid</p>
               <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.package_adjustment.invoice_paid).toLocaleString("en-IN")}</p>
             </div>
-            <div className="bg-white border border-[#E8E4D9] p-3 text-center">
+            <div className="bg-white border border-[#EDE5DB] p-3 text-center">
               <p className="text-[10px] uppercase tracking-widest text-[#333333]">Correct package</p>
               <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.package_adjustment.corrected_price).toLocaleString("en-IN")}</p>
             </div>
-            <div className="bg-[#F3F0E9] border border-[#0C1D42] p-3 text-center">
+            <div className="bg-[#F5EDE8] border border-[#0C1D42] p-3 text-center">
               <p className="text-[10px] uppercase tracking-widest text-[#0C1D42] font-bold">You owe</p>
               <p className="font-display text-2xl text-[#0C1D42]" data-testid="differential-amount">
                 ₹{Number(user.package_adjustment.differential_amount).toLocaleString("en-IN")}
@@ -524,13 +524,13 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      <div className="bg-white border border-[#E8E4D9] p-8 mb-10 shadow-sm relative">
+      <div className="bg-white border border-[#EDE5DB] p-8 mb-10 shadow-sm relative">
         
         {/* PHASE 0: THE PAYWALL — package picker + mocked payment */}
         {currentPhase === "unpaid" && (
           <div className="animate-in fade-in" data-testid="unpaid-package-picker">
             <div className="text-center mb-8">
-              <span className="inline-block bg-[#F3F0E9] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+              <span className="inline-block bg-[#F5EDE8] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
                 Step 1 of 4 — Choose Your Design Package
               </span>
               <h2 className="font-display text-3xl text-[#0C1D42] mb-3">See your home before you build it.</h2>
@@ -550,7 +550,7 @@ export default function CustomerDashboard() {
                     <button
                       key={group.property_type}
                       onClick={() => setSelectedPropertyGroup(group.property_type)}
-                      className="border border-[#E8E4D9] bg-white p-6 hover:border-[#DA9E3E] hover:shadow-md transition text-center group"
+                      className="border border-[#EDE5DB] bg-white p-6 hover:border-[#DA9E3E] hover:shadow-md transition text-center group"
                     >
                       <h3 className="font-display text-2xl text-[#0C1D42] mb-2 group-hover:text-[#DA9E3E]">{group.group}</h3>
                       <p className="text-xs text-[#333333]">Click to view options</p>
@@ -560,7 +560,7 @@ export default function CustomerDashboard() {
               ) : (
                 // Step 2: Choose Size/Configuration
                 <div className="animate-in fade-in slide-in-from-right-4">
-                  <div className="flex items-center gap-4 mb-4 border-b border-[#E8E4D9] pb-4">
+                  <div className="flex items-center gap-4 mb-4 border-b border-[#EDE5DB] pb-4">
                     <button 
                       onClick={() => { setSelectedPropertyGroup(null); setSelectedPkg(null); }}
                       className="text-xs font-bold uppercase tracking-widest text-[#DA9E3E] hover:text-[#0C1D42] transition"
@@ -583,8 +583,8 @@ export default function CustomerDashboard() {
                           data-testid={`pkg-${group.property_type}-${opt.value}`}
                           className={`text-left border p-4 transition ${
                             isSelected
-                              ? "border-[#0C1D42] bg-[#F3F0E9] ring-2 ring-[#0C1D42]"
-                              : "border-[#E8E4D9] bg-white hover:border-[#DA9E3E]"
+                              ? "border-[#0C1D42] bg-[#F5EDE8] ring-2 ring-[#0C1D42]"
+                              : "border-[#EDE5DB] bg-white hover:border-[#DA9E3E]"
                           }`}
                         >
                           <div className="flex items-baseline justify-between mb-1">
@@ -604,7 +604,7 @@ export default function CustomerDashboard() {
             </div>
 
             {/* Selected package summary + Pay CTA */}
-            <div className="bg-[#F3F0E9] border border-[#E8E4D9] p-6" data-testid="unpaid-payment-summary">
+            <div className="bg-[#F5EDE8] border border-[#EDE5DB] p-6" data-testid="unpaid-payment-summary">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-[#333333] font-bold">Selected Package</p>
@@ -637,7 +637,7 @@ export default function CustomerDashboard() {
               </p>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[#E8E4D9] text-center">
+            <div className="mt-8 pt-6 border-t border-[#EDE5DB] text-center">
               <button
                 onClick={() => setIsDiscoveryOpen(true)}
                 data-testid="discovery-cta-btn"
@@ -667,13 +667,13 @@ export default function CustomerDashboard() {
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="e.g. Lotus Apartment 3BHK, My Whitefield Villa"
-                  className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] text-sm"
+                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm"
                 />
               </div>
               <div>
                 <label className="block text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-2">Estimated Budget</label>
                 <select 
-                  className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] text-sm mb-2"
+                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm mb-2"
                   value={budgetType}
                   onChange={(e) => setBudgetType(e.target.value)}
                 >
@@ -689,7 +689,7 @@ export default function CustomerDashboard() {
                     placeholder="Enter exact budget in INR" 
                     value={customBudget}
                     onChange={(e) => setCustomBudget(e.target.value)}
-                    className="w-full p-3 border border-[#0C1D42] focus:outline-none bg-[#F3F0E9] text-sm animate-in fade-in" 
+                    className="w-full p-3 border border-[#0C1D42] focus:outline-none bg-[#F5EDE8] text-sm animate-in fade-in" 
                   />
                 )}
               </div>
@@ -704,7 +704,7 @@ export default function CustomerDashboard() {
                   onChange={handleFloorPlanChange}
                   disabled={isUploadingPlan}
                   data-testid="floor-plan-upload-input"
-                  className="w-full p-2 border border-[#E8E4D9] text-sm file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#0C1D42] hover:file:bg-[#E8E4D9] disabled:opacity-50"
+                  className="w-full p-2 border border-[#EDE5DB] text-sm file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F5EDE8] file:text-[#0C1D42] hover:file:bg-[#EDE5DB] disabled:opacity-50"
                 />
                 {isUploadingPlan && (
                   <p className="mt-2 text-xs text-[#333333]">Uploading…</p>
@@ -729,7 +729,7 @@ export default function CustomerDashboard() {
               </div>
             </div>
 
-            <h3 className="font-display text-xl text-[#0C1D42] mb-4 border-b border-[#E8E4D9] pb-2">Overall Design Style</h3>
+            <h3 className="font-display text-xl text-[#0C1D42] mb-4 border-b border-[#EDE5DB] pb-2">Overall Design Style</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {renderStyleCard('Modern Minimalist', 'Clean lines, neutral tones, clutter-free.')}
               {renderStyleCard('Warm Contemporary', 'Rich timber textures, cozy warm lighting.')}
@@ -742,7 +742,7 @@ export default function CustomerDashboard() {
               </label>
               <textarea 
                 rows="4"
-                className="w-full p-4 border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] text-sm resize-y"
+                className="w-full p-4 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm resize-y"
                 placeholder="e.g., &quot;Living Room: Needs a dedicated Pooja unit. Master Bedroom: Include a small workstation. Kitchen: We prefer closed overhead cabinets and a tall pantry.&quot;"
                 value={roomRequirements}
                 onChange={(e) => setRoomRequirements(e.target.value)}
@@ -762,7 +762,7 @@ export default function CustomerDashboard() {
         {/* PHASE 1.5: VERIFICATION */}
         {currentPhase === "verification" && (
           <div className="animate-in fade-in text-center py-10">
-            <div className="inline-block w-12 h-12 border-4 border-[#F3F0E9] border-t-[#0C1D42] rounded-full animate-spin mb-4"></div>
+            <div className="inline-block w-12 h-12 border-4 border-[#F5EDE8] border-t-[#0C1D42] rounded-full animate-spin mb-4"></div>
             <h2 className="font-display text-2xl text-[#0C1D42] mb-2">Verifying your project details.</h2>
             <p className="text-[#333333] max-w-md mx-auto">
               Our team is currently reviewing your uploaded floor plan to ensure it matches the selected property type. This usually takes a few hours. We will unlock your site visit scheduling momentarily.
@@ -773,7 +773,7 @@ export default function CustomerDashboard() {
         {/* PHASE 5: READY FOR QUOTATION */}
         {currentPhase === 'ready_for_quotation' && (
           <div className="animate-in fade-in space-y-6">
-            <div className="bg-[#F3F0E9] border-l-4 border-[#DA9E3E] p-4">
+            <div className="bg-[#F5EDE8] border-l-4 border-[#DA9E3E] p-4">
               <h4 className="text-[#0C1D42] font-bold text-sm uppercase tracking-widest">Designs Approved — Quotation Stage</h4>
               <p className="text-[#333333] text-sm mt-1">
                 All your 3D designs are approved. Our team is preparing your detailed execution quotation.
@@ -781,14 +781,14 @@ export default function CustomerDashboard() {
             </div>
 
             {quotation ? (
-              <div id="invoices" className="bg-white border border-[#E8E4D9] p-6" data-testid="quotation-hub">
+              <div id="invoices" className="bg-white border border-[#EDE5DB] p-6" data-testid="quotation-hub">
                 <h3 className="font-display text-xl text-[#0C1D42] mb-4">Your Execution Quotation</h3>
 
                 {/* Itemized Line Items */}
                 <div className="overflow-x-auto mb-6">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-[#F3F0E9]">
+                      <tr className="bg-[#F5EDE8]">
                         <th className="text-left p-3 text-xs uppercase tracking-widest text-[#0C1D42]">Category</th>
                         <th className="text-left p-3 text-xs uppercase tracking-widest text-[#0C1D42]">Description</th>
                         <th className="text-right p-3 text-xs uppercase tracking-widest text-[#0C1D42]">Amount</th>
@@ -796,7 +796,7 @@ export default function CustomerDashboard() {
                     </thead>
                     <tbody>
                       {(quotation.line_items || []).map((item, i) => (
-                        <tr key={i} className="border-t border-[#E8E4D9]">
+                        <tr key={i} className="border-t border-[#EDE5DB]">
                           <td className="p-3 font-medium text-[#0C1D42]">{item.category}</td>
                           <td className="p-3 text-[#333333]">{item.description}</td>
                           <td className="p-3 text-right font-display text-[#DA9E3E]">
@@ -804,7 +804,7 @@ export default function CustomerDashboard() {
                           </td>
                         </tr>
                       ))}
-                      <tr className="border-t-2 border-[#0C1D42] bg-[#F3F0E9]">
+                      <tr className="border-t-2 border-[#0C1D42] bg-[#F5EDE8]">
                         <td className="p-3 font-bold text-[#0C1D42]" colSpan={2}>Total Execution Cost</td>
                         <td className="p-3 text-right font-display text-2xl text-[#0C1D42]">
                           ₹{Number(quotation.total_amount || 0).toLocaleString('en-IN')}
@@ -817,9 +817,9 @@ export default function CustomerDashboard() {
                 {/* Payment Schedule */}
                 {quotation.milestones && quotation.milestones.length > 0 && (
                   <div className="mb-6 space-y-4">
-                    <p className="font-display text-lg text-[#0C1D42] border-b border-[#E8E4D9] pb-2">Payment Milestones</p>
+                    <p className="font-display text-lg text-[#0C1D42] border-b border-[#EDE5DB] pb-2">Payment Milestones</p>
                     {quotation.milestones.map((ms, idx) => (
-                      <div key={ms.id} className={`border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${ms.status === 'paid' ? 'bg-[#F3F0E9] border-[#0C1D42]' : ms.status === 'unlocked' ? 'bg-white border-[#DA9E3E] shadow-sm' : 'bg-gray-50 border-gray-200 opacity-70'}`}>
+                      <div key={ms.id} className={`border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${ms.status === 'paid' ? 'bg-[#F5EDE8] border-[#0C1D42]' : ms.status === 'unlocked' ? 'bg-white border-[#DA9E3E] shadow-sm' : 'bg-gray-50 border-gray-200 opacity-70'}`}>
                         <div>
                           <p className={`font-bold ${ms.status === 'paid' ? 'text-[#0C1D42]' : 'text-gray-800'}`}>{ms.name}</p>
                           <p className="text-sm text-[#333333]">Amount: <span className="font-bold text-base">₹{ms.amount.toLocaleString('en-IN')}</span></p>
@@ -865,7 +865,7 @@ export default function CustomerDashboard() {
                       target="_blank"
                       rel="noopener noreferrer"
                       download
-                      className="border border-[#0C1D42] text-[#0C1D42] px-6 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#F3F0E9] transition text-center inline-block"
+                      className="border border-[#0C1D42] text-[#0C1D42] px-6 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#F5EDE8] transition text-center inline-block"
                     >
                       Download PDF Quotation
                     </a>
@@ -873,8 +873,8 @@ export default function CustomerDashboard() {
                 )}
               </div>
             ) : (
-              <div className="bg-white border border-[#E8E4D9] p-8 text-center">
-                <div className="inline-block w-10 h-10 border-4 border-[#F3F0E9] border-t-[#DA9E3E] rounded-full animate-spin mb-4"></div>
+              <div className="bg-white border border-[#EDE5DB] p-8 text-center">
+                <div className="inline-block w-10 h-10 border-4 border-[#F5EDE8] border-t-[#DA9E3E] rounded-full animate-spin mb-4"></div>
                 <p className="text-[#333333] text-sm">Our team is preparing your detailed quotation. You&apos;ll be notified as soon as it&apos;s ready.</p>
               </div>
             )}
@@ -889,15 +889,15 @@ export default function CustomerDashboard() {
               <p className="text-sm opacity-80">Booking advance received. Our factory team is building your home interiors. We&apos;ll keep you updated on the 45-day delivery timeline.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-[#E8E4D9] p-5 text-center">
+              <div className="bg-white border border-[#EDE5DB] p-5 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-[#333333] mb-1">Timeline</p>
                 <p className="font-display text-2xl text-[#0C1D42]">45 Days</p>
               </div>
-              <div className="bg-white border border-[#E8E4D9] p-5 text-center">
+              <div className="bg-white border border-[#EDE5DB] p-5 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-[#333333] mb-1">Warranty</p>
                 <p className="font-display text-2xl text-[#0C1D42]">10 Years</p>
               </div>
-              <div className="bg-white border border-[#E8E4D9] p-5 text-center">
+              <div className="bg-white border border-[#EDE5DB] p-5 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-[#333333] mb-1">Status</p>
                 <p className="font-display text-2xl text-[#DA9E3E]">Active</p>
               </div>
@@ -913,7 +913,7 @@ export default function CustomerDashboard() {
           currentPhase === "scheduling" || currentPhase === "confirmed") && (
           <div className="animate-in fade-in space-y-6">
             {/* Design started banner */}
-            <div className="bg-[#F3F0E9] border-l-4 border-[#0C1D42] p-4" data-testid="design-started-banner">
+            <div className="bg-[#F5EDE8] border-l-4 border-[#0C1D42] p-4" data-testid="design-started-banner">
               <h4 className="text-[#0C1D42] font-bold text-sm uppercase tracking-widest">Design has started</h4>
               <p className="text-[#333333] text-sm mt-1">
                 Your floor plan is approved. Your designer is crafting your 3D renders right now — they&apos;ll appear below the moment they&apos;re uploaded for your review.
@@ -922,12 +922,12 @@ export default function CustomerDashboard() {
 
             {/* Site visit scheduler */}
             {user?.site_visit_at && !isRescheduling ? (
-              <div className="bg-white border border-[#E8E4D9] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" data-testid="site-visit-confirmed">
+              <div className="bg-white border border-[#EDE5DB] p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" data-testid="site-visit-confirmed">
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-[#0C1D42] font-bold">Site Visit Scheduled</p>
                   <p className="font-display text-lg text-[#0C1D42]">{new Date(user.site_visit_at).toLocaleString()}</p>
                   <p className="text-xs text-[#333333] mb-3">Our lead engineer will visit your property for precise measurements.</p>
-                  <div className="bg-[#F3F0E9]/50 border border-[#E8E4D9] p-3 rounded mt-2 inline-block">
+                  <div className="bg-[#F5EDE8]/50 border border-[#EDE5DB] p-3 rounded mt-2 inline-block">
                     <p className="text-xs text-[#0C1D42] mb-1">
                       <span className="font-bold">Important:</span> Please send your Google Maps location to your Design Engineer.
                     </p>
@@ -984,7 +984,7 @@ export default function CustomerDashboard() {
                           className={`px-4 py-2 text-xs uppercase tracking-widest font-bold border transition whitespace-nowrap rounded ${
                             isSelected
                               ? "bg-[#0C1D42] text-white border-[#0C1D42]"
-                              : "border-[#E8E4D9] text-[#333333] hover:bg-[#F3F0E9]"
+                              : "border-[#EDE5DB] text-[#333333] hover:bg-[#F5EDE8]"
                           }`}
                         >
                           {formatDayLabel(date)}
@@ -1013,7 +1013,7 @@ export default function CustomerDashboard() {
                               className={`p-2.5 text-xs text-center border transition rounded ${
                                 isSelected
                                   ? "bg-[#DA9E3E] text-white border-[#DA9E3E] font-bold"
-                                  : "border-[#E8E4D9] text-[#0C1D42] hover:bg-[#F3F0E9]"
+                                  : "border-[#EDE5DB] text-[#0C1D42] hover:bg-[#F5EDE8]"
                               }`}
                             >
                               {slot.label}
@@ -1026,7 +1026,7 @@ export default function CustomerDashboard() {
                 )}
 
                 {/* Confirm Site Visit Info and button */}
-                <div className="mt-8 pt-6 border-t border-[#E8E4D9] flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="mt-8 pt-6 border-t border-[#EDE5DB] flex flex-col sm:flex-row justify-between items-center gap-4">
                   <div className="text-left w-full sm:w-auto">
                     {selectedVisitDate && selectedVisitSlot ? (
                       <p className="text-xs text-[#0C1D42]">
@@ -1040,7 +1040,7 @@ export default function CustomerDashboard() {
                     {isRescheduling && (
                       <button
                         onClick={() => setIsRescheduling(false)}
-                        className="px-6 py-3 text-xs uppercase tracking-widest font-bold border border-[#E8E4D9] hover:bg-gray-50 flex-1 sm:flex-none text-center"
+                        className="px-6 py-3 text-xs uppercase tracking-widest font-bold border border-[#EDE5DB] hover:bg-gray-50 flex-1 sm:flex-none text-center"
                       >
                         Cancel
                       </button>
@@ -1085,14 +1085,14 @@ export default function CustomerDashboard() {
                   placeholder="Your Full Name" 
                   value={billingDetails.name}
                   onChange={(e) => setBillingDetails({...billingDetails, name: e.target.value})}
-                  className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] text-sm" 
+                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm" 
                 />
                 <input 
                   type="tel" 
                   placeholder="Your Phone Number" 
                   value={billingDetails.phone}
                   onChange={(e) => setBillingDetails({...billingDetails, phone: e.target.value})}
-                  className="w-full p-3 border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] text-sm" 
+                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm" 
                 />
               </div>
               <button 
@@ -1114,24 +1114,24 @@ export default function CustomerDashboard() {
         <div className="animate-in fade-in">
           <h3 className="font-display text-xl mb-6 text-[#0C1D42]">Project Journey</h3>
           <div className="flex flex-col md:flex-row gap-2 justify-between items-center text-center text-sm mb-12">
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed','designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#E8E4D9] opacity-40'}`}>1. Briefing &amp; Review</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${['designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#E8E4D9] opacity-40'}`}>2. Site Visit &amp; Design</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#DA9E3E]' : ['ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : 'border-[#E8E4D9] opacity-40'}`}>3. 3D Design</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'ready_for_quotation' ? 'border-[#DA9E3E]' : currentPhase === 'production' ? 'border-[#0C1D42]' : 'border-[#E8E4D9] opacity-40'}`}>4. Quotation &amp; Approval</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'production' ? 'border-[#DA9E3E]' : 'border-[#E8E4D9] opacity-40'}`}>5. Production</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed','designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>1. Briefing &amp; Review</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${['designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>2. Site Visit &amp; Design</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#DA9E3E]' : ['ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : 'border-[#EDE5DB] opacity-40'}`}>3. 3D Design</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'ready_for_quotation' ? 'border-[#DA9E3E]' : currentPhase === 'production' ? 'border-[#0C1D42]' : 'border-[#EDE5DB] opacity-40'}`}>4. Quotation &amp; Approval</div>
+            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'production' ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>5. Production</div>
           </div>
 
-          <div className="bg-white border border-[#E8E4D9] p-6">
+          <div className="bg-white border border-[#EDE5DB] p-6">
             <h3 className="font-display text-lg mb-4 text-[#0C1D42]">Document Vault</h3>
             <DocumentVault leadId={user.lead_id} allowUpload={true} />
             {quotation?.pdf_url && (
-              <div className="mt-4 pt-4 border-t border-[#E8E4D9]">
+              <div className="mt-4 pt-4 border-t border-[#EDE5DB]">
                 <a
                   href={quotation.pdf_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   download
-                  className="inline-flex items-center gap-3 p-3 border border-[#E8E4D9] hover:border-[#DA9E3E] transition text-sm text-[#0C1D42] font-medium"
+                  className="inline-flex items-center gap-3 p-3 border border-[#EDE5DB] hover:border-[#DA9E3E] transition text-sm text-[#0C1D42] font-medium"
                 >
                   <span>&#128196;</span>
                   <span>Execution Quotation PDF</span>

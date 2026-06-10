@@ -43,13 +43,13 @@ export default function PropertyDetail() {
       <Header />
 
       <section className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-8">
-        <Link to="/properties" className="text-xs tracking-widest uppercase text-[#4A5D54] hover:text-[#B68D40]">
+        <Link to="/properties" className="text-xs tracking-widest uppercase text-[#333333] hover:text-[#DA9E3E]">
           ← Back to listings
         </Link>
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 aspect-[16/10] overflow-hidden bg-[#F3F0E9]">
+        <div className="lg:col-span-2 aspect-[16/10] overflow-hidden bg-[#F5EDE8]">
           {item.photos?.[active] && <img src={item.photos[active]} alt="" className="w-full h-full object-cover" />}
         </div>
         <div className="grid grid-cols-2 gap-2 max-h-[640px] overflow-auto no-scrollbar">
@@ -57,7 +57,7 @@ export default function PropertyDetail() {
             <button
               key={p}
               onClick={() => setActive(item.photos.indexOf(p))}
-              className={`aspect-square overflow-hidden border ${item.photos[active] === p ? "border-[#06402B]" : "border-transparent"}`}
+              className={`aspect-square overflow-hidden border ${item.photos[active] === p ? "border-[#0C1D42]" : "border-transparent"}`}
             >
               <img src={p} alt="" className="w-full h-full object-cover" />
             </button>
@@ -68,20 +68,20 @@ export default function PropertyDetail() {
       <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-10 grid grid-cols-1 lg:grid-cols-3 gap-10">
         <div className="lg:col-span-2">
           <div className="flex items-center gap-3 mb-3">
-            <span className="bg-[#06402B] text-[#FAF9F6] text-[10px] tracking-widest uppercase px-2.5 py-1 font-semibold">
+            <span className="bg-[#0C1D42] text-[#FCFAF5] text-[10px] tracking-widest uppercase px-2.5 py-1 font-semibold">
               For {item.kind}
             </span>
-            <span className="text-xs text-[#4A5D54] flex items-center gap-1.5">
+            <span className="text-xs text-[#333333] flex items-center gap-1.5">
               <MapPin size={12} strokeWidth={1.5} /> {item.locality}, {item.city}
             </span>
           </div>
-          <h1 className="font-display text-4xl sm:text-5xl text-[#1A2421] mb-4">{item.title}</h1>
+          <h1 className="font-display text-4xl sm:text-5xl text-[#0C1D42] mb-4">{item.title}</h1>
           <div className="flex items-baseline gap-3 mb-8">
-            <span className="font-display text-3xl text-[#06402B]">{formatINR(item.price)}</span>
-            {item.kind === "rent" && <span className="text-sm text-[#4A5D54]">/month</span>}
+            <span className="font-display text-3xl text-[#0C1D42]">{formatINR(item.price)}</span>
+            {item.kind === "rent" && <span className="text-sm text-[#333333]">/month</span>}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#E8E4D9] border border-[#E8E4D9] mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#EDE5DB] border border-[#EDE5DB] mb-10">
             {[
               { icon: BedDouble, label: "Bedrooms", value: item.bedrooms || "—" },
               { icon: Bath, label: "Bathrooms", value: item.bathrooms || "—" },
@@ -89,7 +89,7 @@ export default function PropertyDetail() {
               { icon: Home, label: "Type", value: item.property_type || "—" },
             ].map((s) => (
               <div key={s.label} className="bg-white p-5">
-                <s.icon size={18} strokeWidth={1.5} className="text-[#B68D40] mb-3" />
+                <s.icon size={18} strokeWidth={1.5} className="text-[#DA9E3E] mb-3" />
                 <div className="label-eyebrow mb-1">{s.label}</div>
                 <div className="font-display text-xl">{s.value}</div>
               </div>
@@ -98,19 +98,19 @@ export default function PropertyDetail() {
 
           <div className="mb-10">
             <div className="label-eyebrow mb-3">About this property</div>
-            <p className="text-[#1A2421] leading-relaxed">{item.description}</p>
+            <p className="text-[#0C1D42] leading-relaxed">{item.description}</p>
           </div>
 
           {item.possession_status && (
-            <div className="mb-10 flex items-center gap-2 text-sm text-[#4A5D54]">
-              <Calendar size={14} strokeWidth={1.5} /> Possession: <span className="font-semibold text-[#1A2421]">{item.possession_status}</span>
+            <div className="mb-10 flex items-center gap-2 text-sm text-[#333333]">
+              <Calendar size={14} strokeWidth={1.5} /> Possession: <span className="font-semibold text-[#0C1D42]">{item.possession_status}</span>
             </div>
           )}
 
           <div className="mb-12">
             <div className="label-eyebrow mb-3">Location</div>
             <MapView items={[item]} center={[item.lat || 12.9716, item.lng || 77.5946]} zoom={13} height={360} />
-            <p className="text-xs text-[#4A5D54] mt-2">{item.address}</p>
+            <p className="text-xs text-[#333333] mt-2">{item.address}</p>
           </div>
 
           <div className="mb-12">
@@ -126,7 +126,7 @@ export default function PropertyDetail() {
       </section>
 
       {similar.length > 0 && (
-        <section className="bg-[#F3F0E9] py-20">
+        <section className="bg-[#F5EDE8] py-20">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
             <div className="label-eyebrow mb-3">You might also like</div>
             <h2 className="font-display text-3xl sm:text-4xl mb-10">Similar homes nearby</h2>

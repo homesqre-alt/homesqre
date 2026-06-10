@@ -28,7 +28,7 @@ export default function DesignerLeadsList() {
 
   return (
     <div className="animate-in fade-in space-y-4" data-testid="designer-leads-list">
-      <header className="flex items-center justify-between border-b border-[#E8E4D9] pb-3">
+      <header className="flex items-center justify-between border-b border-[#EDE5DB] pb-3">
         <div>
           <h3 className="font-display text-xl text-[#0C1D42]">My Leads</h3>
           <p className="text-xs text-[#333333]">{total} lead{total === 1 ? "" : "s"} assigned to you. Read-only — workflow happens automatically as you progress design projects.</p>
@@ -37,13 +37,13 @@ export default function DesignerLeadsList() {
       </header>
 
       {leads.length === 0 ? (
-        <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#333333]" data-testid="designer-leads-empty">
+        <p className="bg-white border border-[#EDE5DB] p-6 text-center text-[#333333]" data-testid="designer-leads-empty">
           You don&apos;t have any leads assigned yet.
         </p>
       ) : (
-        <div className="bg-white border border-[#E8E4D9] overflow-hidden">
+        <div className="bg-white border border-[#EDE5DB] overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
+            <thead className="bg-[#F5EDE8] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
               <tr>
                 <th className="px-4 py-3 font-bold">Name</th>
                 <th className="px-4 py-3 font-bold">Status</th>
@@ -54,7 +54,7 @@ export default function DesignerLeadsList() {
             </thead>
             <tbody>
               {leads.map(l => (
-                <tr key={l.lead_id} className="border-t border-[#E8E4D9] hover:bg-[#FCFAF5]"
+                <tr key={l.lead_id} className="border-t border-[#EDE5DB] hover:bg-[#FCFAF5]"
                     data-testid={`designer-lead-row-${l.lead_id}`}>
                   <td className="px-4 py-3 font-medium text-[#0C1D42]">{l.name}</td>
                   <td className="px-4 py-3">

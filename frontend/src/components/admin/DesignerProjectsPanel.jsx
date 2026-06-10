@@ -70,7 +70,7 @@ export default function DesignerProjectsPanel({ mode = "active" }) {
 
   return (
     <div className="animate-in fade-in space-y-4" data-testid={`designer-${mode}-panel`}>
-      <header className="flex items-center justify-between border-b border-[#E8E4D9] pb-3">
+      <header className="flex items-center justify-between border-b border-[#EDE5DB] pb-3">
         <div>
           <h3 className="font-display text-xl text-[#0C1D42]">{label.title}</h3>
           <p className="text-xs text-[#333333]">{label.help}</p>
@@ -104,16 +104,16 @@ export default function DesignerProjectsPanel({ mode = "active" }) {
 function ProjectList({ mode, projects, onPick }) {
   if (projects.length === 0) {
     return (
-      <p className="bg-white border border-[#E8E4D9] p-6 text-center text-[#333333]"
+      <p className="bg-white border border-[#EDE5DB] p-6 text-center text-[#333333]"
          data-testid={`designer-${mode}-empty`}>
         No projects here yet.
       </p>
     );
   }
   return (
-    <div className="bg-white border border-[#E8E4D9] overflow-hidden">
+    <div className="bg-white border border-[#EDE5DB] overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-[#F3F0E9] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
+        <thead className="bg-[#F5EDE8] text-left text-[10px] uppercase tracking-widest text-[#0C1D42]">
           <tr>
             <th className="px-4 py-3 font-bold">Customer</th>
             <th className="px-4 py-3 font-bold">Project</th>
@@ -130,7 +130,7 @@ function ProjectList({ mode, projects, onPick }) {
                 key={p.project_id}
                 onClick={() => onPick(p.project_id)}
                 data-testid={`designer-project-row-${p.project_id}`}
-                className="border-t border-[#E8E4D9] hover:bg-[#FCFAF5] cursor-pointer"
+                className="border-t border-[#EDE5DB] hover:bg-[#FCFAF5] cursor-pointer"
               >
                 <td className="px-4 py-3 font-medium text-[#0C1D42]">{p.customer?.name || "—"}</td>
                 <td className="px-4 py-3 text-[#333333]">{p.customer?.project_name || "—"}</td>
@@ -163,9 +163,9 @@ function ProjectDetail({ mode, project, onBack, onChanged }) {
   }, [project.images]);
 
   return (
-    <article className="bg-white border border-[#E8E4D9] p-5 space-y-5"
+    <article className="bg-white border border-[#EDE5DB] p-5 space-y-5"
              data-testid={`designer-${mode}-detail`}>
-      <header className="flex items-start justify-between gap-3 border-b border-[#E8E4D9] pb-3">
+      <header className="flex items-start justify-between gap-3 border-b border-[#EDE5DB] pb-3">
         <div>
           <button onClick={onBack} className="text-xs underline text-[#DA9E3E] mb-2"
                   data-testid={`designer-${mode}-back-btn`}>← Back to list</button>
@@ -214,7 +214,7 @@ function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
               rel="noopener noreferrer"
               download
               data-testid={`${testIdPrefix}-floor-plan-${idx}`}
-              className="inline-block text-xs underline text-[#DA9E3E] hover:text-[#C88C2F] border border-[#E8E4D9] px-3 py-1.5"
+              className="inline-block text-xs underline text-[#DA9E3E] hover:text-[#C88C2F] border border-[#EDE5DB] px-3 py-1.5"
             >
               ⬇ Download Floor Plan {idx + 1}
             </a>
@@ -274,7 +274,7 @@ function RenderUploader({ projectId, onUploaded }) {
   };
 
   return (
-    <section className="bg-[#FCFAF5] border border-[#E8E4D9] p-4 space-y-4"
+    <section className="bg-[#FCFAF5] border border-[#EDE5DB] p-4 space-y-4"
              data-testid="designer-render-uploader">
       <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42]">
         Upload Renders — each with its own note for the customer
@@ -289,7 +289,7 @@ function RenderUploader({ projectId, onUploaded }) {
           onChange={onPick}
           disabled={busy}
           data-testid="designer-render-files-input"
-          className="w-full p-2 border border-[#E8E4D9] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F3F0E9] file:text-[#0C1D42] hover:file:bg-[#E8E4D9] disabled:opacity-50"
+          className="w-full p-2 border border-[#EDE5DB] text-sm bg-white file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-[#F5EDE8] file:text-[#0C1D42] hover:file:bg-[#EDE5DB] disabled:opacity-50"
         />
         {entries.length > 0 && (
           <p className="text-[10px] text-[#333333] mt-1">
@@ -303,7 +303,7 @@ function RenderUploader({ projectId, onUploaded }) {
         <ul className="space-y-3" data-testid="designer-render-files-preview">
           {entries.map((en, idx) => (
             <li key={idx}
-                className="bg-white border border-[#E8E4D9] p-3 space-y-2"
+                className="bg-white border border-[#EDE5DB] p-3 space-y-2"
                 data-testid={`designer-render-entry-${idx}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-[#0C1D42] truncate">
@@ -327,7 +327,7 @@ function RenderUploader({ projectId, onUploaded }) {
                 rows={2}
                 data-testid={`designer-render-comment-${idx}`}
                 className={`w-full p-2 border text-sm bg-white focus:outline-none resize-none ${
-                  en.comment.trim() ? "border-[#0C1D42]" : "border-[#E8E4D9] focus:border-[#0C1D42]"
+                  en.comment.trim() ? "border-[#0C1D42]" : "border-[#EDE5DB] focus:border-[#0C1D42]"
                 }`}
               />
               {!en.comment.trim() && (
@@ -367,10 +367,10 @@ function RenderHistory({ images, absUrl, mode }) {
       <ul className="space-y-3">
         {images.map(img => (
           <li key={img.image_id}
-              className="border border-[#E8E4D9] p-3 flex flex-col md:flex-row gap-3"
+              className="border border-[#EDE5DB] p-3 flex flex-col md:flex-row gap-3"
               data-testid={`designer-${mode}-render-${img.image_id}`}>
             <a href={absUrl(img.url)} target="_blank" rel="noopener noreferrer" className="md:w-40 shrink-0">
-              <img src={absUrl(img.url)} alt={img.filename || "render"} className="w-full h-32 object-cover border border-[#E8E4D9]" loading="lazy" />
+              <img src={absUrl(img.url)} alt={img.filename || "render"} className="w-full h-32 object-cover border border-[#EDE5DB]" loading="lazy" />
             </a>
             <div className="flex-1 text-sm">
               <p className="text-[10px] uppercase tracking-widest text-[#333333]">

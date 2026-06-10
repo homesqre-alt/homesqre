@@ -56,12 +56,12 @@ export default function Compare() {
 
         {items.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] bg-white border border-[#E8E4D9]">
+            <table className="w-full min-w-[720px] bg-white border border-[#EDE5DB]">
               <thead>
                 <tr>
                   <th className="p-4 text-left label-eyebrow w-40"></th>
                   {items.map((it) => (
-                    <th key={it.listing_id} className="p-4 text-left border-l border-[#E8E4D9] min-w-[220px]">
+                    <th key={it.listing_id} className="p-4 text-left border-l border-[#EDE5DB] min-w-[220px]">
                       <button onClick={() => remove(it.listing_id)} className="float-right text-[#9B4A3A]">
                         <X size={16} />
                       </button>
@@ -73,10 +73,10 @@ export default function Compare() {
               </thead>
               <tbody>
                 {FIELDS.map(([label, fn], i) => (
-                  <tr key={label} className={i % 2 ? "bg-[#FAF9F6]" : "bg-white"}>
+                  <tr key={label} className={i % 2 ? "bg-[#FCFAF5]" : "bg-white"}>
                     <td className="p-4 label-eyebrow">{label}</td>
                     {items.map((it) => (
-                      <td key={it.listing_id} className="p-4 border-l border-[#E8E4D9] text-sm">{fn(it)}</td>
+                      <td key={it.listing_id} className="p-4 border-l border-[#EDE5DB] text-sm">{fn(it)}</td>
                     ))}
                   </tr>
                 ))}
@@ -84,9 +84,9 @@ export default function Compare() {
             </table>
           </div>
         ) : (
-          <div className="bg-[#F3F0E9] p-12 text-center">
+          <div className="bg-[#F5EDE8] p-12 text-center">
             <div className="font-display text-3xl mb-3">Pick listings to compare</div>
-            <p className="text-[#4A5D54]">Add up to 4 listings below to see them side by side.</p>
+            <p className="text-[#333333]">Add up to 4 listings below to see them side by side.</p>
           </div>
         )}
 

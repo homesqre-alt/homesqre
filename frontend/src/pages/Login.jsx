@@ -89,9 +89,9 @@ export default function Login() {
           </div>
 
           <div className="my-6 flex items-center gap-4 max-w-md">
-            <div className="flex-1 h-px bg-[#E8E4D9]" />
+            <div className="flex-1 h-px bg-[#EDE5DB]" />
             <span className="label-eyebrow text-xs text-[#666666]">or sign in manually</span>
-            <div className="flex-1 h-px bg-[#E8E4D9]" />
+            <div className="flex-1 h-px bg-[#EDE5DB]" />
           </div>
 
           <form onSubmit={submit} className="space-y-6 max-w-md" data-testid="login-form">

@@ -24,7 +24,7 @@ export default function ProjectsList() {
   return (
     <div className="App">
       <Header />
-      <section className="bg-[#F3F0E9] border-b border-[#E8E4D9]">
+      <section className="bg-[#F5EDE8] border-b border-[#EDE5DB]">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12">
           <div className="label-eyebrow mb-3">Discover</div>
           <h1 className="font-display text-4xl sm:text-5xl">New & upcoming projects</h1>
@@ -32,7 +32,7 @@ export default function ProjectsList() {
       </section>
 
       <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-10">
-        <div className="bg-white border border-[#E8E4D9] p-5 mb-8 max-w-sm">
+        <div className="bg-white border border-[#EDE5DB] p-5 mb-8 max-w-sm">
           <label className="label-eyebrow mb-1 block">Locality</label>
           <select
             value={locality}
@@ -52,7 +52,7 @@ export default function ProjectsList() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {items.map((p) => <ProjectCard key={p.project_id} project={p} />)}
-          {items.length === 0 && <div className="col-span-full text-center py-20 text-[#758A80]">No projects found.</div>}
+          {items.length === 0 && <div className="col-span-full text-center py-20 text-[#666666]">No projects found.</div>}
         </div>
       </section>
       <Footer />

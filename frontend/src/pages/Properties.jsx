@@ -54,7 +54,7 @@ export default function Properties() {
   return (
     <div className="App">
       <Header />
-      <section className="bg-[#F3F0E9] border-b border-[#E8E4D9]">
+      <section className="bg-[#F5EDE8] border-b border-[#EDE5DB]">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-10">
           <div className="flex items-end justify-between flex-wrap gap-4">
             <div>
@@ -64,7 +64,7 @@ export default function Properties() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setView("grid")}
-                className={`p-3 border ${view === "grid" ? "bg-[#06402B] text-white border-[#06402B]" : "border-[#E8E4D9]"}`}
+                className={`p-3 border ${view === "grid" ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB]"}`}
                 data-testid="view-grid"
                 aria-label="grid view"
               >
@@ -72,7 +72,7 @@ export default function Properties() {
               </button>
               <button
                 onClick={() => setView("map")}
-                className={`p-3 border ${view === "map" ? "bg-[#06402B] text-white border-[#06402B]" : "border-[#E8E4D9]"}`}
+                className={`p-3 border ${view === "map" ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB]"}`}
                 data-testid="view-map"
                 aria-label="map view"
               >
@@ -85,7 +85,7 @@ export default function Properties() {
 
       <section className="max-w-[1400px] mx-auto px-6 lg:px-12 py-10">
         {/* Filters */}
-        <div className="bg-white border border-[#E8E4D9] p-5 mb-8 grid grid-cols-2 md:grid-cols-6 gap-4" data-testid="filters">
+        <div className="bg-white border border-[#EDE5DB] p-5 mb-8 grid grid-cols-2 md:grid-cols-6 gap-4" data-testid="filters">
           <div>
             <label className="label-eyebrow mb-1 block">Kind</label>
             <select className="hs-input" value={filters.kind} onChange={(e) => update("kind", e.target.value)} data-testid="filter-kind">
@@ -128,7 +128,7 @@ export default function Properties() {
         </div>
 
         <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-[#4A5D54]">
+          <p className="text-sm text-[#333333]">
             {loading ? "Loading…" : `${items.length} ${items.length === 1 ? "result" : "results"}`}
           </p>
         </div>
@@ -137,7 +137,7 @@ export default function Properties() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {items.map((l) => <PropertyCard key={l.listing_id} listing={l} />)}
             {!loading && items.length === 0 && (
-              <div className="col-span-full text-center py-20 text-[#758A80]">
+              <div className="col-span-full text-center py-20 text-[#666666]">
                 <Filter className="mx-auto mb-4" strokeWidth={1.5} />
                 No properties match your filters.
               </div>

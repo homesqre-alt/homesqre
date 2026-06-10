@@ -27,7 +27,7 @@ export default function InquiryForm({ listing_id, project_id, title = "Intereste
 
   if (sent) {
     return (
-      <div className={`bg-white border border-[#E8E4D9] ${compact ? "p-5" : "p-8"} text-center`}>
+      <div className={`bg-white border border-[#EDE5DB] ${compact ? "p-5" : "p-8"} text-center`}>
         <div className="font-display text-2xl text-[#0C1D42] mb-2">Thank you</div>
         <p className="text-sm text-[#333333]">We've shared your details with the owner. Expect a call shortly.</p>
       </div>
@@ -35,7 +35,7 @@ export default function InquiryForm({ listing_id, project_id, title = "Intereste
   }
 
   return (
-    <form onSubmit={submit} className={`bg-white border border-[#E8E4D9] ${compact ? "p-5" : "p-8"}`} data-testid="inquiry-form">
+    <form onSubmit={submit} className={`bg-white border border-[#EDE5DB] ${compact ? "p-5" : "p-8"}`} data-testid="inquiry-form">
       <h3 className="font-display text-2xl text-[#0C1D42] mb-1">{title}</h3>
       <div className="hs-divider-gold mb-5" />
       <div className="space-y-4">

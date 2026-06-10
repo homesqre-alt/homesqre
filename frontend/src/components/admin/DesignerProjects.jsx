@@ -45,22 +45,22 @@ export default function DesignerProjects({ currentUser }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6" data-testid="designer-projects">
-      <aside className="border border-[#E8E4D9] bg-white p-3 max-h-[70vh] overflow-y-auto">
-        <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-2">Active Projects</h4>
-        {projects.length === 0 && <p className="text-xs text-[#4A5D54]">No projects yet.</p>}
+      <aside className="border border-[#EDE5DB] bg-white p-3 max-h-[70vh] overflow-y-auto">
+        <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-2">Active Projects</h4>
+        {projects.length === 0 && <p className="text-xs text-[#333333]">No projects yet.</p>}
         {projects.map(p => (
           <button
             key={p.project_id}
             onClick={() => setActiveId(p.project_id)}
             data-testid={`designer-project-${p.project_id}`}
-            className={`w-full text-left p-2 border-l-2 ${activeId === p.project_id ? "border-[#B68D40] bg-[#F3F0E9]" : "border-transparent hover:bg-[#F3F0E9]"}`}
+            className={`w-full text-left p-2 border-l-2 ${activeId === p.project_id ? "border-[#DA9E3E] bg-[#F5EDE8]" : "border-transparent hover:bg-[#F5EDE8]"}`}
           >
-            <div className="text-sm font-semibold text-[#06402B]">{p.customer?.name || "Customer"}</div>
+            <div className="text-sm font-semibold text-[#0C1D42]">{p.customer?.name || "Customer"}</div>
             {p.customer?.project_name && (
-              <div className="text-[10px] text-[#4A5D54] italic">{p.customer.project_name}</div>
+              <div className="text-[10px] text-[#333333] italic">{p.customer.project_name}</div>
             )}
             <div className="text-[10px] mt-1">
-              <span className={`px-2 py-0.5 ${p.status === "ready_for_quotation" ? "bg-green-100 text-green-800" : "bg-[#FFF8EC] text-[#B68D40]"}`}>
+              <span className={`px-2 py-0.5 ${p.status === "ready_for_quotation" ? "bg-green-100 text-green-800" : "bg-[#FFF8EC] text-[#DA9E3E]"}`}>
                 {p.status === "ready_for_quotation" ? "✓ Approved" : `${(p.images || []).length} render(s)`}
               </span>
             </div>
@@ -70,7 +70,7 @@ export default function DesignerProjects({ currentUser }) {
 
       <section>
         {active ? <ProjectDetail project={active} onReload={() => { load(); loadActive(); }} currentUser={currentUser} /> :
-          <p className="text-sm text-[#4A5D54]">Select a project on the left.</p>}
+          <p className="text-sm text-[#333333]">Select a project on the left.</p>}
       </section>
     </div>
   );
@@ -112,25 +112,25 @@ function ProjectDetail({ project, onReload, currentUser }) {
 
   return (
     <div className="space-y-6">
-      <header className="border-b border-[#E8E4D9] pb-3">
-        <h3 className="font-display text-xl text-[#06402B]">{project.customer?.name || project.user_id}</h3>
+      <header className="border-b border-[#EDE5DB] pb-3">
+        <h3 className="font-display text-xl text-[#0C1D42]">{project.customer?.name || project.user_id}</h3>
         {isDesigner ? (
           project.customer?.project_name && (
-            <p className="text-xs text-[#4A5D54] italic" data-testid="designer-project-name">{project.customer.project_name}</p>
+            <p className="text-xs text-[#333333] italic" data-testid="designer-project-name">{project.customer.project_name}</p>
           )
         ) : (
-          <p className="text-xs text-[#4A5D54]">
+          <p className="text-xs text-[#333333]">
             {project.customer?.project_name && <span className="italic">{project.customer.project_name} • </span>}
             {project.customer?.email} • {project.customer?.mobile}
           </p>
         )}
         {project.site_visit_at && (
-          <p className="text-[11px] text-[#06402B] mt-1" data-testid="project-site-visit">
+          <p className="text-[11px] text-[#0C1D42] mt-1" data-testid="project-site-visit">
             <strong>Site Visit:</strong> {new Date(project.site_visit_at).toLocaleString()}
           </p>
         )}
         <div className="mt-2 flex flex-wrap gap-3 text-xs">
-          <span className="px-3 py-1 bg-[#F3F0E9] border border-[#E8E4D9]">Status: {project.status}</span>
+          <span className="px-3 py-1 bg-[#F5EDE8] border border-[#EDE5DB]">Status: {project.status}</span>
           <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800">Pending: {pending.length}</span>
           <span className="px-3 py-1 bg-amber-50 border border-amber-300 text-amber-900">Needs improvement: {improvement.length}</span>
           <span className="px-3 py-1 bg-green-50 border border-green-200 text-green-800">Approved: {approved.length}</span>
@@ -140,14 +140,14 @@ function ProjectDetail({ project, onReload, currentUser }) {
       <LeadInlinePanel project={project} onChanged={onReload} />
 
       {project.status === "in_progress" && (
-        <form onSubmit={upload} data-testid="designer-upload-form" className="bg-[#F3F0E9] border border-[#E8E4D9] p-4 space-y-3">
-          <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Upload new render</h4>
+        <form onSubmit={upload} data-testid="designer-upload-form" className="bg-[#F5EDE8] border border-[#EDE5DB] p-4 space-y-3">
+          <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Upload new render</h4>
           <input
             type="file"
             data-testid="designer-image-input"
             accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full p-2 border border-[#E8E4D9] text-sm bg-white"
+            className="w-full p-2 border border-[#EDE5DB] text-sm bg-white"
           />
           <textarea
             data-testid="designer-image-comment"
@@ -156,11 +156,11 @@ function ProjectDetail({ project, onReload, currentUser }) {
             rows="2"
             required
             placeholder="Mandatory note for the customer about this render (room, materials, design intent)…"
-            className="w-full p-2 border border-[#E8E4D9] text-sm bg-white focus:outline-none focus:border-[#06402B]"
+            className="w-full p-2 border border-[#EDE5DB] text-sm bg-white focus:outline-none focus:border-[#0C1D42]"
           />
           <button type="submit" disabled={busy || !file || !comment.trim()}
                   data-testid="designer-image-submit"
-                  className="bg-[#06402B] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold disabled:opacity-50 hover:bg-[#0a5839]">
+                  className="bg-[#0C1D42] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold disabled:opacity-50 hover:bg-[#0a5839]">
             {busy ? "Uploading…" : "Send to customer"}
           </button>
         </form>
@@ -194,7 +194,7 @@ function ProjectDetail({ project, onReload, currentUser }) {
 function Block({ title, children }) {
   return (
     <section>
-      <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B] mb-3">{title}</h4>
+      <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-3">{title}</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{children}</div>
     </section>
   );
@@ -202,15 +202,15 @@ function Block({ title, children }) {
 
 function Card({ img, absUrl, children }) {
   return (
-    <div className="bg-white border border-[#E8E4D9]">
-      <div className="aspect-video bg-[#F3F0E9] overflow-hidden">
+    <div className="bg-white border border-[#EDE5DB]">
+      <div className="aspect-video bg-[#F5EDE8] overflow-hidden">
         <a href={absUrl(img.url)} target="_blank" rel="noopener noreferrer">
           <img src={absUrl(img.url)} alt={img.designer_comment} className="w-full h-full object-cover" />
         </a>
       </div>
       <div className="p-3 text-xs">
-        <p className="font-semibold text-[#06402B]">Round {img.round}</p>
-        <p className="mt-1 text-[#4A5D54] whitespace-pre-wrap">{img.designer_comment}</p>
+        <p className="font-semibold text-[#0C1D42]">Round {img.round}</p>
+        <p className="mt-1 text-[#333333] whitespace-pre-wrap">{img.designer_comment}</p>
         {children}
       </div>
     </div>
@@ -288,34 +288,34 @@ function LeadInlinePanel({ project, onChanged }) {
   };
 
   return (
-    <section className="bg-white border border-[#E8E4D9] p-4 space-y-3" data-testid="lead-inline-panel">
+    <section className="bg-white border border-[#EDE5DB] p-4 space-y-3" data-testid="lead-inline-panel">
       <header className="flex items-center justify-between">
-        <h4 className="text-xs uppercase tracking-widest font-bold text-[#06402B]">Linked Lead</h4>
-        <span className="text-[10px] text-[#4A5D54] font-mono">{leadId}</span>
+        <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Linked Lead</h4>
+        <span className="text-[10px] text-[#333333] font-mono">{leadId}</span>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">Status</span>
+          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-1">Status</span>
           <select
             data-testid="lead-inline-status"
             disabled={busy}
             value={leadStatus}
             onChange={(e) => changeStatus(e.target.value)}
-            className="w-full p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+            className="w-full p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white"
           >
             {statuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">Next Follow-up</span>
+          <span className="block text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-1">Next Follow-up</span>
           <input
             type="datetime-local"
             data-testid="lead-inline-followup"
             disabled={busy}
             value={followup}
             onChange={(e) => setFollowupOn(e.target.value)}
-            className="w-full p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+            className="w-full p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white"
           />
         </label>
       </div>
@@ -326,13 +326,13 @@ function LeadInlinePanel({ project, onChanged }) {
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           placeholder="Add a comment to this lead (visible to admin & sales)…"
-          className="flex-1 p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white"
+          className="flex-1 p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white"
         />
         <button
           onClick={postComment}
           disabled={!comment.trim() || busy}
           data-testid="lead-inline-comment-btn"
-          className="px-4 py-2 text-xs uppercase tracking-widest bg-[#06402B] text-white font-bold disabled:opacity-40 hover:bg-[#0a5839]"
+          className="px-4 py-2 text-xs uppercase tracking-widest bg-[#0C1D42] text-white font-bold disabled:opacity-40 hover:bg-[#0a5839]"
         >
           Post
         </button>

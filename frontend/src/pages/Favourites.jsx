@@ -43,9 +43,9 @@ export default function Favourites() {
         )}
 
         {!data.listings?.length && !data.projects?.length && (
-          <div className="bg-[#F3F0E9] p-12 text-center">
+          <div className="bg-[#F5EDE8] p-12 text-center">
             <div className="font-display text-3xl mb-3">No saved items yet</div>
-            <p className="text-[#4A5D54] mb-6">Tap the heart on any listing or project to save it.</p>
+            <p className="text-[#333333] mb-6">Tap the heart on any listing or project to save it.</p>
             <Link to="/properties" className="btn-primary">Browse properties</Link>
           </div>
         )}

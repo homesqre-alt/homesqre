@@ -44,8 +44,8 @@ export default function SearchBar({ size = "lg" }) {
 
   return (
     <div ref={ref} className="relative w-full" data-testid="search-bar">
-      <form onSubmit={onSubmit} className={`flex items-center bg-white border border-[#E8E4D9] ${isLg ? "px-6 py-4" : "px-4 py-3"}`}>
-        <Search size={isLg ? 18 : 16} strokeWidth={1.5} className="text-[#4A5D54] mr-3 shrink-0" />
+      <form onSubmit={onSubmit} className={`flex items-center bg-white border border-[#EDE5DB] ${isLg ? "px-6 py-4" : "px-4 py-3"}`}>
+        <Search size={isLg ? 18 : 16} strokeWidth={1.5} className="text-[#333333] mr-3 shrink-0" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -59,9 +59,9 @@ export default function SearchBar({ size = "lg" }) {
         </button>
       </form>
       {open && results && (
-        <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-[#E8E4D9] z-40 shadow-xl max-h-[420px] overflow-auto">
+        <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-[#EDE5DB] z-40 shadow-xl max-h-[420px] overflow-auto">
           {results.projects?.length > 0 && (
-            <div className="p-4 border-b border-[#E8E4D9]">
+            <div className="p-4 border-b border-[#EDE5DB]">
               <div className="label-eyebrow mb-3">Projects</div>
               {results.projects.map((p) => (
                 <button
@@ -70,18 +70,18 @@ export default function SearchBar({ size = "lg" }) {
                     setOpen(false);
                     nav(`/projects/${p.city_slug}/${p.locality_slug}/${p.slug}`);
                   }}
-                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FAF9F6]"
+                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FCFAF5]"
                   data-testid={`search-project-${p.project_id}`}
                 >
-                  <Building2 size={14} strokeWidth={1.5} className="text-[#B68D40]" />
+                  <Building2 size={14} strokeWidth={1.5} className="text-[#DA9E3E]" />
                   <span className="text-sm">{p.name}</span>
-                  <span className="text-xs text-[#758A80] ml-auto">{p.locality}</span>
+                  <span className="text-xs text-[#666666] ml-auto">{p.locality}</span>
                 </button>
               ))}
             </div>
           )}
           {results.listings?.length > 0 && (
-            <div className="p-4 border-b border-[#E8E4D9]">
+            <div className="p-4 border-b border-[#EDE5DB]">
               <div className="label-eyebrow mb-3">Listings</div>
               {results.listings.map((l) => (
                 <button
@@ -90,10 +90,10 @@ export default function SearchBar({ size = "lg" }) {
                     setOpen(false);
                     nav(`/properties/${l.listing_id}`);
                   }}
-                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FAF9F6]"
+                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FCFAF5]"
                   data-testid={`search-listing-${l.listing_id}`}
                 >
-                  <Home size={14} strokeWidth={1.5} className="text-[#06402B]" />
+                  <Home size={14} strokeWidth={1.5} className="text-[#0C1D42]" />
                   <span className="text-sm">{l.title}</span>
                 </button>
               ))}
@@ -109,7 +109,7 @@ export default function SearchBar({ size = "lg" }) {
                     setOpen(false);
                     nav(`/properties?locality=${encodeURIComponent(loc.name)}`);
                   }}
-                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FAF9F6]"
+                  className="flex items-center gap-3 py-2 w-full text-left hover:bg-[#FCFAF5]"
                 >
                   <MapPin size={14} strokeWidth={1.5} />
                   <span className="text-sm">{loc.name}</span>
@@ -118,7 +118,7 @@ export default function SearchBar({ size = "lg" }) {
             </div>
           )}
           {!results.projects?.length && !results.listings?.length && !results.localities?.length && (
-            <div className="p-6 text-sm text-[#758A80] text-center">No results yet — try another keyword.</div>
+            <div className="p-6 text-sm text-[#666666] text-center">No results yet — try another keyword.</div>
           )}
         </div>
       )}

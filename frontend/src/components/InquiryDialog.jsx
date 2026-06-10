@@ -75,7 +75,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl bg-[#FCFAF5] p-0 max-h-[90vh]">
-        <DialogHeader className="p-6 pb-4 border-b border-[#E8E4D9]">
+        <DialogHeader className="p-6 pb-4 border-b border-[#EDE5DB]">
           <DialogTitle className="font-display text-2xl flex items-center justify-between">
             <span>{data.name}</span>
             <button onClick={() => onOpenChange(false)} className="text-[#9B4A3A]"><X size={18} /></button>
@@ -87,7 +87,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0 max-h-[70vh] overflow-hidden">
           {/* Left: details + status */}
-          <div className="md:col-span-1 p-6 border-r border-[#E8E4D9] overflow-auto">
+          <div className="md:col-span-1 p-6 border-r border-[#EDE5DB] overflow-auto">
             <div className="label-eyebrow mb-2">Status</div>
             <select
               value={data.status}
@@ -110,14 +110,14 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
             </button>
 
             <div className="label-eyebrow mt-8 mb-2">Initial message</div>
-            <p className="text-sm text-[#333333] leading-relaxed bg-white border border-[#E8E4D9] p-3">
+            <p className="text-sm text-[#333333] leading-relaxed bg-white border border-[#EDE5DB] p-3">
               {data.message || "—"}
             </p>
 
             <div className="label-eyebrow mt-8 mb-2">Notes</div>
             <div className="space-y-2 mb-3 max-h-40 overflow-auto">
               {(data.notes || []).map((n) => (
-                <div key={n.at} className="text-xs bg-white border border-[#E8E4D9] p-2">
+                <div key={n.at} className="text-xs bg-white border border-[#EDE5DB] p-2">
                   <div>{n.text}</div>
                   <div className="text-[#456C9A] mt-1">{new Date(n.at).toLocaleString()}</div>
                 </div>
@@ -140,7 +140,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
 
           {/* Right: chat */}
           <div className="md:col-span-2 flex flex-col">
-            <div className="p-4 border-b border-[#E8E4D9] flex items-center gap-2">
+            <div className="p-4 border-b border-[#EDE5DB] flex items-center gap-2">
               <MessageCircle size={16} className="text-[#0C1D42]" />
               <span className="label-eyebrow">Conversation</span>
             </div>
@@ -159,7 +159,7 @@ export default function InquiryDialog({ inquiry, open, onOpenChange, onChanged }
                 </div>
               )}
             </div>
-            <form onSubmit={sendMessage} className="p-4 border-t border-[#E8E4D9] flex gap-2" data-testid="inq-chat-form">
+            <form onSubmit={sendMessage} className="p-4 border-t border-[#EDE5DB] flex gap-2" data-testid="inq-chat-form">
               <input
                 value={msg}
                 onChange={(e) => setMsg(e.target.value)}

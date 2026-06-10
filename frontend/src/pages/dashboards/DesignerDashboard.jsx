@@ -56,7 +56,7 @@ function TabDesignerSiteVisits() {
 
   if (projects.length === 0) {
     return (
-      <div className="bg-white border border-[#E8E4D9] p-8 text-center text-gray-500 text-sm">
+      <div className="bg-white border border-[#EDE5DB] p-8 text-center text-gray-500 text-sm">
         No site visits scheduled yet. Once a customer books a visit date, it will appear here.
       </div>
     );
@@ -66,7 +66,7 @@ function TabDesignerSiteVisits() {
     <div className="space-y-4 animate-in fade-in">
       <h3 className="font-display text-xl text-[#0C1D42] mb-4">Scheduled Site Visits</h3>
       {projects.map(p => (
-        <div key={p.project_id} className="bg-white border border-[#E8E4D9] p-5">
+        <div key={p.project_id} className="bg-white border border-[#EDE5DB] p-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-widest text-[#DA9E3E] font-bold mb-1">
@@ -114,7 +114,7 @@ export default function DesignerDashboard() {
 
   return (
     <DashShell links={LINKS} title="Designer Studio">
-      <div className="flex gap-4 border-b border-[#E8E4D9] mb-6 pb-2 overflow-x-auto" data-testid="designer-tabs">
+      <div className="flex gap-4 border-b border-[#EDE5DB] mb-6 pb-2 overflow-x-auto" data-testid="designer-tabs">
         {LINKS.map(link => {
           const key = link.to.slice(1);
           return (

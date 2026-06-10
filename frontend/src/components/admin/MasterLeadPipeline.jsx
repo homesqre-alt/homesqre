@@ -113,26 +113,26 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
             <button
               data-testid="export-csv-btn"
               onClick={handleExportCSV}
-              className="border border-[#0C1D42] text-[#0C1D42] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#F3F0E9]"
+              className="border border-[#0C1D42] text-[#0C1D42] px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#F5EDE8]"
             >Export CSV</button>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 bg-[#F3F0E9] p-4 border border-[#E8E4D9]">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 bg-[#F5EDE8] p-4 border border-[#EDE5DB]">
         <input
           data-testid="filter-search"
           value={filters.q}
           onChange={e => setFilters({ ...filters, q: e.target.value })}
           placeholder="Search name / phone / email"
-          className="col-span-2 p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] bg-white"
+          className="col-span-2 p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white"
         />
         <select
           data-testid="filter-status"
           value={filters.status}
           onChange={e => setFilters({ ...filters, status: e.target.value })}
-          className="p-2 text-sm border border-[#E8E4D9] bg-white"
+          className="p-2 text-sm border border-[#EDE5DB] bg-white"
         >
           <option value="">All statuses</option>
           {statuses.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
@@ -141,7 +141,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
           data-testid="filter-source"
           value={filters.source}
           onChange={e => setFilters({ ...filters, source: e.target.value })}
-          className="p-2 text-sm border border-[#E8E4D9] bg-white"
+          className="p-2 text-sm border border-[#EDE5DB] bg-white"
         >
           <option value="">All sources</option>
           {sources.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
@@ -150,7 +150,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
           data-testid="filter-followup"
           value={filters.followup}
           onChange={e => setFilters({ ...filters, followup: e.target.value })}
-          className="p-2 text-sm border border-[#E8E4D9] bg-white"
+          className="p-2 text-sm border border-[#EDE5DB] bg-white"
         >
           <option value="">All follow-ups</option>
           <option value="overdue">Overdue</option>
@@ -161,7 +161,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
           data-testid="filter-assigned-to"
           value={filters.assigned_to}
           onChange={e => setFilters({ ...filters, assigned_to: e.target.value })}
-          className="p-2 text-sm border border-[#E8E4D9] bg-white"
+          className="p-2 text-sm border border-[#EDE5DB] bg-white"
         >
           <option value="">All Assignees</option>
           <option value="unassigned">Unassigned</option>
@@ -176,7 +176,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
             <button
               key={k}
               onClick={() => setFilters(f => ({ ...f, status: f.status === k ? "" : k }))}
-              className={`px-3 py-1 text-xs border ${filters.status === k ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#E8E4D9] text-[#0C1D42] hover:bg-[#F3F0E9]"}`}
+              className={`px-3 py-1 text-xs border ${filters.status === k ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB] text-[#0C1D42] hover:bg-[#F5EDE8]"}`}
             >
               {k}: {v}
             </button>
@@ -185,7 +185,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
       )}
 
       {/* Lead table */}
-      <div className="border border-[#E8E4D9] overflow-x-auto">
+      <div className="border border-[#EDE5DB] overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-[#0C1D42] text-white text-xs uppercase tracking-widest">
             <tr>
@@ -208,7 +208,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
                 key={l.lead_id}
                 onClick={() => setSelected(l)}
                 data-testid={`lead-row-${l.lead_id}`}
-                className="border-t border-[#E8E4D9] hover:bg-[#F3F0E9] cursor-pointer"
+                className="border-t border-[#EDE5DB] hover:bg-[#F5EDE8] cursor-pointer"
               >
                 <td className="p-3 font-semibold text-[#0C1D42]">
                   {l.name}
@@ -217,7 +217,7 @@ export default function MasterLeadPipeline({ mode = "admin", currentUser }) {
                 <td className="p-3">{l.phone}</td>
                 <td className="p-3 text-xs">{l.source}</td>
                 <td className="p-3 text-xs">
-                  <span className={`px-2 py-0.5 border ${l.status === 'Partial Payment Pending' ? 'bg-red-600 text-white border-red-700 font-bold shadow-sm' : 'bg-[#F3F0E9] border-[#E8E4D9]'}`}>
+                  <span className={`px-2 py-0.5 border ${l.status === 'Partial Payment Pending' ? 'bg-red-600 text-white border-red-700 font-bold shadow-sm' : 'bg-[#F5EDE8] border-[#EDE5DB]'}`}>
                     {l.status}
                   </span>
                 </td>
@@ -311,7 +311,7 @@ function LeadAddModal({ mode, statuses, sources, budgets, employees, onClose, on
           <Field label="Message" full><textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows="3" className={inputCls} /></Field>
         </div>
         <div className="flex justify-end gap-2 mt-5">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9]">Cancel</button>
+          <button type="button" onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#EDE5DB]">Cancel</button>
           <button type="submit" disabled={busy} data-testid="add-lead-submit" className="px-4 py-2 text-xs uppercase tracking-widest bg-[#0C1D42] text-white disabled:opacity-50">
             {busy ? "Creating…" : "Create"}
           </button>
@@ -529,12 +529,12 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
             
             {(data.history || []).map((h, i) => (
               <div key={`h-${i}`} className="relative">
-                <div className="absolute -left-[27px] top-1 w-3 h-3 bg-[#DA9E3E] rounded-full border-2 border-[#F3F0E9]"></div>
+                <div className="absolute -left-[27px] top-1 w-3 h-3 bg-[#DA9E3E] rounded-full border-2 border-[#F5EDE8]"></div>
                 <div className="text-[10px] text-gray-500 font-medium tracking-wide">
                   {new Date(h.at).toLocaleString()}
                 </div>
                 <div className="text-xs text-[#0C1D42] mt-0.5">
-                  <span className="font-semibold">{h.by === "system" ? "System" : h.by}</span> moved lead to <span className="font-bold bg-[#F3F0E9] px-1">{h.to_status}</span>
+                  <span className="font-semibold">{h.by === "system" ? "System" : h.by}</span> moved lead to <span className="font-bold bg-[#F5EDE8] px-1">{h.to_status}</span>
                 </div>
               </div>
             ))}
@@ -572,7 +572,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         {canEditWorkflow && (
           <section
             data-testid="lead-submit-bar"
-            className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-white border-t border-[#E8E4D9] flex flex-col sm:flex-row sm:items-center gap-3"
+            className="sticky bottom-0 -mx-6 -mb-6 px-6 py-4 bg-white border-t border-[#EDE5DB] flex flex-col sm:flex-row sm:items-center gap-3"
           >
             <p className="text-xs text-[#333333] flex-1">
               {dirtyCount === 0
@@ -584,7 +584,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
                 onClick={discardChanges}
                 disabled={busy || dirtyCount === 0}
                 data-testid="lead-discard-btn"
-                className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9] text-[#333333] disabled:opacity-40"
+                className="px-4 py-2 text-xs uppercase tracking-widest border border-[#EDE5DB] text-[#333333] disabled:opacity-40"
               >Discard</button>
               <button
                 onClick={submitChanges}
@@ -601,7 +601,7 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
 }
 
 // ---------- shared helpers ----------
-const inputCls = "p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#0C1D42] bg-white w-full";
+const inputCls = "p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white w-full";
 function Field({ label, full, children }) {
   return (
     <div className={full ? "md:col-span-2" : ""}>

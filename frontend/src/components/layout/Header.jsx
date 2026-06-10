@@ -41,7 +41,7 @@ export default function Header() {
       <header
         className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-[#FCFAF5]/95 backdrop-blur-xl border-b border-[#E8E4D9] shadow-sm"
+            ? "bg-[#FCFAF5]/95 backdrop-blur-xl border-b border-[#EDE5DB] shadow-sm"
             : "bg-transparent border-b border-transparent"
         }`}
       >
@@ -104,7 +104,7 @@ export default function Header() {
 
           {/* Mobile hamburger */}
           <button
-            className="lg:hidden z-10 w-11 h-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#F3F0E9]"
+            className="lg:hidden z-10 w-11 h-11 flex items-center justify-center rounded-full transition-colors hover:bg-[#F5EDE8]"
             onClick={() => setOpen(!open)}
             data-testid="mobile-menu-toggle"
             aria-label="Menu"

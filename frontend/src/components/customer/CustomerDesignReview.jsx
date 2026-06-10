@@ -64,7 +64,7 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
   if (loading) return <p className="text-[#333333]">Loading your designs…</p>;
   if (!project) {
     return (
-      <div className="bg-white border border-[#E8E4D9] p-8 text-center text-[#333333]">
+      <div className="bg-white border border-[#EDE5DB] p-8 text-center text-[#333333]">
         Your designer hasn't uploaded any renders yet. We'll notify you as soon as the first batch is ready.
       </div>
     );
@@ -76,13 +76,13 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
 
   return (
     <div className="space-y-10" data-testid="customer-design-review">
-      <header className="border-b border-[#E8E4D9] pb-4">
+      <header className="border-b border-[#EDE5DB] pb-4">
         <h3 className="font-display text-2xl text-[#0C1D42]">Your 3D Designs</h3>
         <p className="text-sm text-[#333333] mt-1">
           Review each render. Approve the ones you love, or request improvements with notes for your designer.
         </p>
         <div className="mt-3 flex gap-4 text-xs">
-          <span className="bg-[#F3F0E9] border border-[#E8E4D9] px-3 py-1">Pending: {pending.length}</span>
+          <span className="bg-[#F5EDE8] border border-[#EDE5DB] px-3 py-1">Pending: {pending.length}</span>
           <span className="bg-green-50 border border-green-200 text-green-800 px-3 py-1">Approved: {approved.length}</span>
           <span className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1">Improvement: {needsImprovement.length}</span>
         </div>
@@ -131,10 +131,10 @@ export default function CustomerDesignReview({ phase, onProjectAdvance }) {
             <p className="text-xs text-[#333333] mb-3">Be specific so your designer can address it precisely (lighting, layout, materials, colours).</p>
             <textarea data-testid="improvement-comment"
                       autoFocus value={reasonText} onChange={(e) => setReasonText(e.target.value)} rows="4"
-                      className="w-full p-2 border border-[#E8E4D9] text-sm focus:outline-none focus:border-[#0C1D42]"
+                      className="w-full p-2 border border-[#EDE5DB] text-sm focus:outline-none focus:border-[#0C1D42]"
                       placeholder="e.g. The sofa colour clashes with the wall paint…" />
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setRejecting(null)} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9]">Cancel</button>
+              <button onClick={() => setRejecting(null)} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#EDE5DB]">Cancel</button>
               <button onClick={submitImprovement} disabled={busy || !reasonText.trim()}
                       data-testid="improvement-submit"
                       className="px-4 py-2 text-xs uppercase tracking-widest bg-[#DA9E3E] text-white disabled:opacity-50">
@@ -155,8 +155,8 @@ function Section({ title, items, renderActions, dimmed = false, absUrl }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map(img => (
           <div key={img.image_id}
-               className={`bg-white border border-[#E8E4D9] overflow-hidden ${dimmed ? "opacity-70" : ""}`}>
-            <div className="aspect-video bg-[#F3F0E9] overflow-hidden">
+               className={`bg-white border border-[#EDE5DB] overflow-hidden ${dimmed ? "opacity-70" : ""}`}>
+            <div className="aspect-video bg-[#F5EDE8] overflow-hidden">
               <a href={absUrl(img.url)} target="_blank" rel="noopener noreferrer">
                 <img src={absUrl(img.url)} alt={img.designer_comment} className="w-full h-full object-cover hover:scale-105 transition" />
               </a>

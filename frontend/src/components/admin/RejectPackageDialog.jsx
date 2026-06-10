@@ -67,8 +67,8 @@ export default function RejectPackageDialog({ verification, onClose, onSubmitted
       <div onClick={(e) => e.stopPropagation()} data-testid="reject-package-dialog"
            className="bg-white max-w-xl w-full p-6 space-y-5">
         <header>
-          <h3 className="font-display text-2xl text-[#06402B]">Reject — Package Mismatch</h3>
-          <p className="text-sm text-[#4A5D54] mt-1">
+          <h3 className="font-display text-2xl text-[#0C1D42]">Reject — Package Mismatch</h3>
+          <p className="text-sm text-[#333333] mt-1">
             Customer paid for <strong className="capitalize">{verification.bhk_or_units} {verification.property_type}</strong>{" "}
             (₹{invoicePaid.toLocaleString("en-IN")}). Select the package that actually matches the uploaded floor plan.
           </p>
@@ -109,31 +109,31 @@ export default function RejectPackageDialog({ verification, onClose, onSubmitted
           </Field>
         </div>
 
-        <div className="bg-[#F3F0E9] border border-[#E8E4D9] p-4 grid grid-cols-3 gap-2 text-center">
+        <div className="bg-[#F5EDE8] border border-[#EDE5DB] p-4 grid grid-cols-3 gap-2 text-center">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#4A5D54]">Paid</p>
-            <p className="font-display text-lg text-[#06402B]">₹{invoicePaid.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] uppercase tracking-widest text-[#333333]">Paid</p>
+            <p className="font-display text-lg text-[#0C1D42]">₹{invoicePaid.toLocaleString("en-IN")}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#4A5D54]">Corrected</p>
-            <p className="font-display text-lg text-[#06402B]" data-testid="corrected-price">₹{correctedPrice.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] uppercase tracking-widest text-[#333333]">Corrected</p>
+            <p className="font-display text-lg text-[#0C1D42]" data-testid="corrected-price">₹{correctedPrice.toLocaleString("en-IN")}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#B68D40] font-bold">Differential</p>
-            <p className="font-display text-2xl text-[#B68D40]" data-testid="dialog-differential">₹{differential.toLocaleString("en-IN")}</p>
+            <p className="text-[10px] uppercase tracking-widest text-[#DA9E3E] font-bold">Differential</p>
+            <p className="font-display text-2xl text-[#DA9E3E]" data-testid="dialog-differential">₹{differential.toLocaleString("en-IN")}</p>
           </div>
         </div>
         {differential === 0 && correctedPrice > 0 && (
-          <p className="text-xs text-[#06402B]">No extra payment needed — customer will be pushed to designing immediately.</p>
+          <p className="text-xs text-[#0C1D42]">No extra payment needed — customer will be pushed to designing immediately.</p>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#E8E4D9]">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-xs uppercase tracking-widest border border-[#EDE5DB]">Cancel</button>
           <button
             onClick={submit}
             disabled={busy || correctedPrice === 0}
             data-testid="submit-reject-package"
-            className="px-4 py-2 text-xs uppercase tracking-widest bg-[#B68D40] text-white disabled:opacity-50 hover:bg-[#9d7936]"
+            className="px-4 py-2 text-xs uppercase tracking-widest bg-[#DA9E3E] text-white disabled:opacity-50 hover:bg-[#9d7936]"
           >
             {busy ? "Sending…" : differential > 0 ? "Send to Customer for Payment" : "Confirm & Push to Designing"}
           </button>
@@ -143,11 +143,11 @@ export default function RejectPackageDialog({ verification, onClose, onSubmitted
   );
 }
 
-const inputCls = "p-2 text-sm border border-[#E8E4D9] focus:outline-none focus:border-[#06402B] bg-white w-full";
+const inputCls = "p-2 text-sm border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] bg-white w-full";
 function Field({ label, full, children }) {
   return (
     <div className={full ? "sm:col-span-2" : ""}>
-      <label className="block text-[10px] uppercase tracking-widest font-bold text-[#06402B] mb-1">{label}</label>
+      <label className="block text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-1">{label}</label>
       {children}
     </div>
   );

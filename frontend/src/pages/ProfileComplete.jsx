@@ -128,9 +128,9 @@ export default function ProfileComplete() {
             </button>
             
             <div className="flex items-center gap-4 my-4">
-              <div className="flex-1 h-px bg-[#E8E4D9]" />
+              <div className="flex-1 h-px bg-[#EDE5DB]" />
               <span className="label-eyebrow">OR CHOOSE</span>
-              <div className="flex-1 h-px bg-[#E8E4D9]" />
+              <div className="flex-1 h-px bg-[#EDE5DB]" />
             </div>
 
             <select

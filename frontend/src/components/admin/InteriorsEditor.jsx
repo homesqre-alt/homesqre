@@ -113,7 +113,7 @@ export default function InteriorsEditor() {
       />
       <FinalCtaSection data={data} upd={upd} />
 
-      <div className="flex justify-end gap-3 pt-6 border-t border-[#E8E4D9] sticky bottom-0 bg-[#FCFAF5] py-4">
+      <div className="flex justify-end gap-3 pt-6 border-t border-[#EDE5DB] sticky bottom-0 bg-[#FCFAF5] py-4">
         <button onClick={load} className="btn-secondary">
           Reset
         </button>
@@ -212,7 +212,7 @@ function ListSection({ title, items, columns, onChange, newItem, addLabel, testI
 
 function ListRow({ row, columns, onUpdate, onDelete }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-[#FCFAF5] p-3 border border-[#E8E4D9]">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start bg-[#FCFAF5] p-3 border border-[#EDE5DB]">
       {columns.map((c) => (
         <input
           key={c.key}
@@ -243,7 +243,7 @@ function WhyChooseUsSection({ items, updateList }) {
     <Section title="Why Choose Us (stats, max 6)">
       <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
         {list.map((s, i) => (
-          <div key={`why-${i}-${s.value || ""}`} className="bg-[#FCFAF5] p-3 border border-[#E8E4D9] relative">
+          <div key={`why-${i}-${s.value || ""}`} className="bg-[#FCFAF5] p-3 border border-[#EDE5DB] relative">
             <input
               className="hs-input mb-2"
               placeholder="icon"
@@ -307,9 +307,9 @@ function CostMatrixSection({ matrix, upd }) {
   return (
     <Section title="Cost Estimator Matrix">
       <div className="md:col-span-2 overflow-x-auto">
-        <table className="w-full text-sm border border-[#E8E4D9] min-w-[600px]">
+        <table className="w-full text-sm border border-[#EDE5DB] min-w-[600px]">
           <thead>
-            <tr className="bg-[#F3F0E9]">
+            <tr className="bg-[#F5EDE8]">
               <th className="p-3 text-left label-eyebrow">BHK</th>
               {tiers.map((t) => (
                 <th key={t} className="p-3 text-left label-eyebrow">
@@ -320,7 +320,7 @@ function CostMatrixSection({ matrix, upd }) {
           </thead>
           <tbody>
             {Object.entries(matrix).map(([bhk, tiersObj]) => (
-              <tr key={bhk} className="border-t border-[#E8E4D9]">
+              <tr key={bhk} className="border-t border-[#EDE5DB]">
                 <td className="p-3 font-semibold">{bhk}</td>
                 {tiers.map((tier) => (
                   <td key={`${bhk}-${tier}`} className="p-2">
@@ -411,7 +411,7 @@ function FinalCtaSection({ data, upd }) {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-6">
+    <div className="bg-white border border-[#EDE5DB] p-6">
       <div className="font-display text-2xl text-[#0C1D42] mb-5">{title}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
     </div>

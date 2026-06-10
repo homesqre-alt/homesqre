@@ -61,15 +61,15 @@ function Listings() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <p className="text-sm text-[#4A5D54]">{items.length} listings</p>
+        <p className="text-sm text-[#333333]">{items.length} listings</p>
         <button onClick={() => { setEditing(null); setOpen(true); }} className="btn-primary" data-testid="add-listing-btn">
           <Plus size={14} /> Add Listing
         </button>
       </div>
 
-      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+      <div className="bg-white border border-[#EDE5DB] overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[#F3F0E9]">
+          <thead className="bg-[#F5EDE8]">
             <tr>
               {["Title", "Locality", "Type", "Price", "Status", "Views", ""].map((h) => (
                 <th key={h} className="text-left p-4 label-eyebrow">{h}</th>
@@ -78,23 +78,23 @@ function Listings() {
           </thead>
           <tbody>
             {items.map((it) => (
-              <tr key={it.listing_id} className="border-t border-[#E8E4D9]">
+              <tr key={it.listing_id} className="border-t border-[#EDE5DB]">
                 <td className="p-4">{it.title}</td>
                 <td className="p-4">{it.locality}</td>
                 <td className="p-4 uppercase text-xs">{it.kind}</td>
-                <td className="p-4 font-semibold text-[#06402B]">{formatINR(it.price)}</td>
+                <td className="p-4 font-semibold text-[#0C1D42]">{formatINR(it.price)}</td>
                 <td className="p-4">
                   <StatusPill status={it.status} />
                 </td>
                 <td className="p-4">{it.views}</td>
                 <td className="p-4 flex gap-2">
-                  <button onClick={() => { setEditing(it); setOpen(true); }} className="p-1 hover:text-[#06402B]"><Edit size={15} /></button>
+                  <button onClick={() => { setEditing(it); setOpen(true); }} className="p-1 hover:text-[#0C1D42]"><Edit size={15} /></button>
                   <button onClick={() => remove(it.listing_id)} className="p-1 hover:text-[#9B4A3A]"><Trash2 size={15} /></button>
                 </td>
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={7} className="p-12 text-center text-[#758A80]">No listings yet — add your first one.</td></tr>
+              <tr><td colSpan={7} className="p-12 text-center text-[#666666]">No listings yet — add your first one.</td></tr>
             )}
           </tbody>
         </table>
@@ -135,7 +135,7 @@ function ListingDialog({ open, setOpen, editing, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5]">
         <DialogHeader>
           <DialogTitle className="font-display text-3xl">{editing ? "Edit Listing" : "New Listing"}</DialogTitle>
         </DialogHeader>
@@ -171,7 +171,7 @@ function ListingDialog({ open, setOpen, editing, onSaved }) {
             <textarea className="hs-input min-h-[80px]" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
         </div>
-        <div className="flex gap-3 justify-end pt-4 border-t border-[#E8E4D9]">
+        <div className="flex gap-3 justify-end pt-4 border-t border-[#EDE5DB]">
           <button onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
           <button onClick={save} className="btn-primary" data-testid="lst-save">Save</button>
         </div>
@@ -191,13 +191,13 @@ function Field({ label, full = false, children }) {
 
 function StatusPill({ status }) {
   const map = {
-    draft: "bg-[#E8E4D9] text-[#1A2421]",
+    draft: "bg-[#EDE5DB] text-[#0C1D42]",
     pending: "bg-[#FEF08A] text-[#7C5800]",
-    approved: "bg-[#BBF7D0] text-[#06402B]",
+    approved: "bg-[#BBF7D0] text-[#0C1D42]",
     rejected: "bg-[#FECACA] text-[#9B4A3A]",
   };
   const label = status === "approved" ? "live" : status;
-  return <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${map[status] || "bg-[#E8E4D9]"}`}>{label || "—"}</span>;
+  return <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${map[status] || "bg-[#EDE5DB]"}`}>{label || "—"}</span>;
 }
 
 function Leads() {
@@ -227,30 +227,30 @@ function Leads() {
           <div key={s} className="kanban-col w-72">
             <div className="flex items-center justify-between mb-4">
               <div className="font-display text-lg capitalize">{s.replace("-", " ")}</div>
-              <span className="label-eyebrow text-[#4A5D54]">
+              <span className="label-eyebrow text-[#333333]">
                 {items.filter((i) => i.status === s).length}
               </span>
             </div>
             <div className="space-y-3">
               {items.filter((i) => i.status === s).map((i) => (
-                <div key={i.inquiry_id} className="bg-[#FAF9F6] border border-[#E8E4D9] p-3" data-testid={`lead-${i.inquiry_id}`}>
+                <div key={i.inquiry_id} className="bg-[#FCFAF5] border border-[#EDE5DB] p-3" data-testid={`lead-${i.inquiry_id}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm truncate">{i.name}</div>
-                      <div className="text-xs text-[#4A5D54] mt-1">{i.mobile}</div>
+                      <div className="text-xs text-[#333333] mt-1">{i.mobile}</div>
                     </div>
                     <button
                       onClick={() => setOpen(i)}
-                      className="text-[#06402B] hover:text-[#B68D40] shrink-0"
+                      className="text-[#0C1D42] hover:text-[#DA9E3E] shrink-0"
                       data-testid={`open-lead-${i.inquiry_id}`}
                       aria-label="open"
                     >
                       <MessageSquare size={15} />
                     </button>
                   </div>
-                  <div className="text-xs text-[#758A80] mt-1 line-clamp-2">{i.target_title}</div>
+                  <div className="text-xs text-[#666666] mt-1 line-clamp-2">{i.target_title}</div>
                   {(i.messages?.length > 0 || i.notes?.length > 0) && (
-                    <div className="flex gap-3 mt-2 text-[10px] text-[#B68D40] tracking-widest uppercase">
+                    <div className="flex gap-3 mt-2 text-[10px] text-[#DA9E3E] tracking-widest uppercase">
                       {i.messages?.length > 0 && <span>{i.messages.length} msg</span>}
                       {i.notes?.length > 0 && <span>{i.notes.length} note</span>}
                     </div>
@@ -276,10 +276,10 @@ function Leads() {
 
 function Subscription() {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-10 max-w-2xl">
+    <div className="bg-white border border-[#EDE5DB] p-10 max-w-2xl">
       <div className="label-eyebrow mb-3">Listing Packages</div>
       <h2 className="font-display text-3xl mb-4">Get in touch with your Relationship Manager</h2>
-      <p className="text-[#4A5D54] mb-6">
+      <p className="text-[#333333] mb-6">
         We've reserved a dedicated RM for every Homesqre agent. Tap below and we'll connect within a business day.
       </p>
       <a href="mailto:rm@homesqre.com" className="btn-gold inline-flex">Contact my RM</a>

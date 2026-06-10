@@ -45,7 +45,7 @@ export default function AdminDashboard() {
 
   return (
     <DashShell links={LINKS} title="Homesqre Command Center">
-      <div className="flex gap-4 border-b border-[#E8E4D9] mb-8 pb-2 overflow-x-auto">
+      <div className="flex gap-4 border-b border-[#EDE5DB] mb-8 pb-2 overflow-x-auto">
         {LINKS.map(link => (
           <button 
             key={link.to} 
@@ -170,7 +170,7 @@ export function TabAdminSiteVisits() {
   return (
     <div className="space-y-8 animate-in fade-in">
       {/* SLOT MANAGER */}
-      <div className="bg-white border border-[#E8E4D9] p-6">
+      <div className="bg-white border border-[#EDE5DB] p-6">
         <h3 className="font-display text-xl text-[#0C1D42] mb-2">Slot Manager</h3>
         <p className="text-sm text-[#333333] mb-4">Block or unblock specific times to manage lead engineer availability for the next 3 days.</p>
         
@@ -182,7 +182,7 @@ export function TabAdminSiteVisits() {
                 key={i}
                 onClick={() => setSelectedDate(d)}
                 className={`px-4 py-2 text-xs uppercase tracking-widest font-bold border transition whitespace-nowrap rounded ${
-                  isSelected ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#E8E4D9] text-[#333333] hover:bg-[#F3F0E9]"
+                  isSelected ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB] text-[#333333] hover:bg-[#F5EDE8]"
                 }`}
               >
                 {d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
@@ -197,7 +197,7 @@ export function TabAdminSiteVisits() {
             const isBooked = slotsData.booked_slots.includes(dt);
             const isBlocked = slotsData.blocked_slots.includes(dt);
             
-            let btnClass = "border-[#E8E4D9] text-[#0C1D42] hover:bg-[#F3F0E9]";
+            let btnClass = "border-[#EDE5DB] text-[#0C1D42] hover:bg-[#F5EDE8]";
             let statusLabel = "Available";
             
             if (isBooked) {
@@ -233,12 +233,12 @@ export function TabAdminSiteVisits() {
       <div>
         <h3 className="font-display text-xl text-[#0C1D42] mb-4">Pending Site Visits</h3>
         {projects.length === 0 ? (
-          <div className="bg-white border border-[#E8E4D9] p-8 text-center text-gray-500 text-sm">
+          <div className="bg-white border border-[#EDE5DB] p-8 text-center text-gray-500 text-sm">
             No pending site visits. Once a customer books a visit date, it will appear here.
           </div>
         ) : (
           projects.map(p => (
-            <div key={p.project_id} className="bg-white border border-[#E8E4D9] p-5 mb-4">
+            <div key={p.project_id} className="bg-white border border-[#EDE5DB] p-5 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-widest text-[#DA9E3E] font-bold mb-1">
@@ -319,7 +319,7 @@ export function TabOverview() {
   return (
     <div className="animate-in fade-in space-y-6" data-testid="admin-analytics">
       {/* Section nav */}
-      <div className="flex gap-2 border-b border-[#E8E4D9] pb-2 overflow-x-auto">
+      <div className="flex gap-2 border-b border-[#EDE5DB] pb-2 overflow-x-auto">
         {sections.map(s => (
           <button
             key={s.id}
@@ -366,10 +366,10 @@ export function TabOverview() {
                       <stop offset="100%" stopColor="#0C1D42" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DB" />
                   <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#333333" }} tickFormatter={(d) => d.slice(5)} />
                   <YAxis tick={{ fontSize: 10, fill: "#333333" }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #EDE5DB" }} />
                   <Area type="monotone" dataKey="count" stroke="#0C1D42" strokeWidth={2} fill="url(#gLeads)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -391,7 +391,7 @@ export function TabOverview() {
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #EDE5DB" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -400,10 +400,10 @@ export function TabOverview() {
             <ChartCard title="Top Lead Sources" testId="chart-leads-by-source">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={data.leads_by_source} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DB" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#333333" }} />
                   <YAxis tick={{ fontSize: 10, fill: "#333333" }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #EDE5DB" }} />
                   <Bar dataKey="count" fill="#DA9E3E" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -412,10 +412,10 @@ export function TabOverview() {
             <ChartCard title="Customers by Project Phase" testId="chart-customers-by-phase">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={data.customers_by_phase} layout="vertical" margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DB" />
                   <XAxis type="number" tick={{ fontSize: 10, fill: "#333333" }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#333333" }} width={110} />
-                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #EDE5DB" }} />
                   <Bar dataKey="count" fill="#0C1D42" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -443,10 +443,10 @@ export function TabOverview() {
                   layout="vertical"
                   margin={{ top: 10, right: 40, left: 60, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DB" />
                   <XAxis type="number" tick={{ fontSize: 10, fill: "#333333" }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#333333" }} width={120} />
-                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, border: "1px solid #EDE5DB" }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="total" name="Total Leads" fill="#0C1D42" radius={[0, 3, 3, 0]} />
                   <Bar dataKey="converted" name="Converted" fill="#DA9E3E" radius={[0, 3, 3, 0]} />
@@ -458,9 +458,9 @@ export function TabOverview() {
           )}
 
           {/* Salesperson table */}
-          <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+          <div className="bg-white border border-[#EDE5DB] overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#F3F0E9]">
+              <thead className="bg-[#F5EDE8]">
                 <tr>
                   <th className="text-left p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Sales Rep</th>
                   <th className="text-center p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Total Leads</th>
@@ -477,7 +477,7 @@ export function TabOverview() {
                 {(data.leads_by_salesperson || []).map((rep, i) => {
                   const rate = rep.total > 0 ? ((rep.converted / rep.total) * 100).toFixed(1) : "0.0";
                   return (
-                    <tr key={i} className="border-t border-[#E8E4D9] hover:bg-[#FCFAF5] transition">
+                    <tr key={i} className="border-t border-[#EDE5DB] hover:bg-[#FCFAF5] transition">
                       <td className="p-4 font-medium text-[#0C1D42]">{rep.name || "—"}</td>
                       <td className="p-4 text-center font-bold">{rep.total}</td>
                       <td className="p-4 text-center text-[#0C1D42] font-bold">{rep.converted}</td>
@@ -513,9 +513,9 @@ export function TabOverview() {
             <span className="ml-auto bg-red-600 text-white text-sm font-bold px-3 py-1 rounded-full">{c.missed_calls ?? 0}</span>
           </div>
 
-          <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+          <div className="bg-white border border-[#EDE5DB] overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#F3F0E9]">
+              <thead className="bg-[#F5EDE8]">
                 <tr>
                   <th className="text-left p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Lead Name</th>
                   <th className="text-left p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Phone</th>
@@ -530,7 +530,7 @@ export function TabOverview() {
                   <tr><td colSpan="6" className="p-6 text-center text-gray-400 italic">No missed calls. Great job! 🎉</td></tr>
                 )}
                 {(data.missed_calls_list || []).map((lead, i) => (
-                  <tr key={lead.lead_id || i} className="border-t border-[#E8E4D9] hover:bg-red-50/30 transition">
+                  <tr key={lead.lead_id || i} className="border-t border-[#EDE5DB] hover:bg-red-50/30 transition">
                     <td className="p-4 font-medium text-[#0C1D42]">{lead.name}</td>
                     <td className="p-4">
                       <a href={`tel:${lead.phone}`} className="text-[#DA9E3E] hover:underline font-medium">{lead.phone}</a>
@@ -561,9 +561,9 @@ export function TabOverview() {
             <span className="ml-auto bg-orange-500 text-white text-sm font-bold px-3 py-1 rounded-full">{c.overdue_followups ?? 0}</span>
           </div>
 
-          <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+          <div className="bg-white border border-[#EDE5DB] overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#F3F0E9]">
+              <thead className="bg-[#F5EDE8]">
                 <tr>
                   <th className="text-left p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Lead Name</th>
                   <th className="text-left p-4 text-xs font-bold uppercase tracking-widest text-[#0C1D42]">Phone</th>
@@ -581,7 +581,7 @@ export function TabOverview() {
                     ? Math.floor((Date.now() - new Date(lead.next_followup_at)) / 86400000)
                     : null;
                   return (
-                    <tr key={lead.lead_id || i} className="border-t border-[#E8E4D9] hover:bg-orange-50/30 transition">
+                    <tr key={lead.lead_id || i} className="border-t border-[#EDE5DB] hover:bg-orange-50/30 transition">
                       <td className="p-4 font-medium text-[#0C1D42]">{lead.name}</td>
                       <td className="p-4">
                         <a href={`tel:${lead.phone}`} className="text-[#DA9E3E] hover:underline font-medium">{lead.phone}</a>
@@ -615,7 +615,7 @@ const PIE_COLORS = ["#0C1D42", "#DA9E3E", "#C88C2F", "#08142D", "#333333", "#D4B
 function MetricCard({ label, value, accent, testId }) {
   const color = accent === "gold" ? "#DA9E3E" : accent === "red" ? "#B53A3A" : "#0C1D42";
   return (
-    <div className="bg-white border border-[#E8E4D9] p-4" data-testid={testId}>
+    <div className="bg-white border border-[#EDE5DB] p-4" data-testid={testId}>
       <p className="text-[10px] uppercase tracking-widest text-[#333333] mb-2">{label}</p>
       <p className="font-display text-2xl" style={{ color }}>{value}</p>
     </div>
@@ -624,7 +624,7 @@ function MetricCard({ label, value, accent, testId }) {
 
 function ChartCard({ title, testId, children }) {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-4" data-testid={testId}>
+    <div className="bg-white border border-[#EDE5DB] p-4" data-testid={testId}>
       <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-3">{title}</h4>
       {children}
     </div>
@@ -679,8 +679,8 @@ export function TabDiscoveryCalls({ currentUser }) {
         <strong>Auto-Assign Logic Active:</strong> Leads are routed round-robin. If a lead is not marked 'Connected' or 'Missed' within 15 minutes, it automatically shifts to the next available agent.
       </div>
 
-      <table className="w-full text-sm bg-white border border-[#E8E4D9]">
-        <thead className="bg-[#F3F0E9]">
+      <table className="w-full text-sm bg-white border border-[#EDE5DB]">
+        <thead className="bg-[#F5EDE8]">
           <tr>
             <th className="text-left p-4 font-bold">Lead Contact</th>
             <th className="text-left p-4 font-bold">Assigned To</th>
@@ -698,7 +698,7 @@ export function TabDiscoveryCalls({ currentUser }) {
             const isMine = c.assigned_to === currentUser.name;
             
             return (
-              <tr key={c.call_id} className="border-t border-[#E8E4D9]">
+              <tr key={c.call_id} className="border-t border-[#EDE5DB]">
                 <td className="p-4">{c.name} <br/><span className="text-gray-500">{c.phone}</span></td>
                 <td className={`p-4 font-bold ${isMine ? 'text-green-600' : 'text-[#0C1D42]'}`}>
                   {c.assigned_to} {isMine && "(You)"}
@@ -708,7 +708,7 @@ export function TabDiscoveryCalls({ currentUser }) {
                 </td>
                 <td className="p-4">
                   <select 
-                    className="border border-[#E8E4D9] p-1 text-xs"
+                    className="border border-[#EDE5DB] p-1 text-xs"
                     value={c.status}
                     onChange={(e) => updateStatus(c.call_id, e.target.value)}
                   >
@@ -767,10 +767,10 @@ export function TabSiteVisits() {
       <h3 className="font-display text-xl text-[#0C1D42] mb-4">Floor Plan Verification Queue</h3>
 
       {pending.length === 0 ? (
-        <p className="text-gray-500 bg-white border border-[#E8E4D9] p-6 mb-8 text-center">No pending floor plans to verify.</p>
+        <p className="text-gray-500 bg-white border border-[#EDE5DB] p-6 mb-8 text-center">No pending floor plans to verify.</p>
       ) : (
         pending.map(v => (
-          <div key={v.verification_id} className="bg-white border border-[#E8E4D9] p-6 mb-4" data-testid={`verification-${v.verification_id}`}>
+          <div key={v.verification_id} className="bg-white border border-[#EDE5DB] p-6 mb-4" data-testid={`verification-${v.verification_id}`}>
             <div className="flex justify-between items-start mb-4">
               <div>
                 {(v.customer?.name || v.customer?.project_name) && (
@@ -813,7 +813,7 @@ export function TabSiteVisits() {
           <h4 className="font-display text-sm uppercase tracking-widest text-[#0C1D42] mb-3">Recently resolved</h4>
           <div className="space-y-2">
             {recentlyResolved.map(v => (
-              <div key={v.verification_id} className="bg-[#F3F0E9] border border-[#E8E4D9] p-3 text-xs flex justify-between items-center">
+              <div key={v.verification_id} className="bg-[#F5EDE8] border border-[#EDE5DB] p-3 text-xs flex justify-between items-center">
                 <span className="capitalize">
                   {v.customer?.name && <strong className="not-italic">{v.customer.name}</strong>}
                   {v.customer?.project_name && <> — <em className="text-[#333333]">{v.customer.project_name}</em></>}
@@ -922,7 +922,7 @@ function TabUsers() {
   return (
     <div className="animate-in fade-in space-y-8">
       {/* ADD EMPLOYEE FORM */}
-      <div className="bg-white p-6 border border-[#E8E4D9]">
+      <div className="bg-white p-6 border border-[#EDE5DB]">
         <h3 className="font-display text-lg mb-4 text-[#0C1D42]">Add Department Member</h3>
         <form onSubmit={handleAddMember} className="flex flex-col gap-4 max-w-md mt-4">
           <div className="grid grid-cols-2 gap-4">
@@ -931,14 +931,14 @@ function TabUsers() {
               placeholder="Department Member Email *"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
-              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#08142D]"
+              className="border border-[#EDE5DB] p-2 rounded focus:outline-none focus:border-[#08142D]"
             />
             <input 
               type="text" 
               placeholder="Phone Number"
               value={newPhone}
               onChange={(e) => setNewPhone(e.target.value)}
-              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#08142D]"
+              className="border border-[#EDE5DB] p-2 rounded focus:outline-none focus:border-[#08142D]"
             />
           </div>
           
@@ -948,12 +948,12 @@ function TabUsers() {
               placeholder="Temporary Password *"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#08142D]"
+              className="border border-[#EDE5DB] p-2 rounded focus:outline-none focus:border-[#08142D]"
             />
             <select 
               value={newRole} 
               onChange={(e) => setNewRole(e.target.value)}
-              className="border border-[#E8E4D9] p-2 rounded focus:outline-none focus:border-[#08142D]"
+              className="border border-[#EDE5DB] p-2 rounded focus:outline-none focus:border-[#08142D]"
             >
               <option value="sales">Sales Department</option>
               <option value="designer">Design Department</option>
@@ -968,9 +968,9 @@ function TabUsers() {
       </div>
 
       {/* EMPLOYEE TABLE */}
-      <div className="overflow-x-auto border border-[#E8E4D9]">
+      <div className="overflow-x-auto border border-[#EDE5DB]">
         <table className="w-full text-sm bg-white">
-          <thead className="bg-[#F3F0E9]">
+          <thead className="bg-[#F5EDE8]">
             <tr>
               <th className="text-left p-4">Email</th>
               <th className="text-left p-4">Role</th>

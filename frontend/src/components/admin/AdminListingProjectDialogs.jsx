@@ -43,11 +43,11 @@ export function OwnerCombobox({ users, value, onChange, allowedRoles = ["agent",
         className="hs-input w-full text-left flex items-center justify-between"
         data-testid="owner-picker-trigger"
       >
-        <span className={selected ? "text-[#1A2421]" : "text-[#758A80]"}>
+        <span className={selected ? "text-[#0C1D42]" : "text-[#666666]"}>
           {selected ? (
             <>
               {selected.name || selected.email}
-              <span className="text-xs text-[#758A80] ml-2">
+              <span className="text-xs text-[#666666] ml-2">
                 ({selected.role})
               </span>
             </>
@@ -68,9 +68,9 @@ export function OwnerCombobox({ users, value, onChange, allowedRoles = ["agent",
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-[#E8E4D9] shadow-lg max-h-72 overflow-hidden flex flex-col">
-          <div className="flex items-center gap-2 border-b border-[#E8E4D9] px-3 py-2">
-            <Search size={14} className="text-[#758A80]" />
+        <div className="absolute z-50 mt-1 w-full bg-white border border-[#EDE5DB] shadow-lg max-h-72 overflow-hidden flex flex-col">
+          <div className="flex items-center gap-2 border-b border-[#EDE5DB] px-3 py-2">
+            <Search size={14} className="text-[#666666]" />
             <input
               autoFocus
               value={query}
@@ -82,7 +82,7 @@ export function OwnerCombobox({ users, value, onChange, allowedRoles = ["agent",
           </div>
           <div className="overflow-auto flex-1">
             {matches.length === 0 ? (
-              <div className="p-4 text-sm text-[#758A80]">No matches.</div>
+              <div className="p-4 text-sm text-[#666666]">No matches.</div>
             ) : (
               matches.map((u) => (
                 <button
@@ -93,13 +93,13 @@ export function OwnerCombobox({ users, value, onChange, allowedRoles = ["agent",
                     setOpen(false);
                     setQuery("");
                   }}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#F3F0E9] border-b border-[#E8E4D9] last:border-b-0 ${
-                    u.user_id === value ? "bg-[#F3F0E9]" : ""
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#F5EDE8] border-b border-[#EDE5DB] last:border-b-0 ${
+                    u.user_id === value ? "bg-[#F5EDE8]" : ""
                   }`}
                   data-testid={`owner-option-${u.user_id}`}
                 >
                   <div className="font-medium">{u.name || "—"}</div>
-                  <div className="text-xs text-[#758A80]">
+                  <div className="text-xs text-[#666666]">
                     {u.email} · {u.role}
                   </div>
                 </button>
@@ -184,7 +184,7 @@ export function AdminListingDialog({ open, setOpen, editing, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5]">
         <DialogHeader>
           <DialogTitle className="font-display text-3xl">
             {editing ? "Edit Listing" : "New Listing"}
@@ -253,8 +253,8 @@ export function AdminListingDialog({ open, setOpen, editing, onSaved }) {
           </F>
 
           {/* Admin-only block */}
-          <div className="md:col-span-2 mt-2 pt-4 border-t border-[#B68D40]/40">
-            <div className="label-eyebrow text-[#B68D40] mb-3">Admin Overrides</div>
+          <div className="md:col-span-2 mt-2 pt-4 border-t border-[#DA9E3E]/40">
+            <div className="label-eyebrow text-[#DA9E3E] mb-3">Admin Overrides</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <F label="Assign Owner">
                 <OwnerCombobox
@@ -280,7 +280,7 @@ export function AdminListingDialog({ open, setOpen, editing, onSaved }) {
             </div>
           </div>
         </div>
-        <div className="flex gap-3 justify-end pt-4 border-t border-[#E8E4D9]">
+        <div className="flex gap-3 justify-end pt-4 border-t border-[#EDE5DB]">
           <button onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
           <button onClick={save} disabled={busy} className="btn-primary" data-testid="admin-lst-save">
             {busy ? "Saving…" : "Save"}
@@ -360,7 +360,7 @@ export function AdminProjectDialog({ open, setOpen, editing, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5]">
         <DialogHeader>
           <DialogTitle className="font-display text-3xl">
             {editing ? "Edit Project" : "New Project"}
@@ -420,8 +420,8 @@ export function AdminProjectDialog({ open, setOpen, editing, onSaved }) {
           </F>
 
           {/* Admin-only block */}
-          <div className="md:col-span-2 mt-2 pt-4 border-t border-[#B68D40]/40">
-            <div className="label-eyebrow text-[#B68D40] mb-3">Admin Overrides</div>
+          <div className="md:col-span-2 mt-2 pt-4 border-t border-[#DA9E3E]/40">
+            <div className="label-eyebrow text-[#DA9E3E] mb-3">Admin Overrides</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <F label="Assign Owner (Builder)">
                 <OwnerCombobox
@@ -447,7 +447,7 @@ export function AdminProjectDialog({ open, setOpen, editing, onSaved }) {
             </div>
           </div>
         </div>
-        <div className="flex gap-3 justify-end pt-4 border-t border-[#E8E4D9]">
+        <div className="flex gap-3 justify-end pt-4 border-t border-[#EDE5DB]">
           <button onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
           <button onClick={save} disabled={busy} className="btn-primary" data-testid="admin-prj-save">
             {busy ? "Saving…" : "Save"}

@@ -76,7 +76,7 @@ export default function HomepageEditor() {
         ))}
       </Section>
 
-      <div className="flex justify-end gap-3 pt-6 border-t border-[#E8E4D9]">
+      <div className="flex justify-end gap-3 pt-6 border-t border-[#EDE5DB]">
         <button onClick={load} className="btn-secondary">Reset</button>
         <button onClick={save} disabled={busy} className="btn-primary" data-testid="hp-save">
           {busy ? "Saving…" : "Save Homepage"}
@@ -88,7 +88,7 @@ export default function HomepageEditor() {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-6">
+    <div className="bg-white border border-[#EDE5DB] p-6">
       <div className="font-display text-2xl text-[#0C1D42] mb-5">{title}</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
     </div>

@@ -66,15 +66,15 @@ function Projects() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <p className="text-sm text-[#4A5D54]">{items.length} projects</p>
+        <p className="text-sm text-[#333333]">{items.length} projects</p>
         <button onClick={() => { setEditing(null); setOpen(true); }} className="btn-primary" data-testid="add-project-btn">
           <Plus size={14} /> Add Project
         </button>
       </div>
 
-      <div className="bg-white border border-[#E8E4D9] overflow-x-auto">
+      <div className="bg-white border border-[#EDE5DB] overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-[#F3F0E9]">
+          <thead className="bg-[#F5EDE8]">
             <tr>
               {["Project", "Locality", "Units", "Price", "Status", ""].map((h) => (
                 <th key={h} className="text-left p-4 label-eyebrow">{h}</th>
@@ -83,31 +83,31 @@ function Projects() {
           </thead>
           <tbody>
             {items.map((p) => (
-              <tr key={p.project_id} className="border-t border-[#E8E4D9]">
+              <tr key={p.project_id} className="border-t border-[#EDE5DB]">
                 <td className="p-4">
                   <div className="font-semibold">{p.name}</div>
-                  <div className="text-xs text-[#758A80]">{p.builder_name}</div>
+                  <div className="text-xs text-[#666666]">{p.builder_name}</div>
                 </td>
                 <td className="p-4">{p.locality}</td>
                 <td className="p-4 text-xs">{p.unit_types}</td>
-                <td className="p-4 text-[#06402B] font-semibold">{formatINR(p.price_min)}</td>
+                <td className="p-4 text-[#0C1D42] font-semibold">{formatINR(p.price_min)}</td>
                 <td className="p-4">
                   <span className={`px-2 py-1 text-[10px] tracking-widest uppercase font-semibold ${
-                    p.status === "approved" ? "bg-[#BBF7D0] text-[#06402B]" :
+                    p.status === "approved" ? "bg-[#BBF7D0] text-[#0C1D42]" :
                     p.status === "pending" ? "bg-[#FEF08A] text-[#7C5800]" :
                     p.status === "rejected" ? "bg-[#FCA5A5] text-[#7F1D1D]" :
-                    "bg-[#E8E4D9]"
+                    "bg-[#EDE5DB]"
                   }`}>{p.status === "approved" ? "Live" : p.status}</span>
                 </td>
                 <td className="p-4 flex gap-2">
-                  <button onClick={() => setSettingsFor(p)} className="text-xs underline text-[#06402B]">Settings</button>
-                  <button onClick={() => { setEditing(p); setOpen(true); }} className="p-1 hover:text-[#06402B]"><Edit size={15} /></button>
+                  <button onClick={() => setSettingsFor(p)} className="text-xs underline text-[#0C1D42]">Settings</button>
+                  <button onClick={() => { setEditing(p); setOpen(true); }} className="p-1 hover:text-[#0C1D42]"><Edit size={15} /></button>
                   <button onClick={() => remove(p.project_id)} className="p-1 hover:text-[#9B4A3A]"><Trash2 size={15} /></button>
                 </td>
               </tr>
             ))}
             {items.length === 0 && (
-              <tr><td colSpan={6} className="p-12 text-center text-[#758A80]">No projects yet.</td></tr>
+              <tr><td colSpan={6} className="p-12 text-center text-[#666666]">No projects yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -150,7 +150,7 @@ function ProjectDialog({ open, setOpen, editing, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5]">
         <DialogHeader>
           <DialogTitle className="font-display text-3xl">{editing ? "Edit Project" : "New Project"}</DialogTitle>
         </DialogHeader>
@@ -175,7 +175,7 @@ function ProjectDialog({ open, setOpen, editing, onSaved }) {
           <F label="Brochure URL (optional)" full><input className="hs-input" value={form.brochure_url} onChange={(e) => setForm({ ...form, brochure_url: e.target.value })} /></F>
           <F label="Description" full><textarea className="hs-input min-h-[80px]" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></F>
         </div>
-        <div className="flex gap-3 justify-end pt-4 border-t border-[#E8E4D9]">
+        <div className="flex gap-3 justify-end pt-4 border-t border-[#EDE5DB]">
           <button onClick={() => setOpen(false)} className="btn-secondary">Cancel</button>
           <button onClick={save} className="btn-primary" data-testid="prj-save">Save</button>
         </div>
@@ -221,7 +221,7 @@ function ProjectSettings({ project, setProject, onSaved }) {
 
   return (
     <Dialog open={!!project} onOpenChange={(o) => !o && setProject(null)}>
-      <DialogContent className="max-w-3xl bg-[#FAF9F6]">
+      <DialogContent className="max-w-3xl bg-[#FCFAF5]">
         <DialogHeader>
           <DialogTitle className="font-display text-3xl">Settings — {project.name}</DialogTitle>
         </DialogHeader>
@@ -229,7 +229,7 @@ function ProjectSettings({ project, setProject, onSaved }) {
           <div className="label-eyebrow mb-3">Approved Banks</div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-8">
             {banks.map((b) => (
-              <label key={b.bank_id} className="flex items-center gap-2 text-sm border border-[#E8E4D9] bg-white px-3 py-2">
+              <label key={b.bank_id} className="flex items-center gap-2 text-sm border border-[#EDE5DB] bg-white px-3 py-2">
                 <input type="checkbox" checked={selBanks.includes(b.bank_id)} onChange={() => toggleBank(b.bank_id)} />
                 {b.name}
               </label>
@@ -238,10 +238,10 @@ function ProjectSettings({ project, setProject, onSaved }) {
           <div className="label-eyebrow mb-3">Amenities</div>
           {Object.entries(byCat).map(([cat, list]) => (
             <div key={cat} className="mb-6">
-              <div className="font-display text-lg mb-2 text-[#06402B]">{cat}</div>
+              <div className="font-display text-lg mb-2 text-[#0C1D42]">{cat}</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {list.map((a) => (
-                  <label key={a.amenity_id} className="flex items-center gap-2 text-sm border border-[#E8E4D9] bg-white px-3 py-2">
+                  <label key={a.amenity_id} className="flex items-center gap-2 text-sm border border-[#EDE5DB] bg-white px-3 py-2">
                     <input type="checkbox" checked={selAmen.includes(a.amenity_id)} onChange={() => toggleAmen(a.amenity_id)} />
                     {a.name}
                   </label>
@@ -250,7 +250,7 @@ function ProjectSettings({ project, setProject, onSaved }) {
             </div>
           ))}
         </div>
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#E8E4D9]">
+        <div className="flex justify-end gap-3 pt-4 border-t border-[#EDE5DB]">
           <button onClick={() => setProject(null)} className="btn-secondary">Cancel</button>
           <button onClick={save} className="btn-primary">Save Settings</button>
         </div>
@@ -292,25 +292,25 @@ function Inquiries() {
           <div key={s} className="kanban-col w-72">
             <div className="flex items-center justify-between mb-4">
               <div className="font-display text-lg capitalize">{s.replace("-", " ")}</div>
-              <span className="label-eyebrow text-[#4A5D54]">
+              <span className="label-eyebrow text-[#333333]">
                 {items.filter((i) => i.status === s).length}
               </span>
             </div>
             <div className="space-y-3">
               {items.filter((i) => i.status === s).map((i) => (
-                <div key={i.inquiry_id} className="bg-[#FAF9F6] border border-[#E8E4D9] p-3" data-testid={`inq-${i.inquiry_id}`}>
+                <div key={i.inquiry_id} className="bg-[#FCFAF5] border border-[#EDE5DB] p-3" data-testid={`inq-${i.inquiry_id}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm truncate">{i.name}</div>
-                      <div className="text-xs text-[#4A5D54] mt-1">{i.mobile}</div>
+                      <div className="text-xs text-[#333333] mt-1">{i.mobile}</div>
                     </div>
-                    <button onClick={() => setOpen(i)} className="text-[#06402B] hover:text-[#B68D40]" data-testid={`open-inq-${i.inquiry_id}`}>
+                    <button onClick={() => setOpen(i)} className="text-[#0C1D42] hover:text-[#DA9E3E]" data-testid={`open-inq-${i.inquiry_id}`}>
                       <MessageSquare size={15} />
                     </button>
                   </div>
-                  <div className="text-xs text-[#758A80] mt-1 line-clamp-2">{i.target_title}</div>
+                  <div className="text-xs text-[#666666] mt-1 line-clamp-2">{i.target_title}</div>
                   {(i.messages?.length > 0 || i.notes?.length > 0) && (
-                    <div className="flex gap-3 mt-2 text-[10px] text-[#B68D40] tracking-widest uppercase">
+                    <div className="flex gap-3 mt-2 text-[10px] text-[#DA9E3E] tracking-widest uppercase">
                       {i.messages?.length > 0 && <span>{i.messages.length} msg</span>}
                       {i.notes?.length > 0 && <span>{i.notes.length} note</span>}
                     </div>
@@ -336,10 +336,10 @@ function Inquiries() {
 
 function Subscription() {
   return (
-    <div className="bg-white border border-[#E8E4D9] p-10 max-w-2xl">
+    <div className="bg-white border border-[#EDE5DB] p-10 max-w-2xl">
       <div className="label-eyebrow mb-3">Builder Packages</div>
       <h2 className="font-display text-3xl mb-4">Contact your Relationship Manager</h2>
-      <p className="text-[#4A5D54] mb-6">Premium project promotion, featured placement and concierge support.</p>
+      <p className="text-[#333333] mb-6">Premium project promotion, featured placement and concierge support.</p>
       <a href="mailto:builders@homesqre.com" className="btn-gold inline-flex">Contact RM</a>
     </div>
   );

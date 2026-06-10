@@ -30,7 +30,7 @@ export default function SalesAnalyticsPanel() {
   }, []);
 
   if (loading) return (
-    <div className="bg-white border border-[#E8E4D9] px-5 py-3 mb-6 flex items-center gap-3">
+    <div className="bg-white border border-[#EDE5DB] px-5 py-3 mb-6 flex items-center gap-3">
       <div className="w-4 h-4 border-2 border-[#0C1D42] border-t-transparent rounded-full animate-spin" />
       <span className="text-xs text-[#333333]">Loading your performance data…</span>
     </div>
@@ -47,11 +47,11 @@ export default function SalesAnalyticsPanel() {
   ];
 
   return (
-    <div className="border border-[#E8E4D9] bg-white mb-6 overflow-hidden">
+    <div className="border border-[#EDE5DB] bg-white mb-6 overflow-hidden">
       {/* Header toggle */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-3 bg-[#F3F0E9] hover:bg-[#ECE8DC] transition"
+        className="w-full flex items-center justify-between px-5 py-3 bg-[#F5EDE8] hover:bg-[#ECE8DC] transition"
       >
         <span className="text-xs font-bold uppercase tracking-widest text-[#0C1D42]">
           📊 My Performance Dashboard
@@ -64,7 +64,7 @@ export default function SalesAnalyticsPanel() {
           {/* KPI cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {stats.map(s => (
-              <div key={s.label} className="border border-[#E8E4D9] p-3 text-center">
+              <div key={s.label} className="border border-[#EDE5DB] p-3 text-center">
                 <p className="text-[10px] uppercase tracking-widest text-[#333333] mb-1">{s.label}</p>
                 <p className="font-display text-xl font-bold" style={{ color: s.accent }}>{s.value}</p>
               </div>
@@ -117,10 +117,10 @@ export default function SalesAnalyticsPanel() {
                       <stop offset="100%" stopColor="#0C1D42" stopOpacity={0.01} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E8E4D9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#EDE5DB" />
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#333333" }} tickFormatter={d => d.slice(5)} />
                   <YAxis tick={{ fontSize: 9, fill: "#333333" }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ fontSize: 11, border: "1px solid #E8E4D9" }} />
+                  <Tooltip contentStyle={{ fontSize: 11, border: "1px solid #EDE5DB" }} />
                   <Area type="monotone" dataKey="count" stroke="#0C1D42" strokeWidth={2} fill="url(#gActivity)" />
                 </AreaChart>
               </ResponsiveContainer>

@@ -89,7 +89,7 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {files.map((f, idx) => (
-        <div key={idx} className="group relative flex flex-col p-2 bg-white border border-[#E8E4D9] hover:border-[#DA9E3E] hover:shadow-md transition duration-300 rounded">
+        <div key={idx} className="group relative flex flex-col p-2 bg-white border border-[#EDE5DB] hover:border-[#DA9E3E] hover:shadow-md transition duration-300 rounded">
           <a
             href={absUrl(f.url)}
             target="_blank"
@@ -112,7 +112,7 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
                 </div>
               </div>
             ) : (
-              <div className="w-full h-32 flex flex-col items-center justify-center bg-[#F3F0E9] rounded mb-3 border border-gray-100">
+              <div className="w-full h-32 flex flex-col items-center justify-center bg-[#F5EDE8] rounded mb-3 border border-gray-100">
                 <div className="text-4xl text-[#0C1D42] opacity-70 group-hover:opacity-100 transition duration-300">
                   {f.type === "site_visit" && "📋"}
                 </div>
@@ -129,7 +129,7 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
           </a>
           
           {allowUpload && f.type === "floor_plan" && (
-            <div className="mt-auto pt-2 flex items-center justify-between border-t border-[#E8E4D9]">
+            <div className="mt-auto pt-2 flex items-center justify-between border-t border-[#EDE5DB]">
               <label className="text-[9px] uppercase tracking-widest font-bold text-[#DA9E3E] cursor-pointer hover:text-[#0C1D42] transition">
                 {uploading ? "..." : "Replace"}
                 <input type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e) => handleReplaceSingle(e, f.url)} disabled={uploading} />

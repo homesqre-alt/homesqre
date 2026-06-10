@@ -40,7 +40,7 @@ export default function ForgotPassword() {
             <button className="btn-primary w-full justify-center" data-testid="forgot-submit">Send reset link</button>
           </form>
         ) : (
-          <div className="bg-white border border-[#E8E4D9] p-6">
+          <div className="bg-white border border-[#EDE5DB] p-6">
             <div className="font-display text-2xl mb-2 text-[#0C1D42]">Check your email</div>
             <p className="text-sm text-[#333333]">
               If an account exists for {email}, you'll receive a reset link shortly.
