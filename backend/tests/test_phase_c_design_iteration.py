@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 BASE_URL = os.environ.get(
-    "TEST_BASE_URL", "https://crm-phase-tracker.preview.emergentagent.com"
+    "TEST_BASE_URL", "https://homesqre-styled.preview.emergentagent.com"
 )
 API = f"{BASE_URL}/api"
 
