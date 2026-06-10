@@ -38,6 +38,14 @@ Build **Homesqre Interiors** — a paywalled multi-phase interior design service
 **Team:** `GET/POST /api/admin/employees`, `PUT/DELETE /api/admin/employees/{email}`
 
 ## Changelog
+- **2026-06-10 (tenth update) — Official Homesqre brand color palette applied.**
+  - Applied HOMESQRE NAVY `#0C1D42`, ACCENT GOLD `#DA9E3E`, WARM IVORY BASE `#FCFAF5`, BLUSH `#F5EDE8`, SLATE CHARCOAL `#333333` across all 43+ JSX/JS files.
+  - Updated `index.css` CSS variables: `--hs-emerald → #0C1D42`, `--hs-gold → #DA9E3E`, `--hs-cream → #FCFAF5`, `--hs-cream-2 → #F5EDE8`, `--hs-ink → #0C1D42`, `--hs-ink-2 → #333333`. Added `--hs-navy`, `--hs-navy-2`, `--hs-soft-navy`, `--hs-charcoal`.
+  - Updated Tailwind HSL variables in `@layer base` to match new palette (primary: navy, accent: gold, background: ivory).
+  - Replaced all 106+ instances of old emerald green (`#06402B`) and 192+ old gold (`#B68D40`) via bulk sed.
+  - Verified: 0 old green, 0 old gold remaining. 323 navy + 192 gold instances confirmed.
+  - Frontend test: 95% pass rate (all color checks passed; orphaned Interiors.jsx noted as dead code).
+
 - **2026-06-09 (ninth update) — Full production codebase adopted from zip.**
   - Adopted all new backend route files: `routes/payments.py` (Razorpay), `routes/vault.py` (Document Vault), `routes/site_visits.py` (Site visit slots), `routes/quotations.py` (Quotation engine), `routes/packages.py` (CMS packages).
   - Adopted new backend helpers: `storage.py`, `storage_helpers.py`, `zoho_helpers.py` (Zoho Books), `notification_helpers.py`, `seeds.py`, `defaults.py` (with DEFAULT_PACKAGES).
