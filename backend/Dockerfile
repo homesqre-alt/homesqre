@@ -29,5 +29,6 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8001/api/ || exit 1
 
-RUN pip install fastapi uvicorn python-dotenv bcrypt PyJWT requests python-multipart pymongo motor pydantic pydantic-settings email-validator
+# Install ALL dependencies directly from the requirements file
+RUN pip install --no-cache-dir -r requirements.txt
 CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001"]
