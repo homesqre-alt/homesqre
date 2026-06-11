@@ -16,6 +16,11 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   const handleRedirect = (u) => {
+    // Google / new users: if profile is incomplete, go to onboarding first
+    if (u.role === "customer" && (!u.profile_completed || !u.mobile)) {
+      nav("/profile/complete");
+      return;
+    }
     const dest =
       u.role === "admin" ? "/dashboard/admin"
       : u.role === "sales" ? "/dashboard/sales"

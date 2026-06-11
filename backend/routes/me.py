@@ -1,6 +1,7 @@
 """Customer-facing /me/* routes — phase transitions, site visit, package
-adjustment payment."""
+adjustment payment, and profile update."""
 from fastapi import Depends, HTTPException
+from typing import Optional
 
 from core import api, db, iso, now_utc, current_user
 from design_helpers import ensure_design_project
@@ -9,6 +10,39 @@ from schemas import (
     SiteVisitRequest, SiteVisitOut,
     PackageAdjustmentOut,
 )
+from pydantic import BaseModel
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    mobile: Optional[str] = None
+    city: Optional[str] = None
+    locality: Optional[str] = None
+    property_type: Optional[str] = None
+    # email update not allowed — contact support
+
+
+@api.put("/me/profile")
+async def update_my_profile(body: ProfileUpdateRequest, user: dict = Depends(current_user)):
+    """Update customer profile fields and mark profile as completed."""
+    updates: dict = {"profile_completed": True}
+    if body.name is not None:
+        updates["name"] = body.name.strip()
+    if body.mobile is not None:
+        updates["mobile"] = body.mobile.strip()
+    if body.city is not None:
+        updates["city"] = body.city.strip()
+    if body.locality is not None:
+        updates["locality"] = body.locality.strip()
+    if body.property_type is not None:
+        updates["property_type"] = body.property_type.strip()
+
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": updates}
+    )
+    updated = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    return updated
 
 
 # Client-initiated phase transitions (e.g. "unpaid" → "briefing" after payment).

@@ -33,7 +33,7 @@ export default function ProfileComplete() {
 
   if (user === undefined) return null;
   if (user === null) return <Navigate to="/login" />;
-  if (user.profile_completed && step === 1) {
+  if (user.profile_completed && user.mobile && step === 1) {
     const dash =
       user.role === "admin" ? "/dashboard/admin"
       : user.role === "sales" ? "/dashboard/sales"
@@ -116,7 +116,7 @@ export default function ProfileComplete() {
       </div>
 
       <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-24 py-12">
-        <div className="mb-12"><img src="/logo.svg" alt="Homesqre" className="h-24 md:h-32 w-auto object-contain mx-auto" /></div>
+        <div className="mb-12"><img src="/logo.svg" alt="Homesqre" className="h-16 w-auto object-contain mx-auto" /></div>
         
         {step === 1 && (
           <form onSubmit={nextStep} className="space-y-6 max-w-md w-full mx-auto" data-testid="onboarding-step-1">

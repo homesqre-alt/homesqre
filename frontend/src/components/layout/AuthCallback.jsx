@@ -26,7 +26,13 @@ export default function AuthCallback() {
         setUserData(data.user);
         // Clean URL hash
         window.history.replaceState({}, "", "/");
-        const role = data.user?.role;
+        const u = data.user;
+        // New Google users with incomplete profile → onboarding flow
+        if (u?.role === "customer" && (!u.profile_completed || !u.mobile)) {
+          nav("/profile/complete");
+          return;
+        }
+        const role = u?.role;
         const dash =
           role === "admin" ? "/dashboard/admin"
           : role === "sales" ? "/dashboard/sales"
