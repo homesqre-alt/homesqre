@@ -671,7 +671,7 @@ export default function CustomerDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-2">Estimated Budget</label>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#0C1D42] mb-2">Budget Range</label>
                 <select 
                   className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm mb-2"
                   value={budgetType}

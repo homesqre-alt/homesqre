@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 import api, { formatINR, formatApiError } from "@/lib/api";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import LeadCaptureModal from "@/components/LeadCaptureModal";
 import { toast } from "sonner";
 import {
   CalendarCheck,
@@ -51,23 +54,18 @@ const ICONS = {
 };
 
 export default function Interiors() {
+  const { user } = useAuth();
+  const dashHref =
+    user?.role === "admin" ? "/dashboard/admin"
+    : user?.role === "sales" ? "/dashboard/sales"
+    : user?.role === "designer" ? "/dashboard/designer"
+    : "/dashboard/customer";
+
   const [content, setContent] = useState(null);
   const [tab, setTab] = useState("");
   const [bhk, setBhk] = useState("3BHK");
   const [tier, setTier] = useState("Standard");
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    whatsapp: true,
-    property_type: "Apartment",
-    flat_size: "",
-    budget: "",
-    style: "Contemporary",
-    move_in: "",
-    locality: "",
-  });
-  const [showForm, setShowForm] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
 
   useEffect(() => {
     api.get("/content/interiors").then(({ data }) => {
@@ -94,16 +92,7 @@ export default function Interiors() {
     ? [rawRange, rawRange]
     : [0, 0];
 
-  const submit = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post("/interior-leads", form);
-      toast.success("Thank you! Our designer will reach out shortly.");
-      setShowForm(false);
-    } catch (e) {
-      toast.error(formatApiError(e));
-    }
-  };
+
 
   return (
     <div className="App">
@@ -127,16 +116,36 @@ export default function Interiors() {
             </h1>
             <p className="text-white/85 mt-6 max-w-xl text-lg">{content.hero?.subheadline || ""}</p>
             <div className="mt-8">
-              <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="interior-hero-cta">
-                {content.hero?.cta || "Get a Free Design Consultation"}
-              </button>
+              {user ? (
+                <Link to={dashHref} className="btn-gold" data-testid="interior-hero-cta">
+                  GO TO DASHBOARD
+                </Link>
+              ) : (
+                <button onClick={() => setShowLeadForm(true)} className="btn-gold" data-testid="interior-hero-cta">
+                  Start Designing Risk-Free
+                </button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Sticky form (desktop) */}
-        <aside className="lg:col-span-4 bg-[#FCFAF5] p-8 lg:p-12 flex flex-col justify-center">
-          <InteriorForm form={form} setForm={setForm} onSubmit={submit} />
+        {/* Sticky form replacement (desktop) */}
+        <aside className="hidden lg:flex lg:col-span-4 bg-[#FCFAF5] p-8 lg:p-12 flex-col justify-center text-center items-center">
+          <div className="label-eyebrow text-[#DA9E3E] mb-4 relative tracking-[0.2em]">Free Design Consultation</div>
+          <h3 className="font-display text-4xl text-[#0C1D42] mb-6">See your home before it's built.</h3>
+          <p className="text-sm text-[#333333] mb-8 leading-relaxed max-w-sm">
+            Begin our seamless onboarding process and get connected with an award-winning designer today.
+          </p>
+          {user ? (
+            <Link to={dashHref} className="btn-gold w-full justify-center">GO TO DASHBOARD</Link>
+          ) : (
+            <button onClick={() => setShowLeadForm(true)} className="btn-gold w-full justify-center">
+              See your home in 3D
+            </button>
+          )}
+          <p className="text-[10px] text-[#333333]/50 mt-4 leading-tight">
+            Get a 100% fixed quote after design approval.<br/>Zero blind commitments.
+          </p>
         </aside>
       </section>
 
@@ -298,9 +307,15 @@ export default function Interiors() {
             <p className="text-sm text-[#FCFAF5]/70 mb-8">
               For a {bhk} home with the {tier} package, including design, manufacturing and installation.
             </p>
-            <button onClick={() => setShowForm(true)} className="btn-gold w-full justify-center" data-testid="estimator-cta">
-              Get a detailed quote
-            </button>
+            {user ? (
+              <Link to={dashHref} className="btn-gold w-full justify-center text-center" data-testid="estimator-cta">
+                GO TO DASHBOARD
+              </Link>
+            ) : (
+              <button onClick={() => setShowLeadForm(true)} className="btn-gold w-full justify-center" data-testid="estimator-cta">
+                Get a 100% Fixed Quote
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -351,55 +366,40 @@ export default function Interiors() {
           <div className="label-eyebrow text-[#DA9E3E] mb-4">Let's begin</div>
           <h2 className="font-display text-5xl sm:text-6xl mb-6 leading-tight">{content.final_cta?.headline || "Ready to design your dream home?"}</h2>
           <p className="text-white/80 mb-10 text-lg">{content.final_cta?.subtext || ""}</p>
-          <button onClick={() => setShowForm(true)} className="btn-gold" data-testid="final-cta">{content.final_cta?.cta || "Book Free Consultation"}</button>
+          {user ? (
+            <Link to={dashHref} className="btn-gold" data-testid="final-cta">GO TO DASHBOARD</Link>
+          ) : (
+            <button onClick={() => setShowLeadForm(true)} className="btn-gold" data-testid="final-cta">See your home in 3D</button>
+          )}
         </div>
       </section>
 
       <Footer />
 
-      {showForm && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FCFAF5] w-full sm:max-w-xl max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-[#EDE5DB] flex items-center justify-between">
-              <div className="font-display text-2xl">Tell us about your home</div>
-              <button onClick={() => setShowForm(false)} className="text-2xl">×</button>
-            </div>
-            <div className="p-6">
-              <InteriorForm form={form} setForm={setForm} onSubmit={submit} />
-            </div>
-          </div>
+      {/* ── Sticky mobile bottom CTA ─────────────────────────────────── */}
+      <div className="mobile-sticky-cta">
+        <div>
+          <p className="text-[#FCFAF5] font-display text-lg leading-tight">Free Consultation</p>
+          <p className="text-[#DA9E3E] text-xs tracking-wide">Starting from ₹10,000</p>
         </div>
-      )}
-    </div>
-  );
-}
+        {user ? (
+          <Link
+            to={dashHref}
+            className="bg-[#DA9E3E] text-white text-[10px] tracking-widest uppercase font-bold py-2.5 px-5 hover:bg-[#C88C2F] transition-colors"
+          >
+            Dashboard
+          </Link>
+        ) : (
+          <button
+            onClick={() => setShowLeadForm(true)}
+            className="bg-[#DA9E3E] text-white text-[10px] tracking-widest uppercase font-bold py-2.5 px-5 hover:bg-[#C88C2F] transition-colors shadow-[0_0_15px_rgba(218,158,62,0.4)]"
+          >
+            See your home in 3D
+          </button>
+        )}
+      </div>
 
-function InteriorForm({ form, setForm, onSubmit }) {
-  return (
-    <form onSubmit={onSubmit} className="space-y-5" data-testid="interior-form">
-      <div>
-        <div className="label-eyebrow mb-2">Free Design Consultation</div>
-        <h3 className="font-display text-3xl">Book a designer.</h3>
-      </div>
-      <input className="hs-input" placeholder="Full name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="int-name" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <input className="hs-input" placeholder="Phone" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="int-phone" />
-        <input className="hs-input" placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="int-email" />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <select className="hs-input" value={form.property_type} onChange={(e) => setForm({ ...form, property_type: e.target.value })}>
-          <option>Apartment</option><option>Villa</option><option>Independent House</option>
-        </select>
-        <input className="hs-input" placeholder="Flat size (sqft)" value={form.flat_size} onChange={(e) => setForm({ ...form, flat_size: e.target.value })} />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <input className="hs-input" placeholder="Budget (₹)" value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
-        <input className="hs-input" placeholder="Locality" value={form.locality} onChange={(e) => setForm({ ...form, locality: e.target.value })} />
-      </div>
-      <label className="flex items-center gap-2 text-sm text-[#333333]">
-        <input type="checkbox" checked={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.checked })} /> Updates on WhatsApp
-      </label>
-      <button className="btn-primary w-full justify-center" data-testid="int-submit">Book Free Consultation</button>
-    </form>
+      <LeadCaptureModal open={showLeadForm} onOpenChange={setShowLeadForm} />
+    </div>
   );
 }

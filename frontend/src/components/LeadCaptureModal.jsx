@@ -32,7 +32,6 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
     name: "",
     email: "",
     phone: "",
-    location: "",
   });
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +42,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
     if (open) {
       setSpotsLeft(getAvailableSpots());
       setStep(1);
-      setFormData({ name: "", email: "", phone: "", location: "" });
+      setFormData({ name: "", email: "", phone: "" });
       setOtp("");
       setDevOtp("");
       setSalesRep(null);
@@ -82,7 +81,6 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
         name: formData.name,
         email: formData.email,
         mobile: formData.phone,
-        location: formData.location
       });
       if (data.dev_otp) {
         setDevOtp(data.dev_otp);
@@ -203,16 +201,6 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                     />
                   </div>
                   
-                  <div className="space-y-2">
-                    <label className="text-xs tracking-widest uppercase text-[#333333] font-semibold">Location (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Prestige Falcon City"
-                      className="flex h-10 w-full rounded-md border border-[#D4C9BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#DA9E3E]"
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    />
-                  </div>
 
                   <button type="submit" disabled={isSubmitting} className="w-full btn-gold justify-center mt-2">
                     {isSubmitting ? "Sending OTP..." : "Get OTP"}
