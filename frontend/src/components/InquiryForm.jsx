@@ -1,38 +1,35 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function InquiryForm({ listing_id, project_id, title = "Interested? Get in touch", compact = false }) {
   const [form, setForm] = useState({ name: "", email: "", mobile: "", message: "I'd like more information." });
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
+  const navigate = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.mobile) {
-      toast.error("Name and mobile are required");
+    if (!form.name || !form.mobile || !form.email) {
+      toast.error("Name, email and mobile are required");
+      return;
+    }
+    if (form.mobile.length !== 10 || !/^\d+$/.test(form.mobile)) {
+      toast.error("Please enter a valid 10-digit mobile number");
       return;
     }
     setSubmitting(true);
     try {
       await api.post("/inquiries", { ...form, listing_id, project_id });
-      setSent(true);
-      toast.success("Inquiry sent! The owner will reach out soon.");
+      toast.success("Inquiry sent!");
+      window.gtag?.('event', 'inquiry_sent');
+      navigate("/thank-you");
     } catch (e) {
       toast.error(formatApiError(e));
     } finally {
       setSubmitting(false);
     }
   };
-
-  if (sent) {
-    return (
-      <div className={`bg-white border border-[#EDE5DB] ${compact ? "p-5" : "p-8"} text-center`}>
-        <div className="font-display text-2xl text-[#0C1D42] mb-2">Thank you</div>
-        <p className="text-sm text-[#333333]">We've shared your details with the owner. Expect a call shortly.</p>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={submit} className={`bg-white border border-[#EDE5DB] ${compact ? "p-5" : "p-8"}`} data-testid="inquiry-form">
@@ -54,7 +51,8 @@ export default function InquiryForm({ listing_id, project_id, title = "Intereste
             <label className="label-eyebrow mb-1 block">Mobile</label>
             <input
               value={form.mobile}
-              onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+              onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '') })}
+              maxLength={10}
               className="hs-input"
               required
               data-testid="inq-mobile"
@@ -67,6 +65,7 @@ export default function InquiryForm({ listing_id, project_id, title = "Intereste
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="hs-input"
+              required
               data-testid="inq-email"
             />
           </div>

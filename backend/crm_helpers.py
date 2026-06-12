@@ -175,7 +175,7 @@ def _validate_status_source(status: Optional[str], source: Optional[str],
 # ---------------------------------------------------------------------------
 # Customer-to-lead linker
 # ---------------------------------------------------------------------------
-async def find_or_create_lead_for_user(user_doc: dict, status: str = "Send to Design") -> str:
+async def find_or_create_lead_for_user(user_doc: dict, status: str = "Send to Design", comment_text: Optional[str] = None) -> str:
     """Find the most recent lead for this user (match by email or phone) or
     create one. Returns the lead_id. Idempotent: if the user already has a
     `lead_id` field, returns it directly."""
@@ -206,21 +206,49 @@ async def find_or_create_lead_for_user(user_doc: dict, status: str = "Send to De
         )
         lead["assigned_to"] = await _auto_assign_for_status(lead["status"], None)
         lead["extra"] = {"auto_created_for_user": user_doc.get("user_id")}
+        
+        if comment_text:
+            lead["comments"].append({
+                "id": f"c_{uuid.uuid4().hex[:8]}",
+                "by": "system:auto-link",
+                "by_name": "System Auto-Link",
+                "text": comment_text,
+                "at": iso(now_utc())
+            })
+            
         await db.leads.insert_one(lead)
         log.info(f"[CRM] Auto-created lead {lead['lead_id']} for user {user_doc.get('user_id')}")
     else:
         terminal_progress = {"Send to Design", "Designing", "Awaiting Customer Approval", "Ready for Quotation"}
+        
+        updates = {"$set": {"updated_at": iso(now_utc())}}
+        
         if lead.get("status") not in terminal_progress:
             new_assignee = await _auto_assign_for_status(status, lead.get("assigned_to"))
+            updates["$set"]["status"] = status
+            updates["$set"]["assigned_to"] = new_assignee
+            updates.setdefault("$push", {})
+            updates["$push"]["history"] = {
+                "from_status": lead.get("status"), "to_status": status,
+                "at": iso(now_utc()), "by": "system:auto-link",
+            }
+            
+        if comment_text:
+            updates.setdefault("$push", {})
+            updates["$push"].setdefault("comments", {
+                "$each": [{
+                    "id": f"c_{uuid.uuid4().hex[:8]}",
+                    "by": "system:auto-link",
+                    "by_name": "System Auto-Link",
+                    "text": comment_text,
+                    "at": iso(now_utc())
+                }]
+            })
+            
+        if "$push" in updates or len(updates["$set"]) > 1: # updated_at is always there
             await db.leads.update_one(
                 {"lead_id": lead["lead_id"]},
-                {
-                    "$set": {"status": status, "assigned_to": new_assignee, "updated_at": iso(now_utc())},
-                    "$push": {"history": {
-                        "from_status": lead.get("status"), "to_status": status,
-                        "at": iso(now_utc()), "by": "system:auto-link",
-                    }},
-                },
+                updates
             )
 
     await db.users.update_one(

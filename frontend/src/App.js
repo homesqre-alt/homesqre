@@ -10,6 +10,7 @@ import Home from "@/pages/Home";
 import Interiors from "@/pages/Interiors";
 import EmiCalculatorPage from "@/pages/EmiCalculatorPage";
 import ProfileComplete from "@/pages/ProfileComplete";
+import ThankYou from "@/pages/ThankYou";
 
 import AdminDashboard from "@/pages/dashboards/AdminDashboard";
 import CustomerDashboard from "@/pages/dashboards/CustomerDashboard";
@@ -39,6 +40,7 @@ function AppRouter() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/profile/complete" element={<ProfileComplete />} />
       <Route path="/emi-calculator" element={<EmiCalculatorPage />} />
+      <Route path="/thank-you" element={<ThankYou />} />
 
       {/* Admin Console (quick add) */}
       <Route path="/admin/login" element={<AdminLogin />} />

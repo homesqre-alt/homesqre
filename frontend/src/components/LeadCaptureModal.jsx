@@ -37,6 +37,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [devOtp, setDevOtp] = useState("");
+  const [salesRep, setSalesRep] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -45,6 +46,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
       setFormData({ name: "", email: "", phone: "", location: "" });
       setOtp("");
       setDevOtp("");
+      setSalesRep(null);
     }
   }, [open]);
 
@@ -52,9 +54,15 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
     try {
       const u = await googleLogin(credentialResponse.credential);
       if (u) {
-        toast.success("Successfully logged in!");
-        onOpenChange(false);
-        navigate("/dashboard/customer");
+        if (!u.mobile) {
+          toast.error("Please provide your mobile number to continue.");
+          setFormData({...formData, name: u.name, email: u.email});
+          setStep(1);
+        } else {
+          toast.success("Successfully logged in!");
+          onOpenChange(false);
+          navigate("/dashboard/customer");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -80,6 +88,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
         setDevOtp(data.dev_otp);
         toast.success(`OTP Sent! (Dev mode: ${data.dev_otp})`);
       }
+      window.gtag?.('event', 'lead_initiated');
       setStep(2);
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to send OTP.");
@@ -98,9 +107,15 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
       });
       if (data.token && data.user) {
         setUserData(data.user);
-        toast.success("Verified! Welcome to Homesqre.");
-        onOpenChange(false);
-        navigate("/dashboard/customer");
+        window.gtag?.('event', 'lead_completed');
+        if (data.sales_rep) {
+          setSalesRep(data.sales_rep);
+          setStep(3);
+        } else {
+          toast.success("Verified! Welcome to Homesqre.");
+          onOpenChange(false);
+          navigate("/dashboard/customer");
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.detail || "Invalid OTP.");
@@ -231,7 +246,22 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                   {isSubmitting ? "Verifying..." : "Verify & Start Journey"}
                 </button>
               </form>
-            )}
+            ) : step === 3 ? (
+              <div className="space-y-6 text-center">
+                <div className="font-display text-2xl text-[#0C1D42]">You're all set!</div>
+                <p className="text-sm text-[#333333]">Your dedicated design consultant will reach out to you shortly.</p>
+                {salesRep && (
+                  <div className="bg-[#F5EDE8] p-5 rounded-md border border-[#D4C9BE]">
+                    <p className="text-[10px] uppercase tracking-widest text-[#333333]/60 font-semibold mb-1">Your Design Consultant</p>
+                    <p className="font-display text-xl text-[#DA9E3E] mb-1">{salesRep.name}</p>
+                    <p className="text-base text-[#333333] font-semibold">{salesRep.mobile}</p>
+                  </div>
+                )}
+                <button onClick={() => { onOpenChange(false); navigate("/dashboard/customer"); }} className="w-full btn-gold justify-center mt-4">
+                  Go to Dashboard
+                </button>
+              </div>
+            ) : null}
             
             <p className="text-[10px] text-center text-[#333333]/60 mt-6 leading-relaxed">
               By proceeding, you agree to our terms. We promise not to spam you, we respect your privacy.

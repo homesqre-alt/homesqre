@@ -447,7 +447,12 @@ async def auth_lead_verify(body: LeadVerifyRequest, response: Response):
             "project_phase": "unpaid"
         }
         await db.users.insert_one(user)
+    else:
+        if not user.get("mobile"):
+            await db.users.update_one({"_id": user["_id"]}, {"$set": {"mobile": body.mobile}})
+            user["mobile"] = body.mobile
 
+    sales_rep = None
     try:
         from crm_helpers import find_or_create_lead_for_user
         stub_user = {
@@ -460,8 +465,16 @@ async def auth_lead_verify(body: LeadVerifyRequest, response: Response):
         comment = None
         if record.get("location"):
              comment = f"Lead provided location: {record['location']}"
-        await find_or_create_lead_for_user(stub_user, status="New", comment_text=comment)
+        lead_id = await find_or_create_lead_for_user(stub_user, status="New", comment_text=comment)
         log.info(f"[CRM] Lead captured/synced for {user['email']}")
+        
+        if lead_id:
+            lead = await db.leads.find_one({"lead_id": lead_id})
+            if lead and lead.get("assigned_to"):
+                rep = await db.users.find_one({"email": lead["assigned_to"]})
+                if rep:
+                    sales_rep = {"name": rep.get("name"), "mobile": rep.get("mobile"), "email": rep.get("email")}
+                    
     except Exception as e:
         log.warning(f"[CRM] Failed to capture lead: {e}")
 
@@ -469,7 +482,7 @@ async def auth_lead_verify(body: LeadVerifyRequest, response: Response):
     
     token = make_access_token(user["user_id"], user["email"], user["role"])
     _set_auth_cookie(response, "access_token", token)
-    return {"user": clean_doc(user), "token": token}
+    return {"user": clean_doc(user), "token": token, "sales_rep": sales_rep}
 
 @api.post("/auth/login")
 async def auth_login(body: LoginRequest, response: Response):
