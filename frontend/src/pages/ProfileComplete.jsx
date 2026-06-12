@@ -13,6 +13,7 @@ export default function ProfileComplete() {
     name: "",
     mobile: "",
     email: "",
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
