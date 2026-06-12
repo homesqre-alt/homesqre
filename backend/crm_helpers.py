@@ -223,6 +223,12 @@ async def find_or_create_lead_for_user(user_doc: dict, status: str = "Send to De
         
         updates = {"$set": {"updated_at": iso(now_utc())}}
         
+        if phone and not lead.get("phone"):
+            updates["$set"]["phone"] = phone
+            
+        if user_doc.get("name") and lead.get("name") in [email.split("@")[0], "Customer", "Website User", ""]:
+            updates["$set"]["name"] = user_doc.get("name")
+
         if lead.get("status") not in terminal_progress:
             new_assignee = await _auto_assign_for_status(status, lead.get("assigned_to"))
             updates["$set"]["status"] = status
