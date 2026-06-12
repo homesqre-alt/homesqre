@@ -23,6 +23,7 @@ export default function ProfileComplete() {
         name: user.name || f.name,
         mobile: user.mobile || f.mobile,
         email: user.email || f.email
+      }));
     }
   }, [user]);
 
