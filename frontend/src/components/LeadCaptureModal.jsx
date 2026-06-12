@@ -219,7 +219,7 @@ export default function LeadCaptureModal({ open, onOpenChange }) {
                   </button>
                 </form>
               </div>
-            ) : (
+            ) : step === 2 ? (
               <form onSubmit={handleStep2Submit} className="space-y-4">
                 <div className="text-center mb-6">
                   <p className="text-sm text-[#333333]">We sent a verification code to <strong>{formData.phone}</strong></p>
