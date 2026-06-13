@@ -12,7 +12,7 @@ from core import (
     EMERGENT_AUTH_SESSION_URL, COOKIE_SAMESITE, COOKIE_SECURE,
 )
 from storage_helpers import init_storage
-from seeds import seed_data, migrate_status_fields
+from seeds import seed_data
 from crm_helpers import seed_crm_defaults, migrate_to_unified_leads
 
 from dotenv import load_dotenv
@@ -47,9 +47,6 @@ from pydantic import BaseModel, Field, EmailStr
 
 # Local modules
 from defaults import (
-    SEED_BANKS,
-    SEED_AMENITIES,
-    BANGALORE_LOCALITIES,
     DEFAULT_HOMEPAGE_CONTENT,
     DEFAULT_INTERIORS_CONTENT,
 )
@@ -233,8 +230,6 @@ async def seed_data():
     await db.users.create_index("user_id", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.user_sessions.create_index("session_token", unique=True)
-    await db.listings.create_index("slug", unique=True)
-    await db.projects.create_index("slug", unique=True)
 
     # Admin user — password from environment variable (REQUIRED)
     admin_pwd = os.environ.get("ADMIN_PASSWORD")
@@ -780,7 +775,6 @@ async def startup_event():
         log.warning(f"storage init: {e}")
     try:
         await seed_data()
-        await migrate_status_fields()
         await seed_crm_defaults()
         await migrate_to_unified_leads()
         log.info("Seeds ensured")

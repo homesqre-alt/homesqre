@@ -7,21 +7,11 @@ from core import db, log, iso, now_utc, hash_password
 from defaults import DEFAULT_HOMEPAGE_CONTENT, DEFAULT_INTERIORS_CONTENT, DEFAULT_PACKAGES
 
 
-async def migrate_status_fields():
-    await db.listings.update_many({"status": "live"}, {"$set": {"status": "approved"}})
-    await db.projects.update_many({"status": "live"}, {"$set": {"status": "approved"}})
-    await db.localities.update_many(
-        {"status": {"$exists": False}}, {"$set": {"status": "approved"}}
-    )
-
-
 async def seed_data():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
     await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
     await db.user_sessions.create_index("session_token", unique=True)
-    await db.listings.create_index("slug", unique=True)
-    await db.projects.create_index("slug", unique=True)
 
     admin_pwd = os.environ.get("ADMIN_PASSWORD")
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@homesqre.com")
