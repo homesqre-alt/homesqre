@@ -22,6 +22,15 @@ class OtpVerifyRequest(BaseModel):
     otp: str
 
 
+class LoginOtpRequest(BaseModel):
+    mobile: str
+
+
+class LoginOtpVerifyRequest(BaseModel):
+    mobile: str
+    otp: str
+
+
 class ForgotRequest(BaseModel):
     email: EmailStr
 

@@ -152,8 +152,8 @@ export function AssignPackageModal({ verification, packages, onClose, onSubmitte
   const finalPrice = Math.max(0, selectedBasePrice - (parseFloat(discountAmount) || 0));
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
-      <div className="bg-white p-8 max-w-xl w-full border-2 border-[#0C1D42]">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-[60]" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+      <div className="bg-white p-8 max-w-xl w-full border-2 border-[#0C1D42]" onClick={(e) => e.stopPropagation()}>
         <h3 className="font-display text-2xl text-[#0C1D42] mb-4">Assign Package to {verification.customer?.name || "Customer"}</h3>
         <p className="text-sm text-[#333333] mb-6">Select the best matching package and apply any promised discounts from your conversation.</p>
         

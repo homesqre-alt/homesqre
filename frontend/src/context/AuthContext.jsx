@@ -34,6 +34,12 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const loginOtpVerify = async (mobile, otp) => {
+    const { data } = await api.post("/auth/login-otp-verify", { mobile, otp });
+    setUser(data.user);
+    return data.user;
+  };
+
   const register = async (payload) => {
     const { data } = await api.post("/auth/register", payload);
     setUser(data.user);
@@ -52,7 +58,7 @@ export function AuthProvider({ children }) {
   const setUserData = (u) => setUser(u);
 
   return (
-    <AuthContext.Provider value={{ user, login, googleLogin, register, logout, refresh, setUserData }}>
+    <AuthContext.Provider value={{ user, login, loginOtpVerify, googleLogin, register, logout, refresh, setUserData }}>
       {children}
     </AuthContext.Provider>
   );

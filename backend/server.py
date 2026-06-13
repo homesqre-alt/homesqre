@@ -489,6 +489,50 @@ async def auth_login(body: LoginRequest, response: Response):
     _set_auth_cookie(response, "access_token", token)
     return {"user": clean_doc(user), "token": token}
 
+
+@api.post("/auth/login-otp")
+async def auth_login_otp(body: LoginOtpRequest):
+    mobile = body.mobile.strip()
+    user = await db.users.find_one({"mobile": mobile})
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this mobile number")
+        
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "login_otp": otp,
+            "login_otp_expires_at": iso(now_utc() + timedelta(minutes=10))
+        }}
+    )
+    log.info(f"[OTP] Login OTP for {mobile} generated.")
+    return {"ok": True, "dev_otp": otp}
+
+
+@api.post("/auth/login-otp-verify")
+async def auth_login_otp_verify(body: LoginOtpVerifyRequest, response: Response):
+    mobile = body.mobile.strip()
+    user = await db.users.find_one({"mobile": mobile})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    exp = user.get("login_otp_expires_at")
+    if not exp or iso(now_utc()) > exp:
+        raise HTTPException(status_code=400, detail="OTP expired")
+        
+    if user.get("login_otp") != body.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$unset": {"login_otp": "", "login_otp_expires_at": ""}}
+    )
+    
+    token = make_access_token(user["user_id"], user["email"], user["role"])
+    _set_auth_cookie(response, "access_token", token)
+    return {"user": clean_doc(user), "token": token}
+
+
 @api.post("/auth/logout")
 async def auth_logout(response: Response, request: Request):
     response.delete_cookie("access_token", path="/")

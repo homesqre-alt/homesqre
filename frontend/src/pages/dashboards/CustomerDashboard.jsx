@@ -42,14 +42,6 @@ export default function CustomerDashboard() {
 
   // Document vault state
   const [vaultDocs, setVaultDocs] = useState([]);
-  
-  // Form Details (kept for Discovery Call & Briefing forms)
-  const [billingDetails, setBillingDetails] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: "",
-    address: ""
-  });
 
   // Packages fetched dynamically from CMS
   const [packages, setPackages] = useState([]);
@@ -233,15 +225,11 @@ export default function CustomerDashboard() {
   // --- API HANDLERS ---
   
   const handleDiscoverySubmit = async () => {
-    if (!billingDetails.name || !billingDetails.phone) {
-      toast.error("Please provide both name and phone number.");
-      return;
-    }
     setIsLoading(true);
     try {
       await api.post("/discovery-calls", { 
-        name: billingDetails.name, 
-        phone: billingDetails.phone 
+        name: user.name || "Customer", 
+        phone: user.mobile || "Unknown" 
       });
       toast.success("Request received! An expert will call you shortly.");
       setIsDiscoveryOpen(false);
@@ -1025,24 +1013,9 @@ export default function CustomerDashboard() {
             </div>
             <div className="p-8">
               <p className="text-sm text-[#333333] mb-6 leading-relaxed">
-                Enter your number. If it is between 9:00 AM and 7:00 PM, an expert will call you back in under 30 minutes with zero sales pressure.
+                Would you like an expert to call you on <strong>{user?.mobile || "your registered number"}</strong>? 
+                If it is between 9:00 AM and 7:00 PM, an expert will call you back in under 30 minutes with zero sales pressure.
               </p>
-              <div className="space-y-4 mb-8">
-                <input 
-                  type="text" 
-                  placeholder="Your Full Name" 
-                  value={billingDetails.name}
-                  onChange={(e) => setBillingDetails({...billingDetails, name: e.target.value})}
-                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm" 
-                />
-                <input 
-                  type="tel" 
-                  placeholder="Your Phone Number" 
-                  value={billingDetails.phone}
-                  onChange={(e) => setBillingDetails({...billingDetails, phone: e.target.value})}
-                  className="w-full p-3 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] text-sm" 
-                />
-              </div>
               <button 
                 onClick={handleDiscoverySubmit}
                 disabled={isLoading}

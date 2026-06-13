@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { formatApiError } from "@/lib/api";
+import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
@@ -9,10 +9,15 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 const GOOGLE_CLIENT_ID = "792218859682-0c3n97260bmmnihocosutpm00vvliivt.apps.googleusercontent.com";
 
 export default function Login() {
-  const { login, googleLogin } = useAuth();
+  const { login, loginOtpVerify, googleLogin } = useAuth();
   const nav = useNavigate();
+  const [loginMode, setLoginMode] = useState("password"); // "password" or "otp"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [devOtp, setDevOtp] = useState("");
   const [busy, setBusy] = useState(false);
 
   const handleRedirect = (u) => {
@@ -29,11 +34,46 @@ export default function Login() {
     nav(dest);
   };
 
-  const submit = async (e) => {
+  const submitPasswordLogin = async (e) => {
     e.preventDefault();
     setBusy(true);
     try {
       const u = await login(email, password);
+      toast.success("Welcome back!");
+      handleRedirect(u);
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendOtp = async (e) => {
+    e.preventDefault();
+    const mobileClean = mobile.replace(/\D/g, "");
+    if (mobileClean.length !== 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data } = await api.post("/auth/login-otp", { mobile: mobileClean });
+      setDevOtp(data.dev_otp || "");
+      setOtpSent(true);
+      toast.success("OTP sent to your mobile (check console for dev OTP)");
+    } catch (e) {
+      toast.error(formatApiError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitOtpLogin = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const mobileClean = mobile.replace(/\D/g, "");
+      const u = await loginOtpVerify(mobileClean, otp);
       toast.success("Welcome back!");
       handleRedirect(u);
     } catch (e) {
@@ -79,7 +119,7 @@ export default function Login() {
         <div className="flex flex-col justify-center px-6 sm:px-12 lg:px-24 py-12">
           <Link to="/" className="mb-12"><img src="/logo.svg" alt="Homesqre" className="h-24 md:h-32 w-auto object-contain" /></Link>
           <h1 className="font-display text-4xl mb-3">Sign in</h1>
-          <p className="text-sm text-[#333333] mb-10">Enter your email and password to continue.</p>
+          <p className="text-sm text-[#333333] mb-10">Select a sign-in method to continue.</p>
 
           <div className="max-w-md flex justify-center w-full mb-6">
             <GoogleLogin
@@ -99,23 +139,80 @@ export default function Login() {
             <div className="flex-1 h-px bg-[#EDE5DB]" />
           </div>
 
-          <form onSubmit={submit} className="space-y-6 max-w-md" data-testid="login-form">
-            <div>
-              <label className="label-eyebrow mb-2 block">Email</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="hs-input" data-testid="login-email" />
-            </div>
-            <div>
-              <label className="label-eyebrow mb-2 block">Password</label>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="hs-input" data-testid="login-password" />
-            </div>
-            <button disabled={busy} className="btn-primary w-full justify-center" data-testid="login-submit">
-              {busy ? "Signing in…" : "Sign in"}
+          <div className="max-w-md flex gap-2 mb-6">
+            <button
+              onClick={() => { setLoginMode("password"); setOtpSent(false); }}
+              className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest border transition ${loginMode === "password" ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB] text-[#333333] hover:bg-[#F5EDE8]"}`}
+            >
+              Email + Password
             </button>
-          </form>
-
-          <div className="mt-8 text-sm text-[#333333] max-w-md flex justify-center">
-            <Link to="/forgot-password" className="hover:text-[#DA9E3E]">Forgot password?</Link>
+            <button
+              onClick={() => setLoginMode("otp")}
+              className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest border transition ${loginMode === "otp" ? "bg-[#0C1D42] text-white border-[#0C1D42]" : "border-[#EDE5DB] text-[#333333] hover:bg-[#F5EDE8]"}`}
+            >
+              Mobile OTP
+            </button>
           </div>
+
+          {loginMode === "password" && (
+            <form onSubmit={submitPasswordLogin} className="space-y-6 max-w-md" data-testid="login-form">
+              <div>
+                <label className="label-eyebrow mb-2 block">Email</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="hs-input" data-testid="login-email" />
+              </div>
+              <div>
+                <label className="label-eyebrow mb-2 block">Password</label>
+                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="hs-input" data-testid="login-password" />
+              </div>
+              <button disabled={busy} className="btn-primary w-full justify-center" data-testid="login-submit">
+                {busy ? "Signing in…" : "Sign in"}
+              </button>
+              <div className="mt-8 text-sm text-[#333333] max-w-md flex justify-center">
+                <Link to="/forgot-password" className="hover:text-[#DA9E3E]">Forgot password?</Link>
+              </div>
+            </form>
+          )}
+
+          {loginMode === "otp" && !otpSent && (
+            <form onSubmit={sendOtp} className="space-y-6 max-w-md" data-testid="login-otp-form">
+              <div>
+                <label className="label-eyebrow mb-2 block">Mobile Number</label>
+                <input type="tel" required placeholder="10-digit number" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} maxLength={10} className="hs-input" />
+              </div>
+              <button disabled={busy || mobile.length !== 10} className="btn-primary w-full justify-center">
+                {busy ? "Sending…" : "Get Login OTP"}
+              </button>
+            </form>
+          )}
+
+          {loginMode === "otp" && otpSent && (
+            <form onSubmit={submitOtpLogin} className="space-y-6 max-w-md" data-testid="login-otp-verify-form">
+              <p className="text-sm text-[#333333]">We sent a 6-digit OTP to {mobile}.</p>
+              {devOtp && (
+                <p className="text-xs text-[#DA9E3E] mb-4">
+                  Dev mode — your OTP is: <strong>{devOtp}</strong>
+                </p>
+              )}
+              <div>
+                <label className="label-eyebrow mb-2 block">Enter OTP</label>
+                <input
+                  required
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  className="hs-input tracking-[0.5em] text-2xl font-display text-center"
+                />
+              </div>
+              <button disabled={busy || otp.length !== 6} className="btn-primary w-full justify-center">
+                {busy ? "Verifying…" : "Sign In"}
+              </button>
+              <div className="mt-4 text-center">
+                <button type="button" onClick={() => { setOtpSent(false); setOtp(""); }} className="text-xs text-[#0C1D42] uppercase tracking-widest font-bold underline hover:text-[#DA9E3E]">
+                  Change Number
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </GoogleOAuthProvider>

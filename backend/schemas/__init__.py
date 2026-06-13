@@ -14,6 +14,7 @@ without ever losing data if the backend adds new attributes later.
 from .common import OkResponse, MessageResponse  # noqa: F401
 from .auth import (  # noqa: F401
     RegisterRequest, LoginRequest, OtpVerifyRequest,
+    LoginOtpRequest, LoginOtpVerifyRequest,
     ForgotRequest, ResetRequest, GoogleAuthRequest,
     UserOut, AuthResponse,
 )
