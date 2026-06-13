@@ -9,8 +9,12 @@ from schemas import (
     PhaseUpdateRequest, PhaseUpdateOut,
     SiteVisitRequest, SiteVisitOut,
     PackageAdjustmentOut,
+    MobileOtpRequest, MobileUpdateRequest, PasswordUpdateRequest, OkResponse
 )
 from pydantic import BaseModel
+import secrets
+import bcrypt
+from datetime import timedelta
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -116,4 +120,73 @@ async def pay_package_adjustment(user: dict = Depends(current_user)):
     )
     await ensure_design_project(user["user_id"], verification_id=ver_id)
     return {"ok": True, "final_invoice": final_invoice}
+
+
+@api.post("/me/mobile-otp", response_model=OkResponse)
+async def request_mobile_otp(body: MobileOtpRequest, user: dict = Depends(current_user)):
+    """Generate and store an OTP for the user to verify a new mobile number."""
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    mobile = body.mobile.strip()
+    if not mobile:
+        raise HTTPException(status_code=400, detail="Mobile number is required")
+        
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {
+            "pending_mobile": mobile,
+            "mobile_otp": otp,
+            "mobile_otp_expires_at": iso(now_utc() + timedelta(minutes=10))
+        }}
+    )
+    # TODO: In production, trigger an SMS to the user via MSG91, Twilio, etc.
+    return {"ok": True}
+
+
+@api.put("/me/mobile", response_model=OkResponse)
+async def verify_and_update_mobile(body: MobileUpdateRequest, user: dict = Depends(current_user)):
+    """Verify the OTP and update the user's mobile number."""
+    mobile = body.mobile.strip()
+    db_user = await db.users.find_one({"user_id": user["user_id"]})
+    
+    if not db_user or db_user.get("pending_mobile") != mobile:
+        raise HTTPException(status_code=400, detail="No pending mobile update for this number")
+        
+    exp = db_user.get("mobile_otp_expires_at")
+    if not exp or iso(now_utc()) > exp:
+        raise HTTPException(status_code=400, detail="OTP expired")
+        
+    if db_user.get("mobile_otp") != body.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"mobile": mobile},
+         "$unset": {"pending_mobile": "", "mobile_otp": "", "mobile_otp_expires_at": ""}}
+    )
+    return {"ok": True}
+
+
+@api.put("/me/password", response_model=OkResponse)
+async def update_password(body: PasswordUpdateRequest, user: dict = Depends(current_user)):
+    """Update user password from profile dashboard."""
+    db_user = await db.users.find_one({"user_id": user["user_id"]})
+    if not db_user or not db_user.get("password_hash"):
+        raise HTTPException(status_code=400, detail="Cannot change password for this account type (e.g. Google auth)")
+        
+    # Verify old password
+    try:
+        valid = bcrypt.checkpw(body.old_password.encode(), db_user["password_hash"].encode())
+    except Exception:
+        valid = False
+        
+    if not valid:
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+        
+    # Hash new password
+    hashed = bcrypt.hashpw(body.new_password.encode(), bcrypt.gensalt()).decode()
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"password_hash": hashed}}
+    )
+    return {"ok": True}
 

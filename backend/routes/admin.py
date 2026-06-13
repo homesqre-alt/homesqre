@@ -139,3 +139,35 @@ async def update_team_member(email: str, body: EmployeeUpdateRequest, user: dict
         raise HTTPException(status_code=404, detail="User not found")
     return {"ok": True, "message": f"Successfully updated {email} to {body.role}"}
 
+
+# ---------------------------------------------------------------------------
+# Discovery Calls (Admin Queue)
+# ---------------------------------------------------------------------------
+from pydantic import BaseModel
+
+class DiscoveryStatusUpdate(BaseModel):
+    status: str
+
+@api.get("/admin/discovery-calls")
+async def list_discovery_calls(user: dict = Depends(require_role("admin", "sales"))):
+    """Admin/Sales queue for new discovery calls."""
+    flt = {"extra.discovery_cta": True}
+    docs = await db.leads.find(flt, {"_id": 0}).sort([("created_at", -1)]).to_list(100)
+    # The frontend expects the call ID to be in `call_id` for rendering
+    for d in docs:
+        d["call_id"] = d.get("lead_id")
+    return docs
+
+@api.put("/admin/discovery-calls/{call_id}/status", response_model=MessageResponse)
+async def update_discovery_call_status(call_id: str, body: DiscoveryStatusUpdate, user: dict = Depends(require_role("admin", "sales"))):
+    """Update discovery call status directly from the queue."""
+    if not body.status:
+        raise HTTPException(status_code=400, detail="Status is required")
+    result = await db.leads.update_one(
+        {"lead_id": call_id},
+        {"$set": {"status": body.status, "updated_at": iso(now_utc())}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Call not found")
+    return {"ok": True, "message": "Call status updated successfully"}
+

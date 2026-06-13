@@ -23,3 +23,17 @@ class SiteVisitOut(BaseModel):
 class PackageAdjustmentOut(BaseModel):
     ok: bool = True
     final_invoice: int
+
+
+class MobileOtpRequest(BaseModel):
+    mobile: str
+
+
+class MobileUpdateRequest(BaseModel):
+    mobile: str
+    otp: str
+
+
+class PasswordUpdateRequest(BaseModel):
+    old_password: str
+    new_password: str

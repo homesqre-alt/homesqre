@@ -44,4 +44,5 @@ from .me import (  # noqa: F401
     PhaseUpdateRequest, PhaseUpdateOut,
     SiteVisitRequest, SiteVisitOut,
     PackageAdjustmentOut,
+    MobileOtpRequest, MobileUpdateRequest, PasswordUpdateRequest,
 )
