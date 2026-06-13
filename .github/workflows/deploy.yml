@@ -53,7 +53,7 @@ jobs:
 
             # ── Build & restart containers ─────────────────────────────────
             echo "==> Building Docker images..."
-            docker compose -f docker-compose.prod.yml build --no-cache --pull
+            docker compose -f docker-compose.prod.yml build --pull
 
             echo "==> Starting containers..."
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
