@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 import DocumentVault from "@/components/DocumentVault";
+import { AssignPackageModal } from "@/components/sales/FloorPlanAssignments";
 
 /**
  * MasterLeadPipeline — shared CRM grid used by Admin and Sales dashboards.
@@ -331,6 +332,25 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
   const isAssignee = (data.assigned_to || "") === (currentUser?.email || "").toLowerCase();
   const canEditCore = isAdmin;
   const canEditWorkflow = isAdmin || isAssignee;
+  
+  const [assigningVerification, setAssigningVerification] = useState(null);
+  const [packages, setPackages] = useState([]);
+
+  const handleAssignClick = async () => {
+    setBusy(true);
+    try {
+      const [verRes, pkgRes] = await Promise.all([
+        api.get(`/leads/${data.lead_id}/pending-verification`),
+        api.get("/packages")
+      ]);
+      setPackages(pkgRes.data);
+      setAssigningVerification(verRes.data);
+    } catch (err) {
+      toast.error(err.response?.status === 404 ? "No pending verification found for this customer." : "Failed to load verification.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // refresh full lead (with comments) on open
   useEffect(() => {
@@ -511,6 +531,17 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         <section className="space-y-4">
           <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Document Vault</h4>
           <DocumentVault leadId={data.lead_id} />
+          {data.status === "Floor Plan Uploaded" && (
+            <div className="pt-2 border-t border-[#EDE5DB]">
+              <button 
+                onClick={handleAssignClick}
+                disabled={busy}
+                className="bg-[#0C1D42] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D] transition w-full sm:w-auto"
+              >
+                {busy ? "Loading..." : "Assign Package & Offer"}
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Lead Journey Timeline */}
@@ -587,6 +618,19 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
           </section>
         )}
       </div>
+
+      {assigningVerification && (
+        <AssignPackageModal
+          verification={assigningVerification}
+          packages={packages}
+          onClose={() => setAssigningVerification(null)}
+          onSubmitted={() => { 
+            setAssigningVerification(null); 
+            onChanged(); 
+            onClose(); 
+          }}
+        />
+      )}
     </div>
   );
 }

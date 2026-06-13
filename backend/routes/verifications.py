@@ -145,7 +145,21 @@ async def admin_moderate_verification(
             
         return {"ok": True}
 
-    raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+@api.get("/leads/{lead_id}/pending-verification")
+async def get_lead_pending_verification(lead_id: str, user: dict = Depends(require_role("admin", "sales"))):
+    """Get the pending floor plan verification for a specific lead."""
+    target_user = await db.users.find_one({"lead_id": lead_id})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="No customer found for this lead")
+        
+    ver = await db.verifications.find_one(
+        {"user_id": target_user["user_id"], "status": "pending"},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    if not ver:
+        raise HTTPException(status_code=404, detail="No pending verification found")
+    return ver
 
 @api.post("/verifications/latest/floor-plan")
 async def reupload_floor_plan(body: VerificationCreateRequest, user: dict = Depends(current_user)):

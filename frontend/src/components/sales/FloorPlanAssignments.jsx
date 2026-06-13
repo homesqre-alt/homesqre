@@ -113,7 +113,7 @@ export default function FloorPlanAssignments() {
   );
 }
 
-function AssignPackageModal({ verification, packages, onClose, onSubmitted }) {
+export function AssignPackageModal({ verification, packages, onClose, onSubmitted }) {
   const [propertyType, setPropertyType] = useState("");
   const [bhkOrUnits, setBhkOrUnits] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
