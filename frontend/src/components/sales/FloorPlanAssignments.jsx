@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
-import { formatApiError } from "@/lib/utils";
+import { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function FloorPlanAssignments() {
