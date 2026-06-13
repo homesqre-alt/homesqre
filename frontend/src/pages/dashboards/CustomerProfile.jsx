@@ -40,8 +40,6 @@ const BUDGETS = [
   "Not sure yet",
 ];
 
-const PROPERTY_TYPES = ["Apartment", "Villa", "Independent House", "Penthouse"];
-
 function Section({ icon: Icon, title, children }) {
   return (
     <div className="bg-white border border-[#EDE5DB] p-6 lg:p-8">
@@ -90,7 +88,6 @@ export default function CustomerProfile() {
     pref_style: "",
     pref_timeline: "",
     pref_budget: "",
-    pref_property_type: "",
   });
 
   // Pre-populate from user object
@@ -106,7 +103,6 @@ export default function CustomerProfile() {
         pref_style: user.pref_style || "",
         pref_timeline: user.pref_timeline || "",
         pref_budget: user.pref_budget || "",
-        pref_property_type: user.pref_property_type || "",
       });
     }
   }, [user]);
@@ -307,26 +303,6 @@ export default function CustomerProfile() {
                     data-testid={`pref-style-${s.toLowerCase().replace(/\s/g, "-")}`}
                   >
                     {s}
-                  </button>
-                ))}
-              </div>
-            </Field>
-
-            {/* Property type */}
-            <Field label="Property Type">
-              <div className="flex flex-wrap gap-2 mt-2">
-                {PROPERTY_TYPES.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setForm({ ...form, pref_property_type: p })}
-                    className={`text-xs px-4 py-2 border tracking-wide transition ${
-                      form.pref_property_type === p
-                        ? "border-[#0C1D42] bg-[#0C1D42] text-white"
-                        : "border-[#EDE5DB] text-[#333333] hover:border-[#DA9E3E]"
-                    }`}
-                  >
-                    {p}
                   </button>
                 ))}
               </div>

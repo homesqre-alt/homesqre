@@ -53,20 +53,13 @@ export default function CustomerDashboard() {
 
   // Packages fetched dynamically from CMS
   const [packages, setPackages] = useState([]);
-  const [loadingPackages, setLoadingPackages] = useState(true);
-
-  // Selected package wizard
+  const [loadingPackages, setLoadingPackages] = useState(false);
   const [selectedPropertyGroup, setSelectedPropertyGroup] = useState(null);
 
   // Selected package (in unpaid phase)
   const [selectedPkg, setSelectedPkg] = useState(null); // { property_type, value, label, price, blurb }
-  // Briefing phase still needs property/BHK; default from selected pkg if any.
-  const [propertyType, setPropertyType] = useState("apartment");
-  const [bhkType, setBhkType] = useState("1-2");
-  const [villaType, setVillaType] = useState("duplex");
-  const [unitCount, setUnitCount] = useState(1);
 
-  // The price the customer is paying (driven by the selected package)
+  // Billing Phase - Quotation / AdvanceThe price the customer is paying (driven by the selected package)
   const calculatedPrice = selectedPkg?.price || 0;
 
   const [unavailableSlots, setUnavailableSlots] = useState([]);
@@ -397,20 +390,6 @@ export default function CustomerDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleConfirmPayment = async () => {
-    if (!selectedPkg) {
-      toast.error("Please choose a package first.");
-      return;
-    }
-    // Sync briefing-phase property fields to the chosen package
-    setPropertyType(selectedPkg.property_type);
-    if (selectedPkg.property_type === "apartment") setBhkType(selectedPkg.value);
-    else if (selectedPkg.property_type === "villa") setVillaType(selectedPkg.value);
-    else if (selectedPkg.property_type === "independent") setUnitCount(parseInt(selectedPkg.value) || 1);
-
-    await initRazorpayPayment("initial_package", selectedPkg.price);
   };
 
   const handlePayPackageAdjustment = async () => {
