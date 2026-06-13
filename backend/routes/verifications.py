@@ -141,6 +141,19 @@ async def admin_moderate_verification(
         # Sync CRM Lead Status instantly
         u_doc = await db.users.find_one({"user_id": ver["user_id"]}, {"lead_id": 1})
         if u_doc and u_doc.get("lead_id"):
+            u_db = await db.users.find_one({"user_id": user["user_id"]})
+            u_name = u_db.get("name") if u_db else None
+            by_name = u_name or user.get("name") or _user_identifier(user)
+            await db.leads.update_one(
+                {"lead_id": u_doc["lead_id"]},
+                {"$push": {"comments": {
+                    "id": f"c_{uuid.uuid4().hex[:8]}",
+                    "by": _user_identifier(user),
+                    "by_name": by_name,
+                    "text": f"Assigned/Updated package: {assigned_pt} ({assigned_spec}) with discount ₹{discount_amount}",
+                    "at": iso(now_utc()),
+                }}}
+            )
             await sync_lead_status(u_doc["lead_id"], "pending_payment", "Package assigned by Sales")
             
         return {"ok": True}

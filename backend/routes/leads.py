@@ -228,6 +228,10 @@ async def update_lead_status(lead_id: str, body: LeadStatusUpdateRequest, user: 
         raise HTTPException(status_code=400, detail=f"Unknown status: {new_status}")
     old_status = lead.get("status")
     next_assignee = await _auto_assign_for_status(new_status, lead.get("assigned_to"))
+    
+    u_db = await db.users.find_one({"user_id": user["user_id"]})
+    u_name = u_db.get("name") if u_db else None
+    
     update = {
         "status": new_status,
         "assigned_to": next_assignee,
@@ -237,7 +241,7 @@ async def update_lead_status(lead_id: str, body: LeadStatusUpdateRequest, user: 
         {"lead_id": lead_id},
         {"$set": update,
          "$push": {"history": {"from_status": old_status, "to_status": new_status,
-                                "at": iso(now_utc()), "by": _user_identifier(user)}}}
+                                "at": iso(now_utc()), "by": _user_identifier(user), "by_name": u_name or user.get("name") or _user_identifier(user)}}}
     )
     return {"ok": True, "assigned_to": next_assignee}
 
@@ -252,10 +256,14 @@ async def add_lead_comment(lead_id: str, body: LeadCommentCreateRequest, user: d
         raise HTTPException(status_code=404, detail="Lead not found")
     if user.get("role") != "admin" and (lead.get("assigned_to") or "") != _user_identifier(user):
         raise HTTPException(status_code=403, detail="Not your lead")
+        
+    u_db = await db.users.find_one({"user_id": user["user_id"]})
+    u_name = u_db.get("name") if u_db else None
+    
     comment = {
         "id": f"c_{uuid.uuid4().hex[:8]}",
         "by": _user_identifier(user),
-        "by_name": user.get("name") or _user_identifier(user),
+        "by_name": u_name or user.get("name") or _user_identifier(user),
         "text": text,
         "at": iso(now_utc()),
     }

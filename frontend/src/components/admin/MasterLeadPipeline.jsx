@@ -450,6 +450,11 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
             <div className="flex gap-2 mt-1">
               <a 
                 href={`tel:${data.phone}`} 
+                onClick={() => {
+                  api.post(`/leads/${data.lead_id}/comments`, { text: "Initiated a phone call." })
+                    .then(() => api.get(`/leads/${data.lead_id}`))
+                    .then(res => { setData(res.data); onChanged(res.data); });
+                }}
                 className="bg-[#0C1D42] text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:bg-[#08142D] transition"
               >
                 📞 Call
@@ -458,6 +463,11 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
                 href={`https://wa.me/${data.phone.replace(/\D/g, '')}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
+                onClick={() => {
+                  api.post(`/leads/${data.lead_id}/comments`, { text: "Initiated a WhatsApp chat." })
+                    .then(() => api.get(`/leads/${data.lead_id}`))
+                    .then(res => { setData(res.data); onChanged(res.data); });
+                }}
                 className="bg-[#25D366] text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:bg-[#1DA851] transition"
               >
                 💬 WhatsApp
