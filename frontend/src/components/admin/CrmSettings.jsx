@@ -234,8 +234,8 @@ function SettingsList({ kind, supportsRole }) {
             className="p-2 text-sm border border-[#EDE5DB] bg-white"
           >
             <option value="">No auto-assign</option>
-            <option value="sales">→ sales (round-robin)</option>
-            <option value="designer">→ designer (round-robin)</option>
+            <option value="sales">→ sales</option>
+            <option value="designer">→ designer</option>
             <option value="admin">→ admin</option>
           </select>
         )}

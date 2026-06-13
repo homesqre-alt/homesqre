@@ -343,17 +343,8 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
   const dirtyCount = Object.keys(edits).length + (comment.trim() ? 1 : 0);
 
   const allowedStatuses = useMemo(() => {
-    if (currentUser?.role === "admin") return statuses;
-    if (currentUser?.role === "designer") {
-      return statuses.filter(s => 
-        ["Floor Plan Uploaded", "Floor Plan Approved", "Floor Plan Rejected", "Designing", "Awaiting Customer Approval", "Design Approved"].includes(s.name) || s.name === data.status
-      );
-    }
-    // sales
-    return statuses.filter(s => 
-      ["New", "Followup", "Not Interested", "Payment Received", "Partial Payment Pending"].includes(s.name) || s.name === data.status
-    );
-  }, [statuses, currentUser, data.status]);
+    return statuses;
+  }, [statuses]);
 
   // Single batched submit — fires the right endpoint for each changed field.
   // Nothing hits the API until the user clicks "Submit Changes".

@@ -843,7 +843,7 @@ async def startup_event():
         log.error(f"[CRM] Status sync error: {e}")
 
     # START THE AUTO ROUTER
-    asyncio.create_task(discovery_call_auto_router())
+    # asyncio.create_task(discovery_call_auto_router())
 
 
 @app.on_event("shutdown")

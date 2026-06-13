@@ -129,10 +129,15 @@ async def _round_robin_assignee(role: str) -> Optional[str]:
 
 
 async def _auto_assign_for_status(status_name: str, current_assignee: Optional[str]) -> Optional[str]:
+    # Stop round-robin permanently once a lead has been assigned to a person.
+    if current_assignee:
+        return current_assignee
+
     status_def = await db.crm_statuses.find_one({"name": status_name}, {"_id": 0})
     role = (status_def or {}).get("assign_to_role")
     if not role:
         return current_assignee
+        
     return await _round_robin_assignee(role) or current_assignee
 
 

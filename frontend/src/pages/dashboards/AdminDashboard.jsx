@@ -675,9 +675,6 @@ export function TabDiscoveryCalls({ currentUser }) {
         <button onClick={loadCalls} className="text-sm underline text-[#DA9E3E]">Refresh Queue</button>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-sm text-blue-800">
-        <strong>Auto-Assign Logic Active:</strong> Leads are routed round-robin. If a lead is not marked 'Connected' or 'Missed' within 15 minutes, it automatically shifts to the next available agent.
-      </div>
 
       <table className="w-full text-sm bg-white border border-[#EDE5DB]">
         <thead className="bg-[#F5EDE8]">
