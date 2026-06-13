@@ -74,89 +74,60 @@ async def admin_list_verifications(user: dict = Depends(require_role("admin", "d
 async def admin_moderate_verification(
     ver_id: str,
     body: VerificationModerateRequest,
-    user: dict = Depends(require_role("admin", "designer")),
+    user: dict = Depends(require_role("admin", "sales", "designer")),
 ):
-    """Approve → auto-create design project + advance customer to 'designing'.
-    reject_package → designer selects corrected package; backend auto-calculates
-    the differential customer must pay. No manual amount input from designer.
+    """Assign Package -> Sales assigns the package + custom discount.
     """
     action = body.action
     ver = await db.verifications.find_one({"verification_id": ver_id})
     if not ver:
         raise HTTPException(status_code=404, detail="Verification not found")
 
-    if action == "approve":
-        await db.verifications.update_one(
-            {"verification_id": ver_id},
-            {"$set": {"status": "approved", "moderated_by": _user_identifier(user),
-                      "moderated_at": iso(now_utc())}}
-        )
-        design = await ensure_design_project(ver["user_id"], verification_id=ver_id)
-        await db.users.update_one(
-            {"user_id": ver["user_id"]},
-            {"$set": {"project_phase": "designing", "site_visit_at": None}}
-        )
-        return {"ok": True, "design_project_id": design["project_id"]}
-
-    if action == "reject_package":
-        corrected_pt = (body.corrected_property_type or "").strip()
-        corrected_spec = body.corrected_bhk_or_units
-        if not corrected_pt or corrected_spec in (None, ""):
-            raise HTTPException(status_code=400, detail="corrected_property_type and corrected_bhk_or_units are required")
-        new_price = calculate_package_price(corrected_pt, corrected_spec)
-        if new_price <= 0:
+    if action == "assign_package":
+        assigned_pt = (body.corrected_property_type or "").strip()
+        assigned_spec = body.corrected_bhk_or_units
+        if not assigned_pt or assigned_spec in (None, ""):
+            raise HTTPException(status_code=400, detail="property_type and bhk_or_units are required")
+        base_price = calculate_package_price(assigned_pt, assigned_spec)
+        if base_price <= 0:
             raise HTTPException(status_code=400, detail="Unknown package combination")
-        invoice_paid = float(ver.get("invoice_paid") or 0)
-        differential = max(0, new_price - int(invoice_paid))
+
+        discount_amount = getattr(body, "discount_amount", 0) or 0
+        discount_expiry_hours = getattr(body, "discount_expiry_hours", 24) or 24
+        final_price = max(0, base_price - discount_amount)
+
+        # Update verification record
         update = {
-            "status": "package_mismatch",
-            "corrected_property_type": corrected_pt,
-            "corrected_bhk_or_units": str(corrected_spec),
-            "corrected_price": new_price,
-            "differential_amount": differential,
-            "rejection_reason": body.reason or "Floor plan did not match selected package",
+            "status": "package_assigned",
+            "assigned_property_type": assigned_pt,
+            "assigned_bhk_or_units": str(assigned_spec),
+            "base_price": base_price,
+            "discount_amount": discount_amount,
+            "final_price": final_price,
             "moderated_by": _user_identifier(user),
             "moderated_at": iso(now_utc()),
         }
         await db.verifications.update_one({"verification_id": ver_id}, {"$set": update})
-        if differential == 0:
-            await db.verifications.update_one(
-                {"verification_id": ver_id},
-                {"$set": {"status": "package_adjusted_paid"}}
-            )
-            await db.users.update_one(
-                {"user_id": ver["user_id"]},
-                {"$set": {"project_phase": "designing"}}
-            )
-            return {"ok": True, "differential_amount": 0, "auto_approved": True}
+
+        # Calculate expiry time
+        import datetime
+        expiry_time = now_utc() + datetime.timedelta(hours=float(discount_expiry_hours))
+
+        # Update user profile to pending_payment
         await db.users.update_one(
             {"user_id": ver["user_id"]},
             {"$set": {
-                "project_phase": "package_adjustment",
-                "package_adjustment": {
-                    "verification_id": ver_id,
-                    "corrected_property_type": corrected_pt,
-                    "corrected_bhk_or_units": str(corrected_spec),
-                    "corrected_price": new_price,
-                    "invoice_paid": int(invoice_paid),
-                    "differential_amount": differential,
-                    "raised_at": iso(now_utc()),
-                },
+                "project_phase": "pending_payment",
+                "assigned_package": {
+                    "property_type": assigned_pt,
+                    "bhk_or_units": str(assigned_spec),
+                    "base_price": base_price,
+                    "discount_amount": discount_amount,
+                    "final_price": final_price,
+                    "expiry_time": iso(expiry_time)
+                }
             }}
-        )
-        return {"ok": True, "differential_amount": differential, "auto_approved": False}
-
-    if action == "reject":
-        deficit_amount = body.deficit_amount or 0
-        await db.verifications.update_one(
-            {"verification_id": ver_id},
-            {"$set": {"status": "rejected", "deficit_amount": deficit_amount}}
-        )
-        await db.users.update_one(
-            {"user_id": ver["user_id"]},
-            {"$set": {"project_phase": "unpaid", "deficit_due": deficit_amount}}
         )
         return {"ok": True}
 
     raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
-

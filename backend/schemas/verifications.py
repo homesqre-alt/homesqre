@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict
 
 
 class VerificationCreateRequest(BaseModel):
-    property_type: str
-    bhk_or_units: str
-    invoice_paid: float
+    property_type: Optional[str] = None
+    bhk_or_units: Optional[str] = None
+    invoice_paid: Optional[float] = 0
     pdf_url: Optional[str] = None
     pdf_urls: Optional[List[str]] = None
     room_requirements: str
@@ -32,15 +32,14 @@ class VerificationOut(BaseModel):
 
 
 class VerificationModerateRequest(BaseModel):
-    """`approve`, `reject_package`, or legacy `reject`. Different fields apply
-    per action; we accept anything (`extra='allow'`) and validate per-action
-    inside the route."""
+    """`assign_package` -> assign the package, discount, and expiry."""
     model_config = ConfigDict(extra="allow")
     action: str
     corrected_property_type: Optional[str] = None
     corrected_bhk_or_units: Optional[str] = None
     reason: Optional[str] = None
-    deficit_amount: Optional[float] = None
+    discount_amount: Optional[float] = 0
+    discount_expiry_hours: Optional[float] = 24
 
 
 class VerificationModerateOut(BaseModel):

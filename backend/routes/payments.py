@@ -38,15 +38,12 @@ async def create_order(body: CreateOrderRequest, user: dict = Depends(current_us
 
     # Server-side amount validation — never trust the client
     if body.payment_type == "initial_package":
-        import os
-        MIN_PACKAGE = int(os.environ.get("MIN_PACKAGE_AMOUNT", "10000"))
-        if int(amount) < MIN_PACKAGE:
-            raise HTTPException(status_code=400, detail=f"Minimum package amount is ₹{MIN_PACKAGE:,}")  # noqa
-    if body.payment_type == "package_adjustment":
-        adj = user.get("package_adjustment")
-        if not adj:
-            raise HTTPException(status_code=400, detail="No pending package adjustment")
-        amount = float(adj.get("differential_amount", 0))
+        assigned_pkg = user.get("assigned_package", {})
+        expected_amount = assigned_pkg.get("final_price")
+        if expected_amount is None:
+            raise HTTPException(status_code=400, detail="No package has been assigned yet.")
+        if int(amount) != int(expected_amount):
+            raise HTTPException(status_code=400, detail=f"Invalid payment amount. Expected ₹{expected_amount:,.0f}")
     elif body.payment_type == "quotation_milestone":
         milestone_id = body.metadata.get("milestone_id")
         # Find quotation and milestone
@@ -128,12 +125,21 @@ async def verify_payment(body: VerifyPaymentRequest, user: dict = Depends(curren
     
     # 3. Process business logic based on payment_type
     if payment_type == "initial_package":
-        # Advance phase to briefing
+        # Advance phase to designing
         fresh_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
         await db.users.update_one(
             {"user_id": user["user_id"]},
-            {"$set": {"project_phase": "briefing", "phase_updated_at": iso(now_utc())}}
+            {"$set": {"project_phase": "designing", "phase_updated_at": iso(now_utc())}}
         )
+        # Ensure design project is created since verification was implicitly handled by Sales
+        from design_helpers import ensure_design_project
+        # Find latest verification
+        ver = await db.verifications.find_one({"user_id": user["user_id"]}, sort=[("created_at", -1)])
+        if ver:
+            await ensure_design_project(user["user_id"], verification_id=ver["verification_id"])
+            # Mark verification as fully approved/paid
+            await db.verifications.update_one({"verification_id": ver["verification_id"]}, {"$set": {"status": "approved"}})
+        
         # Sync lead status to Payment Received
         if fresh_user:
             from crm_helpers import find_or_create_lead_for_user
@@ -144,56 +150,6 @@ async def verify_payment(body: VerifyPaymentRequest, user: dict = Depends(curren
             )
         description = "Initial Design Package Retainer"
         
-    elif payment_type == "package_adjustment":
-        # Re-fetch user from DB to get fresh state (dependency-injected user may be stale)
-        fresh_adj_user = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-        adj = (fresh_adj_user or {}).get("package_adjustment")
-        if not adj:
-            raise HTTPException(status_code=400, detail="No pending package adjustment found")
-        ver_id = adj["verification_id"]
-        ver = await db.verifications.find_one({"verification_id": ver_id})
-        if not ver:
-            raise HTTPException(status_code=404, detail="Verification record not found")
-        final_invoice = int(ver.get("invoice_paid") or 0) + int(adj.get("differential_amount") or 0)
-        await db.verifications.update_one(
-            {"verification_id": ver_id},
-            {"$set": {
-                "status": "package_adjusted_paid",
-                "differential_paid_at": iso(now_utc()),
-                "final_invoice": final_invoice,
-            }}
-        )
-        await db.users.update_one(
-            {"user_id": user["user_id"]},
-            {"$set": {"project_phase": "designing"},
-             "$unset": {"package_adjustment": ""}}
-        )
-        # We need to import ensure_design_project but to avoid circular import, we can do it locally
-        from routes.design import ensure_design_project
-        await ensure_design_project(user["user_id"], verification_id=ver_id)
-        
-        if user.get("lead_id"):
-            lead = await db.leads.find_one({"lead_id": user["lead_id"]})
-            if lead:
-                new_assignee = await _auto_assign_for_status("Partial Payment Pending", lead.get("assigned_to"))
-                await db.leads.update_one(
-                    {"lead_id": lead["lead_id"]},
-                    {
-                        "$set": {"status": "Partial Payment Pending", "assigned_to": new_assignee, "updated_at": iso(now_utc())},
-                        "$push": {
-                            "history": {"from_status": lead.get("status"), "to_status": "Partial Payment Pending", "at": iso(now_utc()), "by": "system"},
-                            "comments": {
-                                "id": f"c_sys_{uuid.uuid4().hex[:8]}",
-                                "by": "system",
-                                "by_name": "System",
-                                "text": f"system moved lead from {lead.get('status')} to Partial Payment Pending",
-                                "at": iso(now_utc()),
-                            }
-                        }
-                    }
-                )
-        description = "Package Adjustment Differential"
-
     elif payment_type == "quotation_milestone":
         milestone_id = metadata.get("milestone_id")
         project = await db.design_projects.find_one({"user_id": user["user_id"]}, sort=[("created_at", -1)])

@@ -19,6 +19,7 @@ import DesignerDashboard from "@/pages/dashboards/DesignerDashboard";
 import AuthCallback from "@/components/layout/AuthCallback";
 import AdminLogin from "@/pages/AdminLogin";
 import CustomerProfile from "@/pages/dashboards/CustomerProfile";
+import CustomerPricing from "@/pages/dashboards/CustomerPricing";
 
 function AppRouter() {
   // Detect session_id during render (sync) — handles OAuth race condition
@@ -51,6 +52,7 @@ function AppRouter() {
       {/* Customer Dashboard */}
       <Route path="/dashboard/customer" element={<CustomerDashboard />} />
       <Route path="/dashboard/profile" element={<CustomerProfile />} />
+      <Route path="/dashboard/pricing" element={<CustomerPricing />} />
 
       {/* Staff Dashboards (role-gated inside each component) */}
       <Route path="/dashboard/sales" element={<SalesDashboard />} />

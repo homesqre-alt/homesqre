@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import MasterLeadPipeline from "@/components/admin/MasterLeadPipeline";
 import CrmSettings from "@/components/admin/CrmSettings";
-import RejectPackageDialog from "@/components/admin/RejectPackageDialog";
+import FloorPlanAssignments from "@/components/sales/FloorPlanAssignments";
 import DesignerProjects from "@/components/admin/DesignerProjects";
 import AdminQuotationQueue from "@/components/admin/AdminQuotationQueue";
 
@@ -725,123 +725,11 @@ export function TabDiscoveryCalls({ currentUser }) {
 
 // ==========================================
 // TAB 3: VERIFICATION & SITE VISITS
+// ===============// ==========================================
+// TAB 3: VERIFICATION & SITE VISITS (Now Floor Plan Assignments)
 // ==========================================
 export function TabSiteVisits() {
-  const [verifications, setVerifications] = useState([]);
-  const [rejecting, setRejecting] = useState(null);   // verification record being rejected
-
-  const backend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
-  const absUrl = (u) => (u && u.startsWith("http") ? u : `${backend}${u}`);
-
-  const loadVerifications = useCallback(async () => {
-    try {
-      const { data } = await api.get("/admin/verifications");
-      setVerifications(data || []);
-    } catch (err) {
-      toast.error("Failed to load verifications.");
-    }
-  }, []);
-
-  useEffect(() => { loadVerifications(); }, [loadVerifications]);
-
-  const handleApprove = async (verId) => {
-    try {
-      await api.put(`/admin/verifications/${verId}`, { action: "approve" });
-      toast.success("Approved — customer moved to scheduling.");
-      loadVerifications();
-    } catch (err) {
-      toast.error(formatApiError(err));
-    }
-  };
-
-  const pending = verifications.filter(v => v.status === "pending");
-  const recentlyResolved = verifications.filter(v =>
-    v.status === "package_mismatch" || v.status === "package_adjusted_paid" || v.status === "approved"
-  ).slice(0, 8);
-
-  return (
-    <div className="animate-in fade-in" data-testid="verification-queue">
-      <h3 className="font-display text-xl text-[#0C1D42] mb-4">Floor Plan Verification Queue</h3>
-
-      {pending.length === 0 ? (
-        <p className="text-gray-500 bg-white border border-[#EDE5DB] p-6 mb-8 text-center">No pending floor plans to verify.</p>
-      ) : (
-        pending.map(v => (
-          <div key={v.verification_id} className="bg-white border border-[#EDE5DB] p-6 mb-4" data-testid={`verification-${v.verification_id}`}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                {(v.customer?.name || v.customer?.project_name) && (
-                  <p className="text-xs uppercase tracking-widest text-[#DA9E3E] font-bold mb-1">
-                    {v.customer?.name}{v.customer?.project_name ? ` — ${v.customer.project_name}` : ""}
-                  </p>
-                )}
-                <h4 className="font-bold text-[#0C1D42] capitalize">{v.bhk_or_units} {v.property_type}</h4>
-                <p className="text-sm text-gray-500">Invoice Paid: ₹{Number(v.invoice_paid).toLocaleString('en-IN')}</p>
-                <p className="text-sm text-gray-500 mt-2"><strong>Client Notes:</strong> {v.room_requirements}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {((v.pdf_urls && v.pdf_urls.length > 0) ? v.pdf_urls : (v.pdf_url ? [v.pdf_url] : [])).map((u, idx) => (
-                  <a key={idx} href={absUrl(u)} target="_blank" rel="noopener noreferrer" download
-                     data-testid={`download-plan-${v.verification_id}-${idx}`}
-                     className="text-[#DA9E3E] underline text-sm border p-2">
-                    Floor Plan {idx + 1}
-                  </a>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3 border-t pt-4">
-              <button onClick={() => handleApprove(v.verification_id)}
-                      data-testid={`approve-${v.verification_id}`}
-                      className="bg-[#0C1D42] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D]">
-                Approve (Push to Scheduling)
-              </button>
-              <button onClick={() => setRejecting(v)}
-                      data-testid={`reject-package-${v.verification_id}`}
-                      className="border border-red-600 text-red-600 px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-red-50">
-                Reject — Package Mismatch
-              </button>
-            </div>
-          </div>
-        ))
-      )}
-
-      {recentlyResolved.length > 0 && (
-        <div className="mt-10">
-          <h4 className="font-display text-sm uppercase tracking-widest text-[#0C1D42] mb-3">Recently resolved</h4>
-          <div className="space-y-2">
-            {recentlyResolved.map(v => (
-              <div key={v.verification_id} className="bg-[#F5EDE8] border border-[#EDE5DB] p-3 text-xs flex justify-between items-center">
-                <span className="capitalize">
-                  {v.customer?.name && <strong className="not-italic">{v.customer.name}</strong>}
-                  {v.customer?.project_name && <> — <em className="text-[#333333]">{v.customer.project_name}</em></>}
-                  {" • "}
-                  {v.bhk_or_units} {v.property_type}
-                  {v.corrected_property_type && (
-                    <> → <strong>{v.corrected_bhk_or_units} {v.corrected_property_type}</strong></>
-                  )}
-                </span>
-                <span className="text-[#333333]">
-                  {v.status === "approved" && (v.site_visit_at
-                    ? `Approved — Site visit: ${new Date(v.site_visit_at).toLocaleString()}`
-                    : "Approved — Awaiting site visit booking")}
-                  {v.status === "package_mismatch" && `Awaiting customer payment ₹${(v.differential_amount || 0).toLocaleString("en-IN")}`}
-                  {v.status === "package_adjusted_paid" && `Paid — Designing (final ₹${(v.final_invoice || 0).toLocaleString("en-IN")})`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {rejecting && (
-        <RejectPackageDialog
-          verification={rejecting}
-          onClose={() => setRejecting(null)}
-          onSubmitted={() => { setRejecting(null); loadVerifications(); }}
-        />
-      )}
-    </div>
-  );
+  return <FloorPlanAssignments />;
 }
 
 // ==========================================

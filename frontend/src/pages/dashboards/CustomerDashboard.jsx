@@ -181,7 +181,7 @@ export default function CustomerDashboard() {
   }, [currentPhase]);
 
   useEffect(() => {
-    if (currentPhase !== 'unpaid') return;
+    if (currentPhase !== 'verification') return;
     (async () => {
       try {
         const { data } = await api.get('/packages');
@@ -214,6 +214,7 @@ export default function CustomerDashboard() {
 
   const INTERIOR_LINKS = [
     { to: "/dashboard/customer", label: "My Project" },
+    { to: "/dashboard/pricing", label: "Pricing" },
     { to: "#designs", label: "Designs & Renders" },
     { to: "#invoices", label: "Quotations & Billing" },
     { to: "/dashboard/profile", label: "Profile & Settings" },
@@ -270,14 +271,11 @@ export default function CustomerDashboard() {
     try {
       await api.post("/verifications", {
         project_name: projectName.trim(),
-        property_type: propertyType,
-        bhk_or_units: propertyType === "apartment" ? bhkType : (propertyType === "villa" ? villaType : unitCount.toString()),
-        invoice_paid: calculatedPrice,
         pdf_urls: floorPlans.map(f => f.url),
         pdf_url: floorPlans[0]?.url,
         room_requirements: roomRequirements || "None provided"
       });
-      toast.success("Brief submitted successfully for verification.");
+      toast.success("Brief submitted successfully for review.");
       // Backend already set project_phase="verification"; refresh user to pick it up.
       await refresh();
     } catch (err) {
@@ -485,172 +483,12 @@ export default function CustomerDashboard() {
         </blockquote>
       )}
 
-      {/* PACKAGE ADJUSTMENT BANNER — designer flagged a mismatch */}
-      {currentPhase === "package_adjustment" && user?.package_adjustment && (
-        <div className="bg-[#FCFAF5] border-2 border-[#DA9E3E] p-6 mb-10 animate-in fade-in" data-testid="package-adjustment-banner">
-          <h3 className="font-display text-2xl text-[#0C1D42] mb-2">Package Adjustment Required</h3>
-          <p className="text-sm text-[#333333] mb-4">
-            Your designer reviewed your floor plan and recommends upgrading to a{" "}
-            <strong className="capitalize">
-              {user.package_adjustment.corrected_bhk_or_units} {user.package_adjustment.corrected_property_type}
-            </strong>{" "}
-            package to match the layout you uploaded.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-            <div className="bg-white border border-[#EDE5DB] p-3 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-[#333333]">You paid</p>
-              <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.package_adjustment.invoice_paid).toLocaleString("en-IN")}</p>
-            </div>
-            <div className="bg-white border border-[#EDE5DB] p-3 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-[#333333]">Correct package</p>
-              <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.package_adjustment.corrected_price).toLocaleString("en-IN")}</p>
-            </div>
-            <div className="bg-[#F5EDE8] border border-[#0C1D42] p-3 text-center">
-              <p className="text-[10px] uppercase tracking-widest text-[#0C1D42] font-bold">You owe</p>
-              <p className="font-display text-2xl text-[#0C1D42]" data-testid="differential-amount">
-                ₹{Number(user.package_adjustment.differential_amount).toLocaleString("en-IN")}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handlePayPackageAdjustment}
-            disabled={isLoading}
-            data-testid="pay-package-adjustment-btn"
-            className="bg-[#DA9E3E] text-white px-8 py-3 uppercase tracking-widest text-sm font-bold hover:bg-[#C88C2F] transition disabled:opacity-60"
-          >
-            {isLoading ? "Processing…" : `Pay ₹${Number(user.package_adjustment.differential_amount).toLocaleString("en-IN")} & Continue`}
-          </button>
-          <p className="text-[11px] text-gray-500 mt-3">After payment, your designer begins work immediately. No further verification needed.</p>
-        </div>
-      )}
-
       <div className="bg-white border border-[#EDE5DB] p-8 mb-10 shadow-sm relative">
         
-        {/* PHASE 0: THE PAYWALL — package picker + mocked payment */}
+        {/* DELETED OLD UNPAID PAYWALL. IT IS NOW IN PENDING_PAYMENT */}
+
+        {/* PHASE 0: BRIEFING (Now the initial step) */}
         {currentPhase === "unpaid" && (
-          <div className="animate-in fade-in" data-testid="unpaid-package-picker">
-            <div className="text-center mb-8">
-              <span className="inline-block bg-[#F5EDE8] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
-                Step 1 of 4 — Choose Your Design Package
-              </span>
-              <h2 className="font-display text-3xl text-[#0C1D42] mb-3">See your home before you build it.</h2>
-              <p className="text-[#333333] max-w-xl mx-auto text-base">
-                Pick the package that matches your property. The retainer is fully adjustable against your final execution quote.
-              </p>
-            </div>
-
-            {/* Package catalogue */}
-            <div className="space-y-8 mb-8">
-              {loadingPackages ? (
-                <p className="text-center text-[#333333] py-8">Loading packages...</p>
-              ) : !selectedPropertyGroup ? (
-                // Step 1: Choose Property Type
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4">
-                  {packages.map(group => (
-                    <button
-                      key={group.property_type}
-                      onClick={() => setSelectedPropertyGroup(group.property_type)}
-                      className="border border-[#EDE5DB] bg-white p-6 hover:border-[#DA9E3E] hover:shadow-md transition text-center group"
-                    >
-                      <h3 className="font-display text-2xl text-[#0C1D42] mb-2 group-hover:text-[#DA9E3E]">{group.group}</h3>
-                      <p className="text-xs text-[#333333]">Click to view options</p>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                // Step 2: Choose Size/Configuration
-                <div className="animate-in fade-in slide-in-from-right-4">
-                  <div className="flex items-center gap-4 mb-4 border-b border-[#EDE5DB] pb-4">
-                    <button 
-                      onClick={() => { setSelectedPropertyGroup(null); setSelectedPkg(null); }}
-                      className="text-xs font-bold uppercase tracking-widest text-[#DA9E3E] hover:text-[#0C1D42] transition"
-                    >
-                      ← Back
-                    </button>
-                    <h3 className="text-sm uppercase tracking-widest font-bold text-[#0C1D42]">
-                      {packages.find(g => g.property_type === selectedPropertyGroup)?.group}
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {packages.find(g => g.property_type === selectedPropertyGroup)?.options.map(opt => {
-                      const group = packages.find(g => g.property_type === selectedPropertyGroup);
-                      const isSelected = selectedPkg?.property_type === group.property_type && selectedPkg?.value === opt.value;
-                      return (
-                        <button
-                          key={`${group.property_type}-${opt.value}`}
-                          type="button"
-                          onClick={() => setSelectedPkg({ ...opt, property_type: group.property_type })}
-                          data-testid={`pkg-${group.property_type}-${opt.value}`}
-                          className={`text-left border p-4 transition ${
-                            isSelected
-                              ? "border-[#0C1D42] bg-[#F5EDE8] ring-2 ring-[#0C1D42]"
-                              : "border-[#EDE5DB] bg-white hover:border-[#DA9E3E]"
-                          }`}
-                        >
-                          <div className="flex items-baseline justify-between mb-1">
-                            <h4 className="font-display text-lg text-[#0C1D42]">{opt.label}</h4>
-                            <span className="font-display text-xl text-[#DA9E3E]">₹{opt.price.toLocaleString("en-IN")}</span>
-                          </div>
-                          <p className="text-xs text-[#333333]">{opt.blurb}</p>
-                          {isSelected && (
-                            <p className="mt-2 text-[10px] uppercase tracking-widest font-bold text-[#0C1D42]">✓ Selected</p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Selected package summary + Pay CTA */}
-            <div className="bg-[#F5EDE8] border border-[#EDE5DB] p-6" data-testid="unpaid-payment-summary">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-[#333333] font-bold">Selected Package</p>
-                  {selectedPkg ? (
-                    <p className="font-display text-xl text-[#0C1D42]" data-testid="selected-package-label">
-                      {selectedPkg.label}{" "}
-                      <span className="text-sm text-[#333333] capitalize">({selectedPkg.property_type})</span>
-                    </p>
-                  ) : (
-                    <p className="text-sm text-[#333333] italic">No package chosen yet.</p>
-                  )}
-                </div>
-                <div className="text-left sm:text-right">
-                  <p className="text-[10px] uppercase tracking-widest text-[#333333] font-bold">Design Retainer</p>
-                  <p className="font-display text-3xl text-[#0C1D42]" data-testid="selected-package-price">
-                    ₹{calculatedPrice.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={handleConfirmPayment}
-                disabled={!selectedPkg || isLoading}
-                data-testid="confirm-payment-btn"
-                className="bg-[#DA9E3E] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#C88C2F] transition w-full shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? "Processing…" : selectedPkg ? `Pay ₹${calculatedPrice.toLocaleString("en-IN")} via Razorpay` : "Select a package to continue"}
-              </button>
-              <p className="text-[10px] text-gray-500 mt-3 text-center uppercase tracking-wide">
-                Secure payment powered by Razorpay.
-              </p>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-[#EDE5DB] text-center">
-              <button
-                onClick={() => setIsDiscoveryOpen(true)}
-                data-testid="discovery-cta-btn"
-                className="text-sm text-[#333333] hover:text-[#0C1D42] font-medium underline underline-offset-4"
-              >
-                Not sure yet? Schedule a Discovery Call with our Expert.
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* PHASE 1: BRIEFING */}
-        {currentPhase === "briefing" && (
           <div className="animate-in fade-in">
             <h2 className="font-display text-2xl text-[#0C1D42] mb-2">Let&apos;s define your vision.</h2>
             <p className="text-[#333333] mb-8">Tell us about your space and style preferences to kick off the design process.</p>
@@ -759,14 +597,144 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* PHASE 1.5: VERIFICATION */}
+        {/* PHASE 1: VERIFICATION (AWAITING PACKAGE ASSIGNMENT) */}
         {currentPhase === "verification" && (
-          <div className="animate-in fade-in text-center py-10">
-            <div className="inline-block w-12 h-12 border-4 border-[#F5EDE8] border-t-[#0C1D42] rounded-full animate-spin mb-4"></div>
-            <h2 className="font-display text-2xl text-[#0C1D42] mb-2">Verifying your project details.</h2>
-            <p className="text-[#333333] max-w-md mx-auto">
-              Our team is currently reviewing your uploaded floor plan to ensure it matches the selected property type. This usually takes a few hours. We will unlock your site visit scheduling momentarily.
-            </p>
+          <div className="animate-in fade-in">
+            <div className="text-center py-10 mb-10 border-b border-[#EDE5DB]">
+              <div className="inline-block w-12 h-12 border-4 border-[#F5EDE8] border-t-[#0C1D42] rounded-full animate-spin mb-4"></div>
+              <h2 className="font-display text-2xl text-[#0C1D42] mb-4">Verifying your project details.</h2>
+              <p className="text-[#333333] max-w-md mx-auto text-lg leading-relaxed">
+                Our Design Experts are reviewing your floor plan to assign the perfect 3D Design package.<br/><br/>
+                <strong className="text-[#DA9E3E]">Stay tuned—we are preparing an exclusive, limited-time offer just for you!</strong>
+              </p>
+            </div>
+
+            <div className="text-center mb-8">
+              <h2 className="font-display text-2xl text-[#0C1D42] mb-3">Our Pricing Packages</h2>
+              <p className="text-[#333333] max-w-xl mx-auto text-sm">
+                While you wait for your personalized offer, feel free to browse our standard rates.
+              </p>
+            </div>
+
+            <div className="space-y-8 mb-8">
+              {loadingPackages ? (
+                <p className="text-center text-[#333333] py-8">Loading packages...</p>
+              ) : !selectedPropertyGroup ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4">
+                  {packages.map(group => (
+                    <button
+                      key={group.property_type}
+                      onClick={() => setSelectedPropertyGroup(group.property_type)}
+                      className="border border-[#EDE5DB] bg-white p-6 hover:border-[#DA9E3E] hover:shadow-md transition text-center group"
+                    >
+                      <h3 className="font-display text-2xl text-[#0C1D42] mb-2 group-hover:text-[#DA9E3E]">{group.group}</h3>
+                      <p className="text-xs text-[#333333]">Click to view options</p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="animate-in fade-in slide-in-from-right-4">
+                  <div className="flex items-center gap-4 mb-4 border-b border-[#EDE5DB] pb-4">
+                    <button 
+                      onClick={() => { setSelectedPropertyGroup(null); }}
+                      className="text-xs font-bold uppercase tracking-widest text-[#DA9E3E] hover:text-[#0C1D42] transition"
+                    >
+                      ← Back
+                    </button>
+                    <h3 className="text-sm uppercase tracking-widest font-bold text-[#0C1D42]">
+                      {packages.find(g => g.property_type === selectedPropertyGroup)?.group}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {packages.find(g => g.property_type === selectedPropertyGroup)?.options.map(opt => {
+                      return (
+                        <div key={opt.value} className="text-left border border-[#EDE5DB] p-4 bg-white">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <h4 className="font-display text-lg text-[#0C1D42]">{opt.label}</h4>
+                            <span className="font-display text-xl text-[#DA9E3E]">₹{opt.price.toLocaleString("en-IN")}</span>
+                          </div>
+                          <p className="text-xs text-[#333333]">{opt.blurb}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* PHASE 1.5: PENDING PAYMENT */}
+        {currentPhase === "pending_payment" && user?.assigned_package && (
+          <div className="animate-in fade-in" data-testid="pending-payment">
+            <div className="text-center mb-8">
+              <span className="inline-block bg-[#F5EDE8] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+                Step 2 of 4 — Finalize Retainer
+              </span>
+              <h2 className="font-display text-3xl text-[#0C1D42] mb-3">Your custom offer is ready!</h2>
+              <p className="text-[#333333] max-w-xl mx-auto text-base">
+                Our experts have reviewed your floor plan and assigned the perfect package. Pay now to start 3D designing!
+              </p>
+            </div>
+
+            <div className="bg-white border-2 border-[#DA9E3E] p-8 mb-8 shadow-lg max-w-2xl mx-auto relative overflow-hidden">
+              {user.assigned_package.discount_amount > 0 && (
+                <div className="absolute top-4 right-[-35px] bg-[#9B4A3A] text-white text-[10px] uppercase font-bold tracking-widest py-1 px-10 rotate-45">
+                  Limited Time
+                </div>
+              )}
+              
+              <h3 className="text-xl font-display text-[#0C1D42] mb-6 border-b border-[#EDE5DB] pb-4">Assigned Package Summary</h3>
+              
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Base Package</p>
+                  <p className="text-[#333333] capitalize">{user.assigned_package.bhk_or_units} {user.assigned_package.property_type}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.assigned_package.base_price).toLocaleString("en-IN")}</p>
+                </div>
+              </div>
+
+              {user.assigned_package.discount_amount > 0 && (
+                <div className="flex justify-between items-center mb-4 text-[#9B4A3A]">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-widest">Special Discount</p>
+                    <p className="text-xs">Exclusive offer applied by Sales</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-display text-xl">- ₹{Number(user.assigned_package.discount_amount).toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center mt-6 pt-6 border-t border-[#0C1D42]">
+                <div>
+                  <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Total to Pay</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-display text-4xl text-[#DA9E3E] font-bold">₹{Number(user.assigned_package.final_price).toLocaleString("en-IN")}</p>
+                </div>
+              </div>
+
+              {user.assigned_package.discount_amount > 0 && (
+                <div className="mt-6 bg-[#F5EDE8] p-3 text-center border border-[#DA9E3E]">
+                  <p className="text-xs text-[#0C1D42] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    Offer expires at: {new Date(user.assigned_package.expiry_time).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={() => initRazorpayPayment("initial_package", user.assigned_package.final_price)}
+                disabled={isLoading}
+                data-testid="pay-assigned-package-btn"
+                className="mt-8 bg-[#DA9E3E] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#C88C2F] transition w-full shadow-md disabled:opacity-50"
+              >
+                {isLoading ? "Processing…" : `Pay ₹${Number(user.assigned_package.final_price).toLocaleString("en-IN")} via Razorpay`}
+              </button>
+            </div>
           </div>
         )}
 
