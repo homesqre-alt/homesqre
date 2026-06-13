@@ -9,7 +9,7 @@ from storage_helpers import put_object, FLOOR_PLAN_ALLOWED_EXTS, FLOOR_PLAN_ALLO
 @api.get("/leads/{lead_id}/vault")
 async def get_document_vault(
     lead_id: str,
-    user: dict = Depends(require_role("admin", "designer", "customer"))
+    user: dict = Depends(require_role("admin", "designer", "customer", "sales"))
 ):
     """Aggregate files from verifications, design_projects, and site visits for a lead."""
     lead = await db.leads.find_one({"lead_id": lead_id})

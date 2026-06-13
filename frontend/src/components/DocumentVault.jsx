@@ -6,6 +6,7 @@ export default function DocumentVault({ leadId, allowUpload = false, currentPhas
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const backend = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
   const absUrl = (u) => (u && u.startsWith("http") ? u : `${backend}${u}`);
@@ -98,13 +99,8 @@ export default function DocumentVault({ leadId, allowUpload = false, currentPhas
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {files.map((f, idx) => (
-        <div key={idx} className="group relative flex flex-col p-2 bg-white border border-[#EDE5DB] hover:border-[#DA9E3E] hover:shadow-md transition duration-300 rounded">
-          <a
-            href={absUrl(f.url)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col"
-          >
+        <div key={idx} className="group relative flex flex-col p-2 bg-white border border-[#EDE5DB] hover:border-[#DA9E3E] hover:shadow-md transition duration-300 rounded cursor-pointer" onClick={() => setSelectedFile(f)}>
+          <div className="flex flex-col">
             {f.type === "design_render" || f.type === "floor_plan" ? (
               <div className="w-full h-32 overflow-hidden mb-3 rounded bg-gray-50 flex items-center justify-center relative border border-gray-100">
                 <img
@@ -135,7 +131,7 @@ export default function DocumentVault({ leadId, allowUpload = false, currentPhas
                 {new Date(f.uploaded_at).toLocaleDateString()}
               </span>
             )}
-          </a>
+          </div>
           
           {allowUpload && f.type === "floor_plan" && (
             <div className="mt-auto pt-2 flex items-center justify-between border-t border-[#EDE5DB]">
@@ -157,6 +153,48 @@ export default function DocumentVault({ leadId, allowUpload = false, currentPhas
         </div>
       ))}
       </div>
+
+      {selectedFile && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded overflow-hidden max-w-5xl w-full max-h-screen flex flex-col relative animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center p-4 border-b border-[#EDE5DB]">
+              <h3 className="font-display text-lg text-[#0C1D42]">{selectedFile.label}</h3>
+              <div className="flex gap-4">
+                <a 
+                  href={absUrl(selectedFile.url)} 
+                  download 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#0C1D42] text-white px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D] transition"
+                >
+                  Download
+                </a>
+                <button 
+                  onClick={() => setSelectedFile(null)}
+                  className="text-2xl leading-none text-[#0C1D42] opacity-50 hover:opacity-100"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+            <div className="bg-gray-100 p-4 flex-1 overflow-auto flex items-center justify-center min-h-[50vh]">
+              {selectedFile.url.toLowerCase().endsWith('.pdf') ? (
+                <iframe 
+                  src={absUrl(selectedFile.url)} 
+                  className="w-full h-[70vh] border-0"
+                  title={selectedFile.label}
+                />
+              ) : (
+                <img 
+                  src={absUrl(selectedFile.url)} 
+                  alt={selectedFile.label} 
+                  className="max-w-full max-h-[70vh] object-contain"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
