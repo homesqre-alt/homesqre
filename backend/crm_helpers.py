@@ -22,10 +22,14 @@ DEFAULT_CRM_STATUSES = [
     {"name": "New",                          "sort_order": 0, "assign_to_role": "sales"},
     {"name": "No Answer / Not Reachable",    "sort_order": 1, "assign_to_role": "sales"},
     {"name": "Not Interested",               "sort_order": 2, "assign_to_role": None},
-    {"name": "Send to Design",               "sort_order": 3, "assign_to_role": "designer"},
-    {"name": "Designing",                    "sort_order": 4, "assign_to_role": "designer"},
-    {"name": "Awaiting Customer Approval",   "sort_order": 5, "assign_to_role": None},
-    {"name": "Ready for Quotation",          "sort_order": 6, "assign_to_role": "admin"},
+    {"name": "Floor Plan Uploaded",          "sort_order": 3, "assign_to_role": "sales"},
+    {"name": "Payment Pending",              "sort_order": 4, "assign_to_role": "sales"},
+    {"name": "Payment Received",             "sort_order": 5, "assign_to_role": "sales"},
+    {"name": "Floor Plan Approved",          "sort_order": 6, "assign_to_role": "designer"},
+    {"name": "Designing",                    "sort_order": 7, "assign_to_role": "designer"},
+    {"name": "Ready for Quotation",          "sort_order": 8, "assign_to_role": "admin"},
+    {"name": "In Production",                "sort_order": 9, "assign_to_role": None},
+    {"name": "Delivered",                    "sort_order": 10, "assign_to_role": None},
 ]
 DEFAULT_CRM_SOURCES = [
     {"name": "Website",   "sort_order": 0},
@@ -267,3 +271,41 @@ async def find_or_create_lead_for_user(user_doc: dict, status: str = "Send to De
         {"$set": {"lead_id": lead["lead_id"]}},
     )
     return lead["lead_id"]
+
+async def sync_lead_status(lead_id: str, new_phase: str, reason: str = "System update"):
+    """Sync a CRM lead status based on project_phase."""
+    if not lead_id:
+        return
+    
+    PHASE_TO_STATUS = {
+        "verification": "Floor Plan Uploaded",
+        "pending_payment": "Payment Pending",
+        "briefing": "Payment Received",
+        "scheduling": "Floor Plan Approved",
+        "confirmed": "Floor Plan Approved",
+        "designing": "Designing",
+        "ready_for_quotation": "Ready for Quotation",
+        "production": "In Production",
+        "completed": "Delivered",
+    }
+    
+    correct_status = PHASE_TO_STATUS.get(new_phase)
+    if not correct_status:
+        return
+        
+    lead = await db.leads.find_one({"lead_id": lead_id})
+    if lead and lead.get("status") != correct_status:
+        import uuid
+        await db.leads.update_one(
+            {"lead_id": lead_id},
+            {
+                "$set": {"status": correct_status, "updated_at": iso(now_utc())},
+                "$push": {"comments": {
+                    "id": f"c_sys_{uuid.uuid4().hex[:8]}", 
+                    "by": "system", 
+                    "by_name": "System",
+                    "text": f"{reason}: '{lead.get('status')}' → '{correct_status}'.",
+                    "at": iso(now_utc()),
+                }}
+            }
+        )

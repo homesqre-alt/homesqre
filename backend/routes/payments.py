@@ -202,7 +202,7 @@ async def verify_payment(body: VerifyPaymentRequest, user: dict = Depends(curren
                         "text": f"Customer approved quotation and paid milestone '{milestone['name']}' (\u20b9{milestone['amount']:,.0f}). Project moved to production.",
                         "at": iso(now_utc()),
                     }},
-                    "$set": {"status": "Approved", "updated_at": iso(now_utc())}}
+                    "$set": {"status": "In Production", "updated_at": iso(now_utc())}}
                 )
         else:
             if project.get("lead_id"):

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 
-export default function DocumentVault({ leadId, allowUpload = false }) {
+export default function DocumentVault({ leadId, allowUpload = false, currentPhase }) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -34,8 +34,8 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
         pdf_urls: newPdfUrls
       });
       if (res.data.reverted_to_briefing) {
-        toast.success("Floor plans deleted. Returning to briefing phase.");
-        window.location.reload();
+        toast.success("Floor plans updated. Package assignment cleared.");
+        setTimeout(() => window.location.reload(), 1500);
       } else {
         toast.success("Floor plans updated successfully.");
         loadVault();
@@ -55,12 +55,19 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
   };
 
   const handleReplaceSingle = async (e, oldUrl) => {
+    if (currentPhase && !["unpaid", "verification", "briefing"].includes(currentPhase)) {
+      if (!window.confirm("Replacing your floor plan means clears the price and our system will give you new pricing based on the floor plan you upload. Continue?")) {
+        e.target.value = null;
+        return;
+      }
+    }
+    
     const selected = e.target.files;
     if (!selected || selected.length === 0) return;
     setUploading(true);
     try {
       const form = new FormData();
-      form.append("files", selected[0]);
+      form.append("file", selected[0]);
       const uploadRes = await api.post("/upload", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -84,6 +91,8 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
       </div>
     );
   }
+
+  const isAssigned = currentPhase && !["unpaid", "verification", "briefing"].includes(currentPhase);
 
   return (
     <div>
@@ -134,13 +143,15 @@ export default function DocumentVault({ leadId, allowUpload = false }) {
                 {uploading ? "..." : "Replace"}
                 <input type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e) => handleReplaceSingle(e, f.url)} disabled={uploading} />
               </label>
-              <button 
-                onClick={() => handleDeleteFloorPlan(f.url)}
-                disabled={uploading}
-                className="text-[9px] uppercase tracking-widest font-bold text-red-500 hover:text-red-700 transition"
-              >
-                Delete
-              </button>
+              {!isAssigned && (
+                <button 
+                  onClick={() => handleDeleteFloorPlan(f.url)}
+                  disabled={uploading}
+                  className="text-[9px] uppercase tracking-widest font-bold text-red-500 hover:text-red-700 transition"
+                >
+                  Delete
+                </button>
+              )}
             </div>
           )}
         </div>

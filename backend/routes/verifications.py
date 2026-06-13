@@ -2,6 +2,10 @@
 import uuid
 from typing import List, Dict
 
+"""Floor-plan verifications + package pricing + admin moderation."""
+import uuid
+from typing import List, Dict
+
 from fastapi import Depends, HTTPException
 
 from core import (
@@ -9,7 +13,7 @@ from core import (
     current_user, require_role,
 )
 from packages import calculate_package_price
-from crm_helpers import _user_identifier
+from crm_helpers import _user_identifier, sync_lead_status
 from design_helpers import ensure_design_project
 from schemas import (
     VerificationCreateRequest, VerificationOut,
@@ -45,6 +49,11 @@ async def create_verification(body: VerificationCreateRequest, user: dict = Depe
     if project_name:
         user_update["project_name"] = project_name
     await db.users.update_one({"user_id": user["user_id"]}, {"$set": user_update})
+    
+    # Sync CRM Lead Status instantly
+    if user.get("lead_id"):
+        await sync_lead_status(user["lead_id"], "verification", "Customer uploaded floor plan")
+        
     return clean_doc(rec)
 
 
@@ -128,6 +137,55 @@ async def admin_moderate_verification(
                 }
             }}
         )
+        
+        # Sync CRM Lead Status instantly
+        u_doc = await db.users.find_one({"user_id": ver["user_id"]}, {"lead_id": 1})
+        if u_doc and u_doc.get("lead_id"):
+            await sync_lead_status(u_doc["lead_id"], "pending_payment", "Package assigned by Sales")
+            
         return {"ok": True}
 
     raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+
+@api.post("/verifications/latest/floor-plan")
+async def reupload_floor_plan(body: VerificationCreateRequest, user: dict = Depends(current_user)):
+    """Customer 'Replace' flow: clears assigned package and moves back to verification."""
+    pdf_urls = [u for u in (body.pdf_urls or []) if u]
+    if not pdf_urls and body.pdf_url:
+        pdf_urls = [body.pdf_url]
+    if not pdf_urls:
+        raise HTTPException(status_code=400, detail="Floor plan URLs are required")
+        
+    # Find their latest verification
+    ver = await db.verifications.find_one(
+        {"user_id": user["user_id"]}, 
+        sort=[("created_at", -1)]
+    )
+    if not ver:
+        raise HTTPException(status_code=404, detail="No verification found to update")
+        
+    # Update verification document
+    await db.verifications.update_one(
+        {"_id": ver["_id"]},
+        {"$set": {
+            "pdf_urls": pdf_urls,
+            "pdf_url": pdf_urls[0],
+            "status": "pending",
+            "updated_at": iso(now_utc())
+        }}
+    )
+    
+    # Revert user to verification phase and clear assignments
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$set": {"project_phase": "verification"},
+            "$unset": {"assigned_package": "", "deficit_due": ""}
+        }
+    )
+    
+    # Sync CRM lead status
+    if user.get("lead_id"):
+        await sync_lead_status(user["lead_id"], "verification", "Customer re-uploaded floor plan, package assignment cleared")
+        
+    return {"ok": True, "reverted_to_briefing": True}

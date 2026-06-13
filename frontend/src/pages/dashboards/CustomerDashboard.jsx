@@ -6,6 +6,7 @@ import api, { formatApiError } from "@/lib/api";
 import { toast } from "sonner";
 import CustomerDesignReview from "@/components/customer/CustomerDesignReview";
 import DocumentVault from "@/components/DocumentVault";
+import { CheckCircle2, CircleDot, Circle } from "lucide-react";
 
 export default function CustomerDashboard() {
   const { user, refresh } = useAuth();
@@ -1082,16 +1083,45 @@ export default function CustomerDashboard() {
         <div className="animate-in fade-in">
           <h3 className="font-display text-xl mb-6 text-[#0C1D42]">Project Journey</h3>
           <div className="flex flex-col md:flex-row gap-2 justify-between items-center text-center text-sm mb-12">
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'briefing' ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed','designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>1. Briefing &amp; Review</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${['designing','ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : ['verification','scheduling','confirmed'].includes(currentPhase) ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>2. Site Visit &amp; Design</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'designing' ? 'border-[#DA9E3E]' : ['ready_for_quotation','production'].includes(currentPhase) ? 'border-[#0C1D42]' : 'border-[#EDE5DB] opacity-40'}`}>3. 3D Design</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'ready_for_quotation' ? 'border-[#DA9E3E]' : currentPhase === 'production' ? 'border-[#0C1D42]' : 'border-[#EDE5DB] opacity-40'}`}>4. Quotation &amp; Approval</div>
-            <div className={`flex-1 border-b-4 pb-2 w-full ${currentPhase === 'production' ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>5. Production</div>
+            {[
+              { id: 'briefing', label: '1. Briefing & Review', phases: ['briefing', 'verification'] },
+              { id: 'scheduling', label: '2. Site Visit & Design', phases: ['scheduling', 'confirmed', 'designing'] },
+              { id: 'designing', label: '3. 3D Design', phases: ['designing'] },
+              { id: 'quotation', label: '4. Quotation & Approval', phases: ['ready_for_quotation'] },
+              { id: 'production', label: '5. Production', phases: ['production', 'completed'] }
+            ].map((step, idx, arr) => {
+              // Determine status
+              const phaseIndex = ['unpaid', 'briefing', 'verification', 'pending_payment', 'scheduling', 'confirmed', 'designing', 'ready_for_quotation', 'production', 'completed'].indexOf(currentPhase);
+              
+              let stepStatus = "next"; // default
+              if (phaseIndex >= ['unpaid', 'briefing', 'verification', 'pending_payment', 'scheduling', 'confirmed', 'designing', 'ready_for_quotation', 'production', 'completed'].indexOf(step.phases[step.phases.length - 1])) {
+                stepStatus = "completed";
+              }
+              if (step.phases.includes(currentPhase) || (step.id === 'briefing' && currentPhase === 'pending_payment')) {
+                stepStatus = "ongoing";
+              }
+              // Edge cases
+              if (step.id === 'scheduling' && ['scheduling', 'confirmed', 'designing'].includes(currentPhase)) stepStatus = "ongoing";
+              if (step.id === 'designing' && currentPhase === 'designing') stepStatus = "ongoing";
+              if (step.id === 'designing' && ['ready_for_quotation', 'production', 'completed'].includes(currentPhase)) stepStatus = "completed";
+              if (step.id === 'quotation' && currentPhase === 'ready_for_quotation') stepStatus = "ongoing";
+              if (step.id === 'quotation' && ['production', 'completed'].includes(currentPhase)) stepStatus = "completed";
+              if (step.id === 'production' && currentPhase === 'production') stepStatus = "ongoing";
+
+              return (
+                <div key={step.id} className={`flex-1 border-b-4 pb-2 w-full flex flex-col items-center gap-2 ${stepStatus === 'completed' ? 'border-[#0C1D42]' : stepStatus === 'ongoing' ? 'border-[#DA9E3E]' : 'border-[#EDE5DB] opacity-40'}`}>
+                  {stepStatus === 'completed' && <CheckCircle2 className="text-[#0C1D42]" size={20} />}
+                  {stepStatus === 'ongoing' && <CircleDot className="text-[#DA9E3E] animate-pulse" size={20} />}
+                  {stepStatus === 'next' && <Circle className="text-gray-300" size={20} />}
+                  <span className={`text-xs uppercase tracking-widest font-bold ${stepStatus === 'completed' ? 'text-[#0C1D42]' : stepStatus === 'ongoing' ? 'text-[#DA9E3E]' : 'text-gray-400'}`}>{step.label}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="bg-white border border-[#EDE5DB] p-6">
             <h3 className="font-display text-lg mb-4 text-[#0C1D42]">Document Vault</h3>
-            <DocumentVault leadId={user.lead_id} allowUpload={true} />
+            <DocumentVault leadId={user.lead_id} allowUpload={true} currentPhase={currentPhase} />
             {quotation?.pdf_url && (
               <div className="mt-4 pt-4 border-t border-[#EDE5DB]">
                 <a
