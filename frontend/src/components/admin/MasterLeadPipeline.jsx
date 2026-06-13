@@ -547,14 +547,14 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         <section className="space-y-4">
           <h4 className="text-xs uppercase tracking-widest font-bold text-[#0C1D42]">Document Vault</h4>
           <DocumentVault leadId={data.lead_id} />
-          {data.status === "Floor Plan Uploaded" && (
+          {(data.status === "Floor Plan Uploaded" || data.status === "Payment Pending") && (
             <div className="pt-2 border-t border-[#EDE5DB]">
               <button 
                 onClick={handleAssignClick}
                 disabled={busy}
                 className="bg-[#0C1D42] text-white px-6 py-2 text-xs uppercase tracking-widest font-bold hover:bg-[#08142D] transition w-full sm:w-auto"
               >
-                {busy ? "Loading..." : "Assign Package & Offer"}
+                {busy ? "Loading..." : data.status === "Payment Pending" ? "Update Package / Counter Offer" : "Assign Package & Offer"}
               </button>
             </div>
           )}

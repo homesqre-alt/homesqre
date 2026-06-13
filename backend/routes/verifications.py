@@ -153,7 +153,7 @@ async def get_lead_pending_verification(lead_id: str, user: dict = Depends(requi
         raise HTTPException(status_code=404, detail="No customer found for this lead")
         
     ver = await db.verifications.find_one(
-        {"user_id": target_user["user_id"], "status": "pending"},
+        {"user_id": target_user["user_id"], "status": {"$in": ["pending", "package_assigned"]}},
         {"_id": 0},
         sort=[("created_at", -1)]
     )
