@@ -168,6 +168,13 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class LoginOtpRequest(BaseModel):
+    mobile: str
+
+class LoginOtpVerifyRequest(BaseModel):
+    mobile: str
+    otp: str
+
 class OtpVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
