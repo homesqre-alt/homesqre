@@ -179,10 +179,9 @@
     left: 0;
     right: 0;
     background: var(--hs-navy);
-    padding: 12px 24px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: stretch;
     z-index: 50;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   }

@@ -377,24 +377,20 @@ export default function Interiors() {
       <Footer />
 
       {/* ── Sticky mobile bottom CTA ─────────────────────────────────── */}
-      <div className="mobile-sticky-cta">
-        <div>
-          <p className="text-[#FCFAF5] font-display text-lg leading-tight">Free Consultation</p>
-          <p className="text-[#DA9E3E] text-xs tracking-wide">Starting from ₹10,000</p>
-        </div>
+      <div className="mobile-sticky-cta lg:hidden">
         {user ? (
           <Link
             to={dashHref}
-            className="bg-[#DA9E3E] text-white text-[10px] tracking-widest uppercase font-bold py-2.5 px-5 hover:bg-[#C88C2F] transition-colors"
+            className="bg-[#DA9E3E] text-white font-display text-[15px] tracking-widest uppercase w-full text-center py-4 hover:bg-[#C88C2F] transition-colors"
           >
-            Dashboard
+            GO TO DASHBOARD
           </Link>
         ) : (
           <button
             onClick={() => setShowLeadForm(true)}
-            className="bg-[#DA9E3E] text-white text-[10px] tracking-widest uppercase font-bold py-2.5 px-5 hover:bg-[#C88C2F] transition-colors shadow-[0_0_15px_rgba(218,158,62,0.4)]"
+            className="bg-[#DA9E3E] text-white font-display text-[15px] tracking-widest uppercase w-full text-center py-4 hover:bg-[#C88C2F] transition-colors"
           >
-            See your home in 3D
+            SEE YOUR HOME IN 3D
           </button>
         )}
       </div>

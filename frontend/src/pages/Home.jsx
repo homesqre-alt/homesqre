@@ -775,21 +775,23 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="label-eyebrow text-[#DA9E3E] mb-4 relative tracking-[0.2em]">Free Design Consultation</div>
-            <h3 className="font-display text-4xl md:text-5xl text-white mb-6 relative drop-shadow-md">Ready to design your dream home?</h3>
-            <p className="text-lg text-white/80 mb-10 relative font-light leading-relaxed">Begin our seamless onboarding process and get connected with an award-winning designer today.</p>
-            
-            {user ? (
-              <Link to={dashHref} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
-                GO TO DASHBOARD
-              </Link>
-            ) : (
-              <button onClick={() => setShowLeadForm(true)} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
-                START DESIGNING RISK-FREE
-              </button>
-            )}
-            <p className="text-xs text-white/50 mt-6 leading-relaxed">Get a 100% fixed quote after design approval.<br/>Zero blind commitments. No bump-up pricing later.</p>
+          <div className="relative z-10 w-full max-w-[800px] mx-auto px-6 lg:px-12 items-center py-24">
+            <div className="text-center max-w-2xl mx-auto">
+              <div className="label-eyebrow text-[#DA9E3E] mb-4 relative tracking-[0.2em]">Free Design Consultation</div>
+              <h3 className="font-display text-4xl md:text-5xl text-white mb-6 relative drop-shadow-md">Ready to design your dream home?</h3>
+              <p className="text-lg text-white/80 mb-10 relative font-light leading-relaxed">Begin our seamless onboarding process and get connected with an award-winning designer today.</p>
+              
+              {user ? (
+                <Link to={dashHref} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
+                  GO TO DASHBOARD
+                </Link>
+              ) : (
+                <button onClick={() => setShowLeadForm(true)} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
+                  START DESIGNING RISK-FREE
+                </button>
+              )}
+              <p className="text-xs text-white/50 mt-6 leading-relaxed">Get a 100% fixed quote after design approval.<br/>Zero blind commitments. No bump-up pricing later.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -797,28 +799,22 @@ export default function Home() {
       <Footer />
 
       {/* ── Sticky mobile bottom CTA ─────────────────────────────────── */}
-      <div className="mobile-sticky-cta">
-        <div>
-          <p className="text-[#FCFAF5] font-display text-lg leading-tight">Free Consultation</p>
-          <p className="text-[#DA9E3E] text-xs tracking-wide">Starting from ₹10,000</p>
-        </div>
+      <div className="mobile-sticky-cta lg:hidden">
         {user ? (
           <Link
             to={dashHref}
-            className="btn-gold"
-            style={{ padding: "12px 22px", fontSize: "11px", minHeight: "auto" }}
+            className="bg-[#DA9E3E] text-white font-display text-[15px] tracking-widest uppercase w-full text-center py-4 hover:bg-[#C88C2F] transition-colors"
             data-testid="sticky-cta-btn"
           >
-            Dashboard
+            GO TO DASHBOARD
           </Link>
         ) : (
           <button
             onClick={() => setShowLeadForm(true)}
-            className="btn-gold"
-            style={{ padding: "12px 22px", fontSize: "11px", minHeight: "auto" }}
+            className="bg-[#DA9E3E] text-white font-display text-[15px] tracking-widest uppercase w-full text-center py-4 hover:bg-[#C88C2F] transition-colors"
             data-testid="sticky-cta-btn"
           >
-            Book Now
+            SEE YOUR HOME IN 3D
           </button>
         )}
       </div>
