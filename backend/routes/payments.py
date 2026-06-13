@@ -40,10 +40,22 @@ async def create_order(body: CreateOrderRequest, user: dict = Depends(current_us
     if body.payment_type == "initial_package":
         assigned_pkg = user.get("assigned_package", {})
         expected_amount = assigned_pkg.get("final_price")
-        if expected_amount is None:
+        base_amount = assigned_pkg.get("base_price")
+        expiry = assigned_pkg.get("expiry_time")
+        
+        # Check if offer is expired
+        is_expired = False
+        if expiry:
+            from dateutil.parser import isoparse
+            if now_utc() > isoparse(expiry):
+                is_expired = True
+
+        valid_amount = base_amount if is_expired else expected_amount
+
+        if valid_amount is None:
             raise HTTPException(status_code=400, detail="No package has been assigned yet.")
-        if int(amount) != int(expected_amount):
-            raise HTTPException(status_code=400, detail=f"Invalid payment amount. Expected ₹{expected_amount:,.0f}")
+        if int(amount) != int(valid_amount):
+            raise HTTPException(status_code=400, detail=f"Invalid payment amount. Expected ₹{valid_amount:,.0f}")
     elif body.payment_type == "quotation_milestone":
         milestone_id = body.metadata.get("milestone_id")
         # Find quotation and milestone

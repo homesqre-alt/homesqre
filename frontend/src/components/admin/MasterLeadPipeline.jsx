@@ -446,7 +446,23 @@ function LeadDetailDrawer({ mode, lead, statuses, sources, budgets, employees, c
         <div className="flex items-start justify-between">
           <div>
             <h3 className="font-display text-2xl text-[#0C1D42]">{data.name}</h3>
-            <p className="text-sm text-[#333333]">{data.phone}{data.email ? ` • ${data.email}` : ""}</p>
+            {data.email && <p className="text-sm text-[#333333] mb-2">{data.email}</p>}
+            <div className="flex gap-2 mt-1">
+              <a 
+                href={`tel:${data.phone}`} 
+                className="bg-[#0C1D42] text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:bg-[#08142D] transition"
+              >
+                📞 Call
+              </a>
+              <a 
+                href={`https://wa.me/${data.phone.replace(/\D/g, '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-[#25D366] text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:bg-[#1DA851] transition"
+              >
+                💬 WhatsApp
+              </a>
+            </div>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-[#0C1D42] opacity-50 hover:opacity-100">×</button>
         </div>

@@ -633,78 +633,94 @@ export default function CustomerDashboard() {
         )}
 
         {/* PHASE 1.5: PENDING PAYMENT */}
-        {currentPhase === "pending_payment" && user?.assigned_package && (
-          <div className="animate-in fade-in" data-testid="pending-payment">
-            <div className="text-center mb-8">
-              <span className="inline-block bg-[#F5EDE8] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
-                Step 2 of 4 — Finalize Retainer
-              </span>
-              <h2 className="font-display text-3xl text-[#0C1D42] mb-3">Your custom offer is ready!</h2>
-              <p className="text-[#333333] max-w-xl mx-auto text-base">
-                Our experts have reviewed your floor plan and assigned the perfect package. Pay now to start 3D designing!
-              </p>
-            </div>
-
-            <div className="bg-white border-2 border-[#DA9E3E] p-8 mb-8 shadow-lg max-w-2xl mx-auto relative overflow-hidden">
-              {user.assigned_package.discount_amount > 0 && (
-                <div className="absolute top-4 right-[-35px] bg-[#9B4A3A] text-white text-[10px] uppercase font-bold tracking-widest py-1 px-10 rotate-45">
-                  Limited Time
-                </div>
-              )}
-              
-              <h3 className="text-xl font-display text-[#0C1D42] mb-6 border-b border-[#EDE5DB] pb-4">Assigned Package Summary</h3>
-              
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Base Package</p>
-                  <p className="text-[#333333] capitalize">{user.assigned_package.bhk_or_units} {user.assigned_package.property_type}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.assigned_package.base_price).toLocaleString("en-IN")}</p>
-                </div>
+        {currentPhase === "pending_payment" && user?.assigned_package && (() => {
+          const isOfferExpired = user.assigned_package.discount_amount > 0 && user.assigned_package.expiry_time 
+            ? new Date() > new Date(user.assigned_package.expiry_time)
+            : false;
+          
+          return (
+            <div className="animate-in fade-in" data-testid="pending-payment">
+              <div className="text-center mb-8">
+                <span className="inline-block bg-[#F5EDE8] text-[#0C1D42] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
+                  Step 2 of 4 — Finalize Retainer
+                </span>
+                <h2 className="font-display text-3xl text-[#0C1D42] mb-3">Your custom offer is ready!</h2>
+                <p className="text-[#333333] max-w-xl mx-auto text-base">
+                  Our experts have reviewed your floor plan and assigned the perfect package. Pay now to start 3D designing!
+                </p>
               </div>
 
-              {user.assigned_package.discount_amount > 0 && (
-                <div className="flex justify-between items-center mb-4 text-[#9B4A3A]">
+              <div className={`bg-white border-2 ${isOfferExpired ? 'border-gray-400' : 'border-[#DA9E3E]'} p-8 mb-8 shadow-lg max-w-2xl mx-auto relative overflow-hidden`}>
+                {user.assigned_package.discount_amount > 0 && (
+                  <div className={`absolute top-4 right-[-35px] ${isOfferExpired ? 'bg-gray-500' : 'bg-[#9B4A3A]'} text-white text-[10px] uppercase font-bold tracking-widest py-1 px-10 rotate-45`}>
+                    {isOfferExpired ? 'Expired' : 'Limited Time'}
+                  </div>
+                )}
+                
+                <h3 className="text-xl font-display text-[#0C1D42] mb-6 border-b border-[#EDE5DB] pb-4">Assigned Package Summary</h3>
+                
+                <div className="flex justify-between items-center mb-4">
                   <div>
-                    <p className="text-sm font-bold uppercase tracking-widest">Special Discount</p>
-                    <p className="text-xs">Exclusive offer applied by Sales</p>
+                    <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Base Package</p>
+                    <p className="text-[#333333] capitalize">{user.assigned_package.bhk_or_units} {user.assigned_package.property_type}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-display text-xl">- ₹{Number(user.assigned_package.discount_amount).toLocaleString("en-IN")}</p>
+                    <p className="font-display text-xl text-[#0C1D42]">₹{Number(user.assigned_package.base_price).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-between items-center mt-6 pt-6 border-t border-[#0C1D42]">
-                <div>
-                  <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Total to Pay</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-4xl text-[#DA9E3E] font-bold">₹{Number(user.assigned_package.final_price).toLocaleString("en-IN")}</p>
-                </div>
-              </div>
+                {user.assigned_package.discount_amount > 0 && (
+                  <div className={`flex justify-between items-center mb-4 ${isOfferExpired ? 'text-gray-500 line-through' : 'text-[#9B4A3A]'}`}>
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-widest">Special Discount</p>
+                      <p className="text-xs">Exclusive offer applied by Sales</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-display text-xl">- ₹{Number(user.assigned_package.discount_amount).toLocaleString("en-IN")}</p>
+                    </div>
+                  </div>
+                )}
 
-              {user.assigned_package.discount_amount > 0 && (
-                <div className="mt-6 bg-[#F5EDE8] p-3 text-center border border-[#DA9E3E]">
-                  <p className="text-xs text-[#0C1D42] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    Offer expires at: {new Date(user.assigned_package.expiry_time).toLocaleString()}
+                <div className="flex justify-between items-center mt-6 pt-6 border-t border-[#0C1D42]">
+                  <div>
+                    <p className="text-sm font-bold text-[#0C1D42] uppercase tracking-widest">Total to Pay</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-display text-4xl ${isOfferExpired ? 'text-gray-500' : 'text-[#DA9E3E]'} font-bold`}>
+                      ₹{Number(isOfferExpired ? user.assigned_package.base_price : user.assigned_package.final_price).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                </div>
+
+                {user.assigned_package.discount_amount > 0 && (
+                  <div className={`mt-6 ${isOfferExpired ? 'bg-gray-100 border-gray-400' : 'bg-[#F5EDE8] border-[#DA9E3E]'} p-3 text-center border`}>
+                    <p className={`text-xs ${isOfferExpired ? 'text-gray-500' : 'text-[#0C1D42]'} font-bold uppercase tracking-widest flex items-center justify-center gap-2`}>
+                      {!isOfferExpired && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
+                      {isOfferExpired 
+                        ? `Offer expired at: ${new Date(user.assigned_package.expiry_time).toLocaleString()}` 
+                        : `Offer expires at: ${new Date(user.assigned_package.expiry_time).toLocaleString()}`
+                      }
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => initRazorpayPayment("initial_package", isOfferExpired ? user.assigned_package.base_price : user.assigned_package.final_price)}
+                  disabled={isLoading}
+                  data-testid="pay-assigned-package-btn"
+                  className={`mt-8 ${isOfferExpired ? 'bg-[#0C1D42] hover:bg-[#08142D]' : 'bg-[#DA9E3E] hover:bg-[#C88C2F]'} text-white px-8 py-4 uppercase tracking-widest text-sm font-bold transition w-full shadow-md disabled:opacity-50`}
+                >
+                  {isLoading ? "Processing…" : `Pay ₹${Number(isOfferExpired ? user.assigned_package.base_price : user.assigned_package.final_price).toLocaleString("en-IN")} via Razorpay`}
+                </button>
+                {isOfferExpired && (
+                  <p className="text-center text-xs mt-3 text-gray-500 font-bold uppercase tracking-widest">
+                    Your special discount has expired. You may still proceed with the base price.
                   </p>
-                </div>
-              )}
-
-              <button
-                onClick={() => initRazorpayPayment("initial_package", user.assigned_package.final_price)}
-                disabled={isLoading}
-                data-testid="pay-assigned-package-btn"
-                className="mt-8 bg-[#DA9E3E] text-white px-8 py-4 uppercase tracking-widest text-sm font-bold hover:bg-[#C88C2F] transition w-full shadow-md disabled:opacity-50"
-              >
-                {isLoading ? "Processing…" : `Pay ₹${Number(user.assigned_package.final_price).toLocaleString("en-IN")} via Razorpay`}
-              </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* PHASE 5: READY FOR QUOTATION */}
         {currentPhase === 'ready_for_quotation' && (
