@@ -166,20 +166,40 @@ function ProjectDetail({ mode, project, onBack, onChanged }) {
     <article className="bg-white border border-[#EDE5DB] p-5 space-y-5"
              data-testid={`designer-${mode}-detail`}>
       <header className="flex items-start justify-between gap-3 border-b border-[#EDE5DB] pb-3">
-        <div>
+        <div className="w-full">
           <button onClick={onBack} className="text-xs underline text-[#DA9E3E] mb-2"
                   data-testid={`designer-${mode}-back-btn`}>← Back to list</button>
-          <h3 className="font-display text-xl text-[#0C1D42]">{project.customer?.name || "Customer"}</h3>
-          {project.customer?.project_name && (
-            <p className="text-xs text-[#333333] italic">{project.customer.project_name}</p>
-          )}
-          <p className="text-[10px] uppercase tracking-widest text-[#333333] mt-1">
-            {project.status !== "in_progress" ? "Completed" : (mode === "awaiting" ? "Awaiting customer approval" : "Active")}
-          </p>
+          <div className="flex justify-between items-start w-full">
+            <div>
+              <h3 className="font-display text-xl text-[#0C1D42]">{project.customer?.name || "Customer"}</h3>
+              {project.customer?.project_name && (
+                <p className="text-xs text-[#333333] italic">{project.customer.project_name}</p>
+              )}
+              <p className="text-[10px] uppercase tracking-widest text-[#333333] mt-1">
+                {project.status !== "in_progress" ? "Completed" : (mode === "awaiting" ? "Awaiting customer approval" : "Active")}
+              </p>
+            </div>
+            
+            {(project.verification?.budget_range || project.verification?.design_styles || project.verification?.room_requirements) && (
+              <div className="bg-[#F5EDE8] p-3 border border-[#EDE5DB] text-xs space-y-1 min-w-[200px]">
+                {project.verification.budget_range && (
+                  <p><span className="font-bold text-[#0C1D42] uppercase tracking-widest text-[10px]">Budget:</span> {project.verification.budget_range}</p>
+                )}
+                {project.verification.design_styles && (
+                  <p><span className="font-bold text-[#0C1D42] uppercase tracking-widest text-[10px]">Style:</span> {project.verification.design_styles}</p>
+                )}
+                {project.verification.room_requirements && (
+                  <p><span className="font-bold text-[#0C1D42] uppercase tracking-widest text-[10px]">Rooms:</span> {project.verification.room_requirements}</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       <FloorPlanFiles files={floorPlans} absUrl={absUrl} testIdPrefix={`designer-${mode}`} />
+
+      <SiteMeasurements project={project} onChanged={onChanged} absUrl={absUrl} />
 
       {mode === "active" && (
         <RenderUploader projectId={project.project_id} onUploaded={onChanged} />
@@ -198,35 +218,113 @@ function ProjectDetail({ mode, project, onBack, onChanged }) {
 }
 
 
-function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
-  if (!files || files.length === 0) return null;
-  return (
-    <section>
-      <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-2">
-        Floor Plan Files
-      </h4>
-      <ul className="flex flex-wrap gap-2">
-        {files.map((u, idx) => (
-          <li key={idx}>
-            <a
-              href={absUrl(u)}
-              target="_blank"
-              rel="noopener noreferrer"
-              download
-              data-testid={`${testIdPrefix}-floor-plan-${idx}`}
-              className="inline-block text-xs underline text-[#DA9E3E] hover:text-[#C88C2F] border border-[#EDE5DB] px-3 py-1.5"
-            >
-              ⬇ Download Floor Plan {idx + 1}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+  function FloorPlanFiles({ files, absUrl, testIdPrefix }) {
+    if (!files || files.length === 0) return null;
+    return (
+      <section>
+        <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-2">
+          Floor Plan Files
+        </h4>
+        <ul className="flex flex-wrap gap-2">
+          {files.map((u, idx) => (
+            <li key={idx}>
+              <a
+                href={absUrl(u)}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                data-testid={`${testIdPrefix}-floor-plan-${idx}`}
+                className="inline-block text-xs underline text-[#DA9E3E] hover:text-[#C88C2F] border border-[#EDE5DB] px-3 py-1.5"
+              >
+                📄 Download Floor Plan {idx + 1}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
 
+  function SiteMeasurements({ project, onChanged, absUrl }) {
+    const [file, setFile] = useState(null);
+    const [notes, setNotes] = useState(project.site_measurements?.notes || "");
+    const [isSaving, setIsSaving] = useState(false);
 
-function RenderUploader({ projectId, onUploaded }) {
+    const handleSave = async () => {
+      setIsSaving(true);
+      try {
+        const formData = new FormData();
+        if (notes) formData.append("notes", notes);
+        if (file) formData.append("file", file);
+
+        await api.post(`/admin/design/projects/${project.project_id}/measurements`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        toast.success("Site measurements saved!");
+        setFile(null);
+        if (onChanged) onChanged();
+      } catch (err) {
+        toast.error(formatApiError(err));
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    return (
+      <section className="bg-gray-50 border border-gray-200 p-4">
+        <h4 className="text-[10px] uppercase tracking-widest font-bold text-[#0C1D42] mb-3">
+          Site Measurements
+        </h4>
+        <div className="space-y-4">
+          {project.site_measurements?.url && (
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Current Measurement File:</p>
+              <a
+                href={absUrl(project.site_measurements.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+                className="inline-block text-xs underline text-green-600 hover:text-green-800"
+              >
+                📄 Download {project.site_measurements.filename || "Measurements"}
+              </a>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-[#333333] mb-1">Update Measurement File</label>
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files[0])}
+                className="text-xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#333333] mb-1">Measurement Notes / Dimensions</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Master bed: 12x14, ceiling 9.5 ft..."
+                className="w-full text-xs p-2 border border-[#EDE5DB] focus:outline-none focus:border-[#0C1D42] h-20"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleSave}
+            disabled={isSaving || (!file && notes === (project.site_measurements?.notes || ""))}
+            className="bg-[#0C1D42] text-white px-4 py-2 text-[10px] uppercase tracking-widest font-bold disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save Measurements"}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  
+  function RenderUploader({ projectId, onUploaded }) {
   // Each entry: { file: File, comment: string }
   const [entries, setEntries] = useState([]);
   const [busy, setBusy] = useState(false);

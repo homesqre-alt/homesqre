@@ -41,6 +41,8 @@ async def create_verification(body: VerificationCreateRequest, user: dict = Depe
         "pdf_url": pdf_urls[0],            # keep for legacy admin UI compatibility
         "pdf_urls": pdf_urls,
         "room_requirements": body.room_requirements,
+        "budget_range": body.budget_range,
+        "design_styles": body.design_styles,
         "status": "pending",
         "created_at": iso(now_utc()),
     }

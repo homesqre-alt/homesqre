@@ -119,7 +119,7 @@ async def get_design_project(project_id: str, user: dict = Depends(require_role(
         v = await db.verifications.find_one(
             {"verification_id": p["verification_id"]},
             {"_id": 0, "pdf_url": 1, "pdf_urls": 1, "room_requirements": 1,
-             "property_type": 1, "bhk_or_units": 1},
+             "property_type": 1, "bhk_or_units": 1, "budget_range": 1, "design_styles": 1},
         )
         p["verification"] = v
     return p
@@ -181,6 +181,42 @@ async def admin_start_designing(user_id: str, user: dict = Depends(require_role(
     await db.users.update_one({"user_id": user_id}, {"$set": {"project_phase": "designing"}})
     project = await ensure_design_project(user_id)
     return {"ok": True, "project_id": project["project_id"]}
+
+
+@api.post("/admin/design/projects/{project_id}/measurements", response_model=DesignProjectOut)
+async def upload_site_measurements(
+    project_id: str,
+    notes: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    user: dict = Depends(require_role("admin", "designer")),
+):
+    project = await db.design_projects.find_one({"project_id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    measurements = project.get("site_measurements", {})
+    if notes is not None:
+        measurements["notes"] = notes.strip()
+
+    if file and file.filename:
+        data = await file.read()
+        _validate_upload(file, data, FLOOR_PLAN_ALLOWED_TYPES, FLOOR_PLAN_ALLOWED_EXTS)
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "bin"
+        path = f"{APP_NAME}/measurements/{project_id}/{uuid.uuid4().hex}.{ext}"
+        result = put_object(path, data, file.content_type or "application/octet-stream")
+        measurements["url"] = f"/api/files/{result['path']}"
+        measurements["filename"] = file.filename
+
+    await db.design_projects.update_one(
+        {"project_id": project_id},
+        {"$set": {
+            "site_measurements": measurements,
+            "updated_at": iso(now_utc())
+        }}
+    )
+    
+    project["site_measurements"] = measurements
+    return project
 
 
 @api.put("/admin/design/projects/{project_id}/quotation-status", response_model=OkResponse)

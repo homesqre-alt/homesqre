@@ -31,6 +31,7 @@ class DesignProjectOut(BaseModel):
     status: str                   # 'in_progress' | 'ready_for_quotation'
     quotation_status: Optional[str] = None
     images: List[DesignImageOut] = []
+    site_measurements: Optional[dict] = None
     created_at: str
     updated_at: Optional[str] = None
     approved_at: Optional[str] = None

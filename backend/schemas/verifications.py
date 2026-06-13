@@ -11,6 +11,8 @@ class VerificationCreateRequest(BaseModel):
     pdf_urls: Optional[List[str]] = None
     room_requirements: str
     project_name: Optional[str] = None
+    budget_range: Optional[str] = None
+    design_styles: Optional[str] = None
 
 
 class VerificationOut(BaseModel):
