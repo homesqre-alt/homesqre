@@ -21,9 +21,9 @@ class VerificationOut(BaseModel):
     verification_id: str
     user_id: str
     project_name: Optional[str] = None
-    property_type: str
-    bhk_or_units: str
-    invoice_paid: float
+    property_type: Optional[str] = None
+    bhk_or_units: Optional[str] = None
+    invoice_paid: Optional[float] = 0
     pdf_url: Optional[str] = None
     pdf_urls: Optional[List[str]] = None
     room_requirements: str

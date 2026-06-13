@@ -26,30 +26,8 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="md:col-span-2">
-          <div className="label-eyebrow text-[#DA9E3E] mb-4">Explore</div>
-          <ul className="space-y-2 text-sm text-[#FCFAF5]/80">
-            {/* 🛑 HIDDEN REAL ESTATE LINKS */}
-            {/* <li><Link to="/properties" className="hover:text-[#DA9E3E]">Buy</Link></li> */}
-            {/* <li><Link to="/properties?kind=rent" className="hover:text-[#DA9E3E]">Rent</Link></li> */}
-            {/* <li><Link to="/projects" className="hover:text-[#DA9E3E]">Projects</Link></li> */}
-            <li><Link to="/interiors" className="hover:text-[#DA9E3E]">Interiors</Link></li>
-          </ul>
-        </div>
-
-        {/* 🛑 HIDDEN TOOLS COLUMN (Saved for next year) */}
-        {/* <div className="md:col-span-2">
-          <div className="label-eyebrow text-[#DA9E3E] mb-4">Tools</div>
-          <ul className="space-y-2 text-sm text-[#FCFAF5]/80">
-            <li><Link to="/emi-calculator" className="hover:text-[#DA9E3E]">EMI Calculator</Link></li>
-            <li><Link to="/compare" className="hover:text-[#DA9E3E]">Compare</Link></li>
-            <li><Link to="/favourites" className="hover:text-[#DA9E3E]">Saved</Link></li>
-          </ul>
-        </div> 
-        */}
-
-        {/* Expanded col-span to 6 to perfectly fill the layout gap */}
-        <div className="md:col-span-6">
+        {/* Expanded col-span to 8 to perfectly fill the layout gap */}
+        <div className="md:col-span-8">
           <div className="label-eyebrow text-[#DA9E3E] mb-4">Get in touch</div>
           <p className="text-sm text-[#FCFAF5]/70 leading-relaxed">
             Homesqre Technologies Pvt Ltd<br />

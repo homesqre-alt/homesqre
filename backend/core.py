@@ -97,21 +97,6 @@ def _set_auth_cookie(response: Response, name: str, value: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Moderation helpers (legacy real-estate listings)
-# ---------------------------------------------------------------------------
-MODERATION_STATUSES = {"pending", "approved", "rejected"}
-
-
-def _public_status_filter(value: Optional[str]):
-    """Build a Mongo filter for the public-facing list endpoints."""
-    if value is None or value == "approved":
-        return "approved"
-    if value in ("all", ""):
-        return None
-    return value
-
-
-# ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
 def now_utc() -> datetime:
