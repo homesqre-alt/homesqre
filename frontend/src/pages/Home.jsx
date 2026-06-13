@@ -248,8 +248,17 @@ export default function Home() {
               Start with a design retainer from ₹10,000 — fully adjustable against execution. No hidden costs. No pressure. Just your dream home, designed to perfection.
             </p>
 
-            {/* Desktop CTA removed as per design to avoid redundancy */}
-
+            <div className="mt-8 lg:hidden">
+              {user ? (
+                <Link to={dashHref} className="btn-gold shadow-lg" data-testid="home-hero-cta">
+                  GO TO DASHBOARD
+                </Link>
+              ) : (
+                <button onClick={() => setShowLeadForm(true)} className="btn-gold shadow-lg" data-testid="home-hero-cta">
+                  Start Designing Risk-Free
+                </button>
+              )}
+            </div>
             {/* Trust Badges - New */}
             <div className="hidden lg:flex items-center gap-6 mt-6">
               <div className="flex flex-col">
@@ -285,8 +294,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right — Floating Glass CTA */}
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 lg:p-12 shadow-2xl flex flex-col justify-center text-center h-fit self-center max-w-md mx-auto w-full relative overflow-hidden transform lg:-translate-y-4">
+          {/* Right — Floating Glass CTA (Desktop Only) */}
+          <div className="hidden lg:flex bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 lg:p-12 shadow-2xl flex-col justify-center text-center h-fit self-center max-w-md mx-auto w-full relative overflow-hidden transform lg:-translate-y-4">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
             
             <div className="label-eyebrow text-[#DA9E3E] mb-4 relative tracking-[0.2em]">Free Design Consultation</div>
@@ -766,24 +775,21 @@ export default function Home() {
             </div>
           </div>
           
-          {/* Right — Floating Glass CTA */}
-          <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 lg:p-12 shadow-2xl flex flex-col justify-center text-center h-fit self-center max-w-md mx-auto w-full relative overflow-hidden transform lg:-translate-y-4">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-            
+          <div className="text-center max-w-2xl mx-auto">
             <div className="label-eyebrow text-[#DA9E3E] mb-4 relative tracking-[0.2em]">Free Design Consultation</div>
-            <h3 className="font-display text-4xl text-white mb-6 relative drop-shadow-md">Ready to design your dream home?</h3>
-            <p className="text-sm text-white/80 mb-8 relative font-light leading-relaxed">Begin our seamless onboarding process and get connected with an award-winning designer today.</p>
+            <h3 className="font-display text-4xl md:text-5xl text-white mb-6 relative drop-shadow-md">Ready to design your dream home?</h3>
+            <p className="text-lg text-white/80 mb-10 relative font-light leading-relaxed">Begin our seamless onboarding process and get connected with an award-winning designer today.</p>
             
             {user ? (
-              <Link to={dashHref} className="btn-gold w-full justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
+              <Link to={dashHref} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
                 GO TO DASHBOARD
               </Link>
             ) : (
-              <button onClick={() => setShowLeadForm(true)} className="btn-gold w-full justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
+              <button onClick={() => setShowLeadForm(true)} className="btn-gold px-10 py-5 text-sm justify-center text-center relative shadow-[0_0_30px_rgba(218,158,62,0.25)] hover:shadow-[0_0_40px_rgba(218,158,62,0.4)] transition-all duration-300">
                 START DESIGNING RISK-FREE
               </button>
             )}
-            <p className="text-[10px] text-white/50 mt-4 leading-tight">Get a 100% fixed quote after design approval.<br/>Zero blind commitments. No bump-up pricing later.</p>
+            <p className="text-xs text-white/50 mt-6 leading-relaxed">Get a 100% fixed quote after design approval.<br/>Zero blind commitments. No bump-up pricing later.</p>
           </div>
         </div>
       </section>
