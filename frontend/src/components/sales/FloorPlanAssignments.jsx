@@ -114,9 +114,9 @@ export default function FloorPlanAssignments() {
 }
 
 export function AssignPackageModal({ verification, packages, onClose, onSubmitted }) {
-  const [propertyType, setPropertyType] = useState("");
-  const [bhkOrUnits, setBhkOrUnits] = useState("");
-  const [discountAmount, setDiscountAmount] = useState("");
+  const [propertyType, setPropertyType] = useState(verification.assigned_property_type || "");
+  const [bhkOrUnits, setBhkOrUnits] = useState(verification.assigned_bhk_or_units || "");
+  const [discountAmount, setDiscountAmount] = useState(verification.discount_amount || "");
   const [discountExpiry, setDiscountExpiry] = useState("24");
   const [isSubmitting, setIsSubmitting] = useState(false);
 

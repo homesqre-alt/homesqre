@@ -57,6 +57,14 @@ export default function CustomerDashboard() {
   const [unavailableSlots, setUnavailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  useEffect(() => {
+    if (currentPhase === "pending_payment" && user?.assigned_package?.expiry_time) {
+      const interval = setInterval(() => setCurrentTime(Date.now()), 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentPhase, user?.assigned_package?.expiry_time]);
+
   useEffect(() => {
     if (!selectedVisitDate) return;
     const fetchSlots = async () => {
@@ -634,9 +642,18 @@ export default function CustomerDashboard() {
 
         {/* PHASE 1.5: PENDING PAYMENT */}
         {currentPhase === "pending_payment" && user?.assigned_package && (() => {
-          const isOfferExpired = user.assigned_package.discount_amount > 0 && user.assigned_package.expiry_time 
-            ? new Date() > new Date(user.assigned_package.expiry_time)
-            : false;
+          const expiryTimeMs = new Date(user.assigned_package.expiry_time).getTime();
+          const diff = expiryTimeMs - currentTime;
+          
+          const isOfferExpired = user.assigned_package.discount_amount > 0 && diff <= 0;
+
+          let timeString = "";
+          if (!isOfferExpired && diff > 0) {
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff / 1000 / 60) % 60).toString().padStart(2, '0');
+            const s = Math.floor((diff / 1000) % 60).toString().padStart(2, '0');
+            timeString = `${h}:${m}:${s}`;
+          }
           
           return (
             <div className="animate-in fade-in" data-testid="pending-payment">
@@ -697,8 +714,8 @@ export default function CustomerDashboard() {
                     <p className={`text-xs ${isOfferExpired ? 'text-gray-500' : 'text-[#0C1D42]'} font-bold uppercase tracking-widest flex items-center justify-center gap-2`}>
                       {!isOfferExpired && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
                       {isOfferExpired 
-                        ? `Offer expired at: ${new Date(user.assigned_package.expiry_time).toLocaleString()}` 
-                        : `Offer expires at: ${new Date(user.assigned_package.expiry_time).toLocaleString()}`
+                        ? `Offer expired` 
+                        : `Offer expires in: ${timeString}`
                       }
                     </p>
                   </div>
