@@ -178,12 +178,10 @@ async def get_lead_pending_verification(lead_id: str, user: dict = Depends(requi
 
 @api.post("/verifications/latest/floor-plan")
 async def reupload_floor_plan(body: VerificationCreateRequest, user: dict = Depends(current_user)):
-    """Customer 'Replace' flow: clears assigned package and moves back to verification."""
+    """Customer 'Replace/Delete' flow: clears assigned package and moves back to verification."""
     pdf_urls = [u for u in (body.pdf_urls or []) if u]
     if not pdf_urls and body.pdf_url:
         pdf_urls = [body.pdf_url]
-    if not pdf_urls:
-        raise HTTPException(status_code=400, detail="Floor plan URLs are required")
         
     # Find their latest verification
     ver = await db.verifications.find_one(
@@ -198,7 +196,7 @@ async def reupload_floor_plan(body: VerificationCreateRequest, user: dict = Depe
         {"_id": ver["_id"]},
         {"$set": {
             "pdf_urls": pdf_urls,
-            "pdf_url": pdf_urls[0],
+            "pdf_url": pdf_urls[0] if pdf_urls else None,
             "status": "pending",
             "updated_at": iso(now_utc())
         }}
