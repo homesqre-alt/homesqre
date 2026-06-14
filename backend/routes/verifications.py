@@ -213,6 +213,25 @@ async def reupload_floor_plan(body: VerificationCreateRequest, user: dict = Depe
     
     # Sync CRM lead status
     if user.get("lead_id"):
-        await sync_lead_status(user["lead_id"], "verification", "Customer re-uploaded floor plan, package assignment cleared")
+        if not pdf_urls:
+            # Manually force the lead back to 'New' since there is no floor plan anymore
+            from core import now_utc, iso
+            await db.leads.update_one(
+                {"lead_id": user["lead_id"]},
+                {
+                    "$set": {"status": "New", "updated_at": iso(now_utc())},
+                    "$push": {
+                        "history": {
+                            "type": "status_change",
+                            "to": "New",
+                            "by": "system",
+                            "timestamp": iso(now_utc()),
+                            "note": "Customer deleted floor plan, package assignment cleared"
+                        }
+                    }
+                }
+            )
+        else:
+            await sync_lead_status(user["lead_id"], "verification", "Customer re-uploaded floor plan, package assignment cleared")
         
     return {"ok": True, "reverted_to_briefing": True}
