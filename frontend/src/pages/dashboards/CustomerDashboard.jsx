@@ -403,9 +403,7 @@ export default function CustomerDashboard() {
       for (const file of valid) {
         const form = new FormData();
         form.append("file", file);
-        const { data } = await api.post("/upload", form, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
+        const { data } = await api.post("/upload", form);
         uploaded.push({ url: data.url, file_id: data.file_id, name: file.name });
       }
       setFloorPlans(prev => [...prev, ...uploaded]);

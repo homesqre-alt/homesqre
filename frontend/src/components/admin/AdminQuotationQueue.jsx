@@ -175,7 +175,7 @@ function QuotationUploadModal({ projectId, onClose, onSuccess }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const uploadRes = await api.post("/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+      const uploadRes = await api.post("/upload", form);
       const pdf_url = uploadRes.data.url;
 
       const payload = {

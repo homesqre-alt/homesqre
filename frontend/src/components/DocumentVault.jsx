@@ -69,9 +69,7 @@ export default function DocumentVault({ leadId, allowUpload = false, currentPhas
     try {
       const form = new FormData();
       form.append("file", selected[0]);
-      const uploadRes = await api.post("/upload", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const uploadRes = await api.post("/upload", form);
       const newUrl = uploadRes.data.url || uploadRes.data.urls[0];
       
       const allFloorPlans = files.filter(f => f.type === "floor_plan").map(f => f.url);
