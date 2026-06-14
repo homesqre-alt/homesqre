@@ -9,7 +9,7 @@ class VerificationCreateRequest(BaseModel):
     invoice_paid: Optional[float] = 0
     pdf_url: Optional[str] = None
     pdf_urls: Optional[List[str]] = None
-    room_requirements: str
+    room_requirements: Optional[str] = None
     project_name: Optional[str] = None
     budget_range: Optional[str] = None
     design_styles: Optional[str] = None
