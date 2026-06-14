@@ -751,8 +751,6 @@ export default function CustomerDashboard() {
           />
         )}
 
-          );
-        })()}
 
         {/* PHASE 5: READY FOR QUOTATION */}
         {currentPhase === 'ready_for_quotation' && (
