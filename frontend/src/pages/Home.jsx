@@ -71,7 +71,7 @@ const HOW_IT_WORKS_STEPS = [
     icon: CreditCard,
     visual: {
       type: "dashboard",
-      img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80",
+      img: "/dashboard_mockup.png",
       label: "Your design dashboard",
     },
   },
